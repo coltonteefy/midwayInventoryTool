@@ -1,0 +1,871 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title>Midway Gray</title>
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="1894.4">
+  <style type="text/css">
+    body {background-color: #dae2ed}
+    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px 'Helvetica Neue'; color: #000000; -webkit-text-stroke: #000000}
+    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px 'Helvetica Neue'; color: #000000; -webkit-text-stroke: #000000; min-height: 14.0px}
+    span.s1 {font-kerning: none}
+  </style>
+</head>
+<body>
+<p class="p1"><span class="s1">&lt;!DOCTYPE html&gt;</span></p>
+<p class="p1"><span class="s1">&lt;html lang="en"&gt;</span></p>
+<p class="p1"><span class="s1">&lt;head&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>&lt;meta charset="UTF-8" /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>&lt;meta name="viewport" content="width=device-width, initial-scale=1.0"/&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>&lt;title&gt;Production-Ready Inventory &amp; Order Manager&lt;/title&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>&lt;script src="https://cdn.tailwindcss.com"&gt;&lt;/script&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>&lt;!-- Using a monospaced font for a futuristic, terminal-like feel --&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>&lt;link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&amp;display=swap"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>&lt;!-- D3.js for data visualization --&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>&lt;script src="https://d3js.org/d3.v7.min.js"&gt;&lt;/script&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>&lt;style&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>/* Global styles for the cyberpunk theme */</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>body {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>font-family: 'Roboto Mono', monospace;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>background-color: #0d0c1d; /* Deep purple-blue background */</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>color: #e2e8f0; /* Off-white for general text */</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>.neon-glow {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>box-shadow: 0 0 5px #1e90ff, 0 0 10px #1e90ff, 0 0 15px #1e90ff, 0 0 20px #1e90ff; /* Electric blue glow */</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>.text-glow-fuchsia {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>text-shadow: 0 0 3px #d62d88, 0 0 8px #d62d88; /* Fuchsia glow */</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>.text-glow-cyan {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>text-shadow: 0 0 3px #0891b2, 0 0 8px #0891b2; /* Cyan glow */</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>.btn-neon-cyan {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>background-color: #0891b2; /* Tailwind cyan-600 */</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>color: white;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>.btn-neon-cyan:hover {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>background-color: #06748c; /* Darker cyan */</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>.btn-neon-lime {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>background-color: #65a30d; /* Tailwind lime-600 */</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>color: black;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>.btn-neon-lime:hover {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>background-color: #4d820d; /* Darker lime */</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>/* Custom table styling to fit the theme */</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>table {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>width: 100%;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>border-collapse: collapse;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>text-align: left;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>th, td {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>padding: 12px;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>border-bottom: 1px solid #1f2937; /* Darker border */</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>th {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>background-color: #1e1b4b; /* Dark purple header */</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>font-weight: 700;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>color: #93c5fd; /* Light blue text for headers */</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>text-transform: uppercase;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>tr:last-child td {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>border-bottom: none;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>td.is-editing {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>background-color: #1f2937; /* Darker background when editing */</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>outline: 2px solid #06b6d4; /* Neon cyan outline */</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>outline-offset: -2px;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>.order-card, .infographic-card {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>background-color: #1f2937; /* Dark gray for the card background */</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>border: 1px solid #374151; /* Border color for the card */</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>/* D3 chart styling */</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>.chart-container {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>display: flex;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>justify-content: center;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>align-items: center;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>padding: 1rem;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>.bar {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>fill: #06b6d4; /* Cyan color for bars */</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>stroke: #1e1b4b; /* Dark purple border */</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>stroke-width: 1px;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>.bar-label {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>fill: #e2e8f0; /* Off-white for labels */</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>font-size: 10px;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>text-anchor: middle;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>.axis path,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>.axis line {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>stroke: #4b5563; /* Darker gray for axis lines */</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>.axis text {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>fill: #9ca3af; /* Lighter gray for axis labels */</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>font-size: 10px;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>.bar-y-label {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>fill: #e2e8f0;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>font-size: 10px;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>text-anchor: end;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>/* Infographic card layout */</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>.infographic-grid {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>display: grid;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>gap: 1.5rem;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>grid-template-columns: repeat(1, minmax(0, 1fr));</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>@media (min-width: 640px) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>.infographic-grid {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>grid-template-columns: repeat(2, minmax(0, 1fr));</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>@media (min-width: 1024px) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>.infographic-grid {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>grid-template-columns: repeat(4, minmax(0, 1fr));</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>.infographic-list li {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>display: flex;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>justify-content: space-between;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>align-items: center;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>padding: 0.5rem 0;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>border-bottom: 1px dashed #374151;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>.infographic-list li:last-child {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>border-bottom: none;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>.infographic-list .rank {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>font-weight: bold;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>color: #06b6d4;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>&lt;/style&gt;</span></p>
+<p class="p1"><span class="s1">&lt;/head&gt;</span></p>
+<p class="p1"><span class="s1">&lt;body class="flex flex-col items-center min-h-screen p-4"&gt;</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>&lt;div class="bg-gray-800 p-8 rounded-xl shadow-2xl neon-glow w-full lg:px-12 xl:px-24 space-y-6"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;h1 class="text-3xl font-bold text-center text-white text-glow-cyan"&gt;MIDWAY GRAY INVENTORY LOG&lt;/h1&gt;</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;div id="status" class="text-center text-sm text-gray-400"&gt;Status: Initializing...&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;div id="user-id-display" class="text-center text-xs text-gray-500 break-all"&gt;User ID: N/A&lt;/div&gt;</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">    </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;!-- Login/Auth Form --&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;div id="login-form" class="hidden"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;h2 class="text-xl font-semibold text-white text-glow-fuchsia text-center mb-4"&gt;ADMIN ACCESS&lt;/h2&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;form id="auth-form" class="space-y-4"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;label for="email" class="block text-sm font-medium text-gray-400"&gt;Admin ID&lt;/label&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;input type="email" id="email" class="mt-1 block w-full bg-gray-900 border border-gray-700 text-gray-300 rounded-md shadow-sm p-2 focus:ring-cyan-500 focus:border-cyan-500" placeholder="admin@domain.net" required&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;label for="password" class="block text-sm font-medium text-gray-400"&gt;Admin Password&lt;/label&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;input type="password" id="password" class="mt-1 block w-full bg-gray-900 border border-gray-700 text-gray-300 rounded-md shadow-sm p-2 focus:ring-cyan-500 focus:border-cyan-500" placeholder="• • • • • •" required&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;div class="flex justify-center"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;button type="submit" id="login-btn" class="btn-neon-cyan px-4 py-2 rounded-lg font-semibold w-full"&gt;Access System&lt;/button&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;/form&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;div id="main-content" class="hidden space-y-8"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;div class="text-right"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;button id="signout-btn" class="btn-neon-cyan px-4 py-2 rounded-lg font-semibold text-xs"&gt;Sign Out&lt;/button&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;!-- Inventory Section (now a table) --&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;div class="space-y-4"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;h2 class="text-xl font-semibold text-white text-glow-fuchsia"&gt;Inventory Data Stream&lt;/h2&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;div class="bg-gray-900 rounded-lg border border-gray-700 overflow-x-auto"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;table class="min-w-full divide-y divide-gray-700"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;thead&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;tr&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>Item Name</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;/th&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>Code</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;/th&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>Current Inventory</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;/th&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>Sell Price</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;/th&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>Total Amount Purchased</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;/th&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>Vials Sold</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;/th&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider w-20"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>Image</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;/th&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider w-20"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>COA</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;/th&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;th class="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider"&gt;Actions&lt;/th&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;/tr&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;/thead&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;tbody id="inventory-list" class="bg-gray-800 divide-y divide-gray-700"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;!-- Inventory rows will be added here by JS --&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;/tbody&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;/table&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">      </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;!-- New Cards for Total Cost, Revenue, and Profit --&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;div class="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4 mt-8"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;!-- Total Cost Card --&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;div class="bg-indigo-900 text-white p-6 rounded-xl shadow-lg text-center flex-1 border border-indigo-700"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;h3 class="text-md font-semibold text-indigo-300"&gt;Total Cost&lt;/h3&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;p id="total-cost" class="mt-1 text-2xl font-bold text-indigo-200"&gt;$0.00&lt;/p&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;!-- Total Revenue Card --&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;div class="bg-purple-900 text-white p-6 rounded-xl shadow-lg text-center flex-1 border border-purple-700"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;h3 class="text-md font-semibold text-purple-300"&gt;Total Revenue&lt;/h3&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;p id="total-revenue" class="mt-1 text-2xl font-bold text-purple-200"&gt;$0.00&lt;/p&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;!-- Total Profit Card --&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;div class="bg-green-900 text-white p-6 rounded-xl shadow-lg text-center flex-1 border border-green-700"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;h3 class="text-md font-semibold text-green-300"&gt;Total Profit&lt;/h3&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;p id="total-profit" class="mt-1 text-2xl font-bold text-green-200"&gt;$0.00&lt;/p&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;!-- New Orders Section --&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;div class="space-y-4 mt-8"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;h2 class="text-xl font-semibold text-white text-glow-fuchsia"&gt;Order Data Stream&lt;/h2&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;div id="orders-container" class="space-y-6"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;!-- Order cards will be injected here --&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;div id="loading-orders" class="text-center py-12"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;div class="animate-spin inline-block w-8 h-8 border-4 border-cyan-500 border-solid rounded-full border-t-transparent"&gt;&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;p class="mt-4 text-gray-500"&gt;Loading orders...&lt;/p&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">      </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;!-- New Infographics Section --&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;div class="space-y-4 mt-8"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;h2 class="text-xl font-semibold text-white text-glow-fuchsia"&gt;Sales Infographics&lt;/h2&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;div class="infographic-grid"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;!-- Monthly Revenue Card --&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;div class="infographic-card rounded-lg p-4"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;h3 class="text-md font-semibold text-center text-cyan-300 mb-4"&gt;Monthly Revenue&lt;/h3&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;div id="chart-monthly-revenue" class="chart-container"&gt;&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;!-- Top Customers Card --&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;div class="infographic-card rounded-lg p-4"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;h3 class="text-md font-semibold text-center text-cyan-300 mb-4"&gt;Top Customers&lt;/h3&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;div id="chart-top-customers" class="chart-container"&gt;&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;!-- Top Products by Revenue Card --&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;div class="infographic-card rounded-lg p-4"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;h3 class="text-md font-semibold text-center text-cyan-300 mb-4"&gt;Top Products (Revenue)&lt;/h3&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;div id="chart-top-products-revenue" class="chart-container"&gt;&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;!-- Top Products by Quantity Card --&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;div class="infographic-card rounded-lg p-4"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;h3 class="text-md font-semibold text-center text-cyan-300 mb-4"&gt;Top Products (Quantity)&lt;/h3&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;div id="chart-top-products-quantity" class="chart-container"&gt;&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;div id="infographic-placeholder" class="text-center py-12 text-gray-500"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>No sales data to display yet.</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>&lt;/div&gt;</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">  </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>&lt;!-- Modal --&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>&lt;div id="alert-modal" class="hidden fixed inset-0 z-50 bg-black bg-opacity-70 flex items-center justify-center backdrop-blur-sm"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;div class="bg-gray-900 text-white p-6 rounded-xl shadow-lg text-center w-80 space-y-4 border-2 border-cyan-500"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;p id="modal-message" class="text-lg"&gt;&lt;/p&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;button id="close-modal-btn" class="btn-neon-cyan px-4 py-2 rounded-lg font-semibold hover:bg-cyan-600"&gt;ACKNOWLEDGE&lt;/button&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>&lt;/div&gt;</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>&lt;!-- Firebase (v12) --&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>&lt;script type="module"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>import { getFirestore, collection, onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-analytics.js";</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const firebaseConfig = {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>apiKey: "AIzaSyCWgqGvXzXWBUWd_W-q7uEuARIBZj_JXyI",</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>authDomain: "peptide-inventory.firebaseapp.com",</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>projectId: "peptide-inventory",</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>storageBucket: "peptide-inventory.firebasestorage.app",</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>messagingSenderId: "547049240971",</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>appId: "1:547049240971:web:83b2e836fee57bb41f578e",</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>measurementId: "G-1W58JMJN37"</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>};</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const app = initializeApp(firebaseConfig);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const auth = getAuth(app);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const db <span class="Apple-converted-space">  </span>= getFirestore(app);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>try { getAnalytics(app); } catch (e) { /* ignore if blocked */ }</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const qs = (id) =&gt; document.getElementById(id);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>let userId = null;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>let totalRevenue = 0;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>let totalCost = 0;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>let paidOrdersCache = [];</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>function showModal(message) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>qs('modal-message').textContent = message;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>qs('alert-modal').classList.remove('hidden');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>/**</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">     </span>* @description Simple email validation function using a regex.</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">     </span>* @param {string} email</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">     </span>* @returns {boolean}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">     </span>*/</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>function isValidEmail(email) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>const re = /^(([^&lt;&gt;()[\]\\.,;:\s@"]+(\.[^&lt;&gt;()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>return re.test(String(email).toLowerCase());</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>// Function to copy text to clipboard, uses a temporary textarea for cross-browser support in iframes</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>function copyToClipboard(text) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>const textarea = document.createElement('textarea');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>textarea.value = text;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>document.body.appendChild(textarea);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>textarea.select();</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>try {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>document.execCommand('copy');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>showModal('Copied to clipboard!');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>} catch (err) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>console.error('Failed to copy text:', err);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>showModal('Failed to copy. Please select and copy manually.');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>} finally {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>document.body.removeChild(textarea);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>function formatTimestamp(ts) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>if (!ts) return 'Unknown date';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>try {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>if (typeof ts.toDate === 'function') {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>return ts.toDate().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>const d = new Date(ts);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>if (!isNaN(d.getTime())) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>} catch (_) {}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>return 'Unknown date';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>function currency(n) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>const num = typeof n === 'number' ? n : Number(n ?? 0);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>return num.toFixed(2);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>function updateFinancialUI() {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>const totalProfit = totalRevenue - totalCost;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>qs('total-cost').textContent = `$${totalCost.toFixed(2)}`;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>qs('total-revenue').textContent = `$${totalRevenue.toFixed(2)}`;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>qs('total-profit').textContent = `$${totalProfit.toFixed(2)}`;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>function updateUI(user) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>const status = qs('status');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>const userDisplay = qs('user-id-display');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>const mainContent = qs('main-content');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>const loginForm = qs('login-form');</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>if (user) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>userId = user.uid;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>status.textContent = 'Status: Signed in';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>userDisplay.textContent = 'User ID: ' + userId;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>mainContent.classList.remove('hidden');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>loginForm.classList.add('hidden');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>listenForInventory();</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>listenForOrders();</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>} else {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>userId = null;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>status.textContent = 'Status: Signed out';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>userDisplay.textContent = 'User ID: N/A';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>mainContent.classList.add('hidden');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>loginForm.classList.remove('hidden');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>function listenForInventory() {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>if (!userId) return;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>const ref = collection(db, 'inventory');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>onSnapshot(ref, (snap) =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>const tbody = qs('inventory-list');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>tbody.innerHTML = '';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>if (snap.empty) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>const tr = document.createElement('tr');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>const td = document.createElement('td');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>td.setAttribute('colspan', '9');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>td.className = 'text-gray-500 italic px-6 py-4 whitespace-nowrap';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>td.textContent = 'No inventory items.';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>tr.appendChild(td);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>tbody.appendChild(tr);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>return;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>totalCost = 0;</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>snap.forEach((d) =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>const item = d.data();</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>const tr = document.createElement('tr');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>tr.dataset.id = d.id;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>tr.className = 'hover:bg-gray-700 transition-colors duration-150';</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>const nameTd = document.createElement('td');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>nameTd.className = 'px-6 py-4 whitespace-nowrap text-sm font-medium text-cyan-300';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>nameTd.textContent = item.name ?? '(no name)';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>nameTd.setAttribute('contenteditable', 'false');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>nameTd.dataset.field = 'name';</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>const codeTd = document.createElement('td');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>codeTd.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-400';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>codeTd.textContent = item.code ?? '(no code)';</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>const inventoryTd = document.createElement('td');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>inventoryTd.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-400';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>inventoryTd.textContent = item.currentInventory ?? 0;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>inventoryTd.setAttribute('contenteditable', 'false');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>inventoryTd.dataset.field = 'currentInventory';</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>const priceTd = document.createElement('td');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>priceTd.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-400';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>priceTd.textContent = item.sellPricePerVial ? `$${item.sellPricePerVial}` : '$0';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>priceTd.setAttribute('contenteditable', 'false');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>priceTd.dataset.field = 'sellPricePerVial';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>priceTd.dataset.originalPrice = item.sellPricePerVial;</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>const totalItemCostTd = document.createElement('td');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>totalItemCostTd.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-400';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>let totalItemCost = 0;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>if (item.costHistory &amp;&amp; Array.isArray(item.costHistory)) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>totalItemCost = item.costHistory.reduce((sum, historyItem) =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>const cost = (historyItem.costPerKit || 0) * (historyItem.totalKitsBought || 0);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>return sum + cost;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>}, 0);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>totalItemCostTd.textContent = `$${totalItemCost.toFixed(2)}`;</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>const vialsSoldTd = document.createElement('td');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>vialsSoldTd.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-400';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>vialsSoldTd.textContent = item.vialsSold ?? 0;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>vialsSoldTd.setAttribute('contenteditable', 'false');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>vialsSoldTd.dataset.field = 'vialsSold';</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>const imageTd = document.createElement('td');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>imageTd.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-400 max-w-24 overflow-hidden text-ellipsis cursor-pointer';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>imageTd.textContent = item.image ?? 'N/A';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>imageTd.dataset.field = 'image';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>imageTd.setAttribute('contenteditable', 'false');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>imageTd.addEventListener('click', () =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>if (imageTd.textContent &amp;&amp; imageTd.textContent !== 'N/A') {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>copyToClipboard(imageTd.textContent);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>});</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">          </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>const coaTd = document.createElement('td');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>coaTd.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-400 max-w-24 overflow-hidden text-ellipsis cursor-pointer';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>coaTd.textContent = item.coa ?? 'N/A';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>coaTd.dataset.field = 'coa';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>coaTd.setAttribute('contenteditable', 'false');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>coaTd.addEventListener('click', () =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>if (coaTd.textContent &amp;&amp; coaTd.textContent !== 'N/A') {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>copyToClipboard(coaTd.textContent);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>});</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>const actionTd = document.createElement('td');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>actionTd.className = 'px-6 py-4 whitespace-nowrap text-center text-sm font-medium';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>const editSaveBtn = document.createElement('button');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>editSaveBtn.textContent = 'Edit';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>editSaveBtn.className = 'btn-neon-cyan px-3 py-1 rounded-lg font-semibold text-xs';</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">          </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>editSaveBtn.addEventListener('click', () =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>const isEditing = editSaveBtn.textContent === 'Edit';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>const editableTds = [nameTd, inventoryTd, priceTd, vialsSoldTd, imageTd, coaTd];</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>if (isEditing) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>editSaveBtn.textContent = 'Save';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>editSaveBtn.className = 'btn-neon-lime px-3 py-1 rounded-lg font-semibold text-xs';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>editableTds.forEach(td =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                      </span>td.setAttribute('contenteditable', 'true');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                      </span>td.classList.add('is-editing');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>});</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>} else {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>const docId = tr.dataset.id;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>const newName = nameTd.textContent.trim();</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>const newQuantity = parseInt(inventoryTd.textContent.trim(), 10);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>let newPrice = priceTd.textContent.trim();</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>newPrice = parseFloat(newPrice.replace(/^\$/, ''));</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>const newVialsSold = parseInt(vialsSoldTd.textContent.trim(), 10);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>const newImage = imageTd.textContent.trim();</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>const newCoa = coaTd.textContent.trim();</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>const updateData = {};</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>if (newName !== (item.name ?? '')) updateData.name = newName;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>if (!isNaN(newQuantity) &amp;&amp; newQuantity !== item.currentInventory) updateData.currentInventory = newQuantity;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>if (!isNaN(newPrice) &amp;&amp; newPrice !== item.sellPricePerVial) updateData.sellPricePerVial = newPrice;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>if (!isNaN(newVialsSold) &amp;&amp; newVialsSold !== item.vialsSold) updateData.vialsSold = newVialsSold;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>if (newImage !== (item.image ?? '')) updateData.image = newImage;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>if (newCoa !== (item.coa ?? '')) updateData.coa = newCoa;</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">                  </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>if (Object.keys(updateData).length &gt; 0) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                      </span>const itemRef = doc(db, 'inventory', docId);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                      </span>updateDoc(itemRef, updateData)</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                          </span>.then(() =&gt; showModal(`Data updated for ${newName}.`))</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                          </span>.catch((e) =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                              </span>console.error('Error updating document:', e);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                              </span>showModal('Error updating data. Check console for details.');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                          </span>});</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>} else {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                      </span>showModal('No changes to save.');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>editSaveBtn.textContent = 'Edit';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>editSaveBtn.className = 'btn-neon-cyan px-3 py-1 rounded-lg font-semibold text-xs';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>editableTds.forEach(td =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                      </span>td.setAttribute('contenteditable', 'false');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                      </span>td.classList.remove('is-editing');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>});</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>});</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>actionTd.appendChild(editSaveBtn);</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>tr.appendChild(nameTd);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>tr.appendChild(codeTd);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>tr.appendChild(inventoryTd);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>tr.appendChild(priceTd);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>tr.appendChild(totalItemCostTd);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>tr.appendChild(vialsSoldTd);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>tr.appendChild(imageTd);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>tr.appendChild(coaTd);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>tr.appendChild(actionTd);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>tbody.appendChild(tr);</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>if (item.costHistory &amp;&amp; Array.isArray(item.costHistory)) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>totalCost += item.costHistory.reduce((sum, historyItem) =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>const cost = (historyItem.costPerKit || 0) * (historyItem.totalKitsBought || 0);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>return sum + cost;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>}, 0);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>});</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>updateFinancialUI();</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>}, (error) =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>console.error('Error listening to inventory:', error);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>const tbody = qs('inventory-list');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>tbody.innerHTML = '';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>const tr = document.createElement('tr');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>const td = document.createElement('td');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>td.setAttribute('colspan', '9');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>td.className = 'px-6 py-4 whitespace-nowrap text-sm text-red-500';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>td.textContent = 'Error loading inventory.';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>tr.appendChild(td);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>tbody.appendChild(tr);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>});</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>function listenForOrders() {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>const ordersContainer = qs('orders-container');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>const loadingElement<span class="Apple-converted-space">  </span>= qs('loading-orders');</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">      </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>const ref = collection(db, 'orders');</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>onSnapshot(ref, (snap) =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>ordersContainer.innerHTML = '';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>loadingElement.style.display = 'none';</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>if (snap.empty) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>ordersContainer.innerHTML = `</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;div class="text-center text-gray-500 py-12"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;p class="text-lg"&gt;No orders found.&lt;/p&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;p class="text-sm mt-2"&gt;Your orders will appear here once they've been placed.&lt;/p&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;/div&gt;`;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>return;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>}</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">        </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>totalRevenue = 0;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>const orderData = snap.docs.map(doc =&gt; ({ id: doc.id, ...doc.data() }));</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>paidOrdersCache = orderData.filter(o =&gt; o.paymentStatus === 'Paid');</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>orderData.sort((a, b) =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>const timeA = a.timestamp ? a.timestamp.toMillis() : 0;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>const timeB = b.timestamp ? b.timestamp.toMillis() : 0;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>return timeB - timeA;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>});</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>orderData.forEach((order) =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>const timestamp = formatTimestamp(order.timestamp);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>const items = Array.isArray(order.items) ? order.items : [];</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">          </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>const itemsList = items.map(item =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>const name = (item &amp;&amp; item.name) ? item.name : 'Item';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>const price = (item &amp;&amp; item.unitPrice != null) ? currency(item.unitPrice) : '0.00';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>const quantity = (item &amp;&amp; item.quantity != null) ? item.quantity : 1;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>return `</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;li class="flex justify-between items-center mb-1"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;span class="text-gray-400"&gt;${name} (x${quantity})&lt;/span&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;span class="font-medium text-cyan-300"&gt;$${price}&lt;/span&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;/li&gt;`;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>}).join('');</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>const computed = items.reduce((sum, it) =&gt; sum + (Number(it?.unitPrice || 0) * Number(it?.quantity || 1)), 0);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>const totalSafe = (order.total != null) ? currency(order.total) : currency(computed);</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>if (order.paymentStatus === 'Paid') {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>totalRevenue += Number(order.total || computed);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>const status = order.paymentStatus || 'Unknown';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>const statusClass = status === 'Paid' ? 'bg-lime-900 text-lime-300' : 'bg-rose-900 text-rose-300';</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>const contact = order.contactInfo || {};</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>const orderIdText = order.orderId || order.id;</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>const card = `</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;div class="order-card rounded-xl p-6 shadow-md border border-gray-700"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;div class="flex flex-col sm:flex-row sm:justify-between sm:items-center border-b pb-4 mb-4 border-gray-700"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>&lt;h3 class="text-lg font-bold text-cyan-500 mb-1"&gt;Order ID:</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>&lt;span class="font-normal text-sm sm:text-base break-words text-gray-300"&gt;${orderIdText}&lt;/span&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>&lt;/h3&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>&lt;p class="text-sm text-gray-500"&gt;Order Placed on ${timestamp}&lt;/p&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;div class="mt-4 sm:mt-0 text-left sm:text-right"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>&lt;p class="font-semibold text-lg text-cyan-500"&gt;Total: $${totalSafe}&lt;/p&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>&lt;span class="inline-block mt-1 px-3 py-1 text-xs font-semibold rounded-full ${statusClass}"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>${status}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>&lt;/span&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;div class="mb-4"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;p class="font-semibold text-gray-400 mb-2"&gt;Order Items:&lt;/p&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;ul class="list-none space-y-2 text-sm"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>${itemsList || '&lt;li class="text-gray-500 italic"&gt;No items.&lt;/li&gt;'}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;/ul&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;p class="font-semibold text-gray-400 mb-2"&gt;Contact Info:&lt;/p&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;div class="text-sm text-gray-500 space-y-1"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>&lt;p&gt;&lt;span class="font-medium"&gt;Name:&lt;/span&gt; ${contact.fullName || 'Not Provided'}&lt;/p&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>&lt;p&gt;&lt;span class="font-medium"&gt;Email:&lt;/span&gt; ${contact.email || 'Not Provided'}&lt;/p&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>&lt;p&gt;&lt;span class="font-medium"&gt;Phone:&lt;/span&gt; ${contact.phone || 'Not Provided'}&lt;/p&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>&lt;p&gt;&lt;span class="font-medium"&gt;Address:&lt;/span&gt; ${contact.shippingAddress || 'Not Provided'}&lt;/p&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;/div&gt;`;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>ordersContainer.insertAdjacentHTML('beforeend', card);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>});</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>updateFinancialUI();</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>renderInfographics();</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>}, (error) =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>console.error('Error listening to orders:', error);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>showModal('Failed to load orders. Check console for details.');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>loadingElement.style.display = 'none';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>ordersContainer.innerHTML = `</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;div class="text-center text-red-500 py-12"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;p class="text-lg"&gt;An error occurred.&lt;/p&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;p class="text-sm mt-2"&gt;Check the console for more details.&lt;/p&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;/div&gt;`;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>});</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>function renderBarChart(containerId, data, title, isCurrency) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>const container = qs(containerId);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>container.innerHTML = '';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>if (data.length === 0) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>container.innerHTML = `&lt;p class="text-center text-gray-500 italic text-sm"&gt;No data available.&lt;/p&gt;`;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>return;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>const margin = { top: 20, right: 20, bottom: 60, left: 60 };</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>const width = container.clientWidth - margin.left - margin.right;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>const height = 250 - margin.top - margin.bottom;</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>const svg = d3.select(container)</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.append("svg")</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.attr("width", width + margin.left + margin.right)</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.attr("height", height + margin.top + margin.bottom)</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.append("g")</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.attr("transform", `translate(${margin.left},${margin.top})`);</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>const x = d3.scaleBand()</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.range([0, width])</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.domain(data.map(d =&gt; d.label))</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.padding(0.1);</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>const y = d3.scaleLinear()</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.range([height, 0])</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.domain([0, d3.max(data, d =&gt; d.value) || 1]);</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>svg.append("g")</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.attr("class", "axis x-axis")</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.attr("transform", `translate(0,${height})`)</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.call(d3.axisBottom(x))</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.selectAll("text")</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.style("text-anchor", "end")</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.attr("dx", "-.8em")</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.attr("dy", ".15em")</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.attr("transform", "rotate(-45)");</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>svg.append("g")</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.attr("class", "axis y-axis")</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.call(d3.axisLeft(y).tickFormat(d =&gt; isCurrency ? `$${d3.format(".2s")(d)}` : d3.format(".0f")(d)));</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>svg.selectAll(".bar")</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.data(data)</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.enter().append("rect")</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.attr("class", "bar")</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.attr("x", d =&gt; x(d.label))</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.attr("y", d =&gt; y(d.value))</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.attr("width", x.bandwidth())</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.attr("height", d =&gt; height - y(d.value));</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>svg.selectAll(".bar-label")</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>.data(data)</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>.enter().append("text")</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>.attr("class", "bar-label")</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>.attr("x", d =&gt; x(d.label) + x.bandwidth() / 2)</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>.attr("y", d =&gt; y(d.value) - 5)</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>.text(d =&gt; isCurrency ? `$${currency(d.value)}` : d3.format(".0f")(d.value));</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>function renderList(containerId, data, isCurrency) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>const container = qs(containerId);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>container.innerHTML = '';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>if (data.length === 0) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>container.innerHTML = `&lt;p class="text-center text-gray-500 italic text-sm"&gt;No data available.&lt;/p&gt;`;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>return;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>}</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">      </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>const list = d3.select(container).append('ul')</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.attr('class', 'infographic-list text-sm space-y-1');</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>data.forEach((d, i) =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>list.append('li')</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>.html(`&lt;span class="rank"&gt;${i + 1}.&lt;/span&gt; &lt;span&gt;${d.label}&lt;/span&gt; &lt;span class="font-medium"&gt;${isCurrency ? `$${currency(d.value)}` : d3.format(".0f")(d.value)}&lt;/span&gt;`);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>});</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">    </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>function renderInfographics() {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>const placeholder = qs('infographic-placeholder');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>if (paidOrdersCache.length === 0) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>placeholder.style.display = 'block';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>return;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>} else {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>placeholder.style.display = 'none';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>const monthlySales = d3.group(paidOrdersCache, d =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>const date = d.timestamp.toDate();</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>return `${date.getFullYear()}-${date.getMonth() + 1}`;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>});</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>const monthlyData = Array.from(monthlySales, ([month, orders]) =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>const total = d3.sum(orders, d =&gt; Number(d.total));</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>const [year, monthNum] = month.split('-');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>const date = new Date(year, monthNum - 1);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>return {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>label: d3.timeFormat("%b '%y")(date),</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>value: total</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>};</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>}).sort((a,b) =&gt; new Date(a.label) - new Date(b.label));</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>renderBarChart('chart-monthly-revenue', monthlyData, 'Monthly Revenue', true);</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>const customerSales = d3.group(paidOrdersCache, d =&gt; d.contactInfo?.fullName || 'Anonymous');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>const customerData = Array.from(customerSales, ([customer, orders]) =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>const total = d3.sum(orders, d =&gt; Number(d.total));</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>return { label: customer, value: total };</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>}).sort((a, b) =&gt; b.value - a.value).slice(0, 10);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>renderList('chart-top-customers', customerData, true);</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>const productRevenue = d3.group(paidOrdersCache.flatMap(o =&gt; o.items), i =&gt; i.name || 'Unknown Product');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>const productRevenueData = Array.from(productRevenue, ([product, items]) =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>const total = d3.sum(items, i =&gt; Number(i.unitPrice) * Number(i.quantity));</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>return { label: product, value: total };</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>}).sort((a, b) =&gt; b.value - a.value).slice(0, 10);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>renderBarChart('chart-top-products-revenue', productRevenueData, 'Top Products (Revenue)', true);</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>const productQuantity = d3.group(paidOrdersCache.flatMap(o =&gt; o.items), i =&gt; i.name || 'Unknown Product');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>const productQuantityData = Array.from(productQuantity, ([product, items]) =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>const total = d3.sum(items, i =&gt; Number(i.quantity));</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>return { label: product, value: total };</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>}).sort((a, b) =&gt; b.value - a.value).slice(0, 10);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>renderBarChart('chart-top-products-quantity', productQuantityData, 'Top Products (Quantity)', false);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>// Boot</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>window.addEventListener('load', async () =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>try {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>// Auth state listener is crucial for managing UI state</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>onAuthStateChanged(auth, (user) =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>console.log('Auth state changed:', user ? user.uid : 'None');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>updateUI(user);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>});</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">        </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>// Event listener for the login form. This now ONLY checks for a single user.</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>qs('login-btn').addEventListener('click', async (e) =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>e.preventDefault();</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>const email = qs('email').value;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>const password = qs('password').value;</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">          </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>if (!isValidEmail(email)) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>showModal('Please enter a valid email address.');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>return;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>try {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>// We no longer need to check credentials manually.</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>// Firebase handles authentication, and Firestore rules handle authorization.</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>await signInWithEmailAndPassword(auth, email, password);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>// If the sign-in is successful, the onAuthStateChanged listener will handle the UI.</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>showModal('Login successful!');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>} catch (error) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>console.error("Login failed:", error);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>// Firebase provides helpful error messages</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>let errorMessage = "Login failed. Check your credentials.";</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>if (error.code === 'auth/wrong-password') {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>errorMessage = "Incorrect password. Please try again.";</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>} else if (error.code === 'auth/user-not-found') {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>errorMessage = "Admin user not found.";</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>showModal(errorMessage);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>});</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">        </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>qs('signout-btn').addEventListener('click', async () =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>try {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>await signOut(auth);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>showModal('Signed out successfully.');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>} catch (error) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>console.error("Sign out failed:", error);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>showModal(`Sign out failed: ${error.message}`);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>});</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">        </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>qs('close-modal-btn').addEventListener('click', () =&gt; qs('alert-modal').classList.add('hidden'));</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>window.addEventListener('resize', () =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>if (paidOrdersCache.length &gt; 0) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>renderInfographics();</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>});</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>} catch (err) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>console.error('Init failed:', err);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>qs('status').textContent = `Error: ${err.message}`;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>});</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>&lt;/script&gt;</span></p>
+<p class="p1"><span class="s1">&lt;/body&gt;</span></p>
+<p class="p1"><span class="s1">&lt;/html&gt;</span></p>
+</body>
+</html>
