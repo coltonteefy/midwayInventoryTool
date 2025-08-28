@@ -39,6 +39,13 @@
     .btn-neon-lime:hover {
         background-color: #4d820d; /* Darker lime */
     }
+    .btn-neon-red {
+        background-color: #dc2626; /* Tailwind red-600 */
+        color: white;
+    }
+    .btn-neon-red:hover {
+        background-color: #b91c1c; /* Darker red */
+    }
     /* Custom table styling to fit the theme */
     table {
       width: 100%;
@@ -128,13 +135,50 @@
       font-weight: bold;
       color: #06b6d4;
     }
+    /* Modal/Drawer Styles */
+    .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background-color: rgba(0, 0, 0, 0.7);
+        z-index: 40;
+        opacity: 0;
+        transition: opacity 0.3s ease-in-out;
+        pointer-events: none;
+    }
+    .modal-backdrop.is-open {
+        opacity: 1;
+        pointer-events: auto;
+    }
+    .modal-main {
+        position: fixed;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        width: 90%;
+        max-width: 600px;
+        background-color: #111827;
+        z-index: 50;
+        border-radius: 12px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        padding: 2rem;
+        transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+        opacity: 0;
+        pointer-events: none;
+        max-height: 90%;
+        overflow-y: auto;
+    }
+    .modal-main.is-open {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translate(-50%, -50%) scale(1);
+    }
   </style>
 </head>
 <body class="flex flex-col items-center min-h-screen p-4">
- 
+
   <div class="bg-gray-800 p-8 rounded-xl shadow-2xl neon-glow w-full lg:px-12 xl:px-24 space-y-6">
     <h1 class="text-3xl font-bold text-center text-white text-glow-cyan">MIDWAY GRAY INVENTORY LOG</h1>
- 
+
     <div id="status" class="text-center text-sm text-gray-400">Status: Initializing...</div>
     <div id="user-id-display" class="text-center text-xs text-gray-500 break-all">User ID: N/A</div>
     
@@ -155,12 +199,12 @@
         </div>
       </form>
     </div>
- 
+
     <div id="main-content" class="hidden space-y-8">
-      <div class="text-right">
+      <div class="flex justify-end items-center">
         <button id="signout-btn" class="btn-neon-cyan px-4 py-2 rounded-lg font-semibold text-xs">Sign Out</button>
       </div>
- 
+
       <!-- Inventory Section (now a table) -->
       <div class="space-y-4">
         <h2 class="text-xl font-semibold text-white text-glow-fuchsia">Inventory Data Stream</h2>
@@ -220,7 +264,7 @@
           <p id="total-profit" class="mt-1 text-2xl font-bold text-green-200">$0.00</p>
         </div>
       </div>
- 
+
       <!-- New Orders Section -->
       <div class="space-y-4 mt-8">
         <h2 class="text-xl font-semibold text-white text-glow-fuchsia">Order Data Stream</h2>
@@ -265,21 +309,56 @@
     </div>
   </div>
   
-  <!-- Modal -->
+  <!-- General Alert Modal -->
   <div id="alert-modal" class="hidden fixed inset-0 z-50 bg-black bg-opacity-70 flex items-center justify-center backdrop-blur-sm">
     <div class="bg-gray-900 text-white p-6 rounded-xl shadow-lg text-center w-80 space-y-4 border-2 border-cyan-500">
       <p id="modal-message" class="text-lg"></p>
       <button id="close-modal-btn" class="btn-neon-cyan px-4 py-2 rounded-lg font-semibold hover:bg-cyan-600">ACKNOWLEDGE</button>
     </div>
   </div>
- 
+
+  <!-- Order Edit Modal -->
+  <div id="edit-order-backdrop" class="modal-backdrop hidden"></div>
+  <div id="edit-order-modal" class="modal-main hidden">
+      <div class="flex justify-between items-center text-cyan-300 border-b pb-4 mb-4 border-gray-700">
+          <h2 class="text-2xl font-bold">Edit Order</h2>
+          <button id="close-edit-modal-btn" class="p-2 rounded-full text-gray-400 hover:text-white transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+          </button>
+      </div>
+      <form id="edit-order-form" class="space-y-4">
+          <input type="hidden" id="edit-order-id">
+          <div>
+              <label for="edit-order-total" class="block text-sm font-medium text-gray-400">Total Amount</label>
+              <input type="number" step="0.01" id="edit-order-total" class="mt-1 block w-full bg-gray-900 border border-gray-700 text-gray-300 rounded-md shadow-sm p-2 focus:ring-cyan-500 focus:border-cyan-500" required>
+          </div>
+          <div>
+              <label for="edit-order-status" class="block text-sm font-medium text-gray-400">Payment Status</label>
+              <select id="edit-order-status" class="mt-1 block w-full bg-gray-900 border border-gray-700 text-gray-300 rounded-md shadow-sm p-2 focus:ring-cyan-500 focus:border-cyan-500" required>
+                  <option value="Paid">Paid</option>
+                  <option value="Unpaid">Unpaid</option>
+              </select>
+          </div>
+          <div id="edit-order-items-list" class="space-y-2">
+              <h3 class="text-md font-semibold text-gray-400 mt-4">Items:</h3>
+              <!-- Editable items will be rendered here -->
+          </div>
+          <div class="flex justify-between gap-4 mt-6">
+              <button type="button" id="delete-order-btn" class="btn-neon-red px-4 py-2 rounded-lg font-semibold flex-1">Delete Order</button>
+              <button type="submit" class="btn-neon-cyan px-4 py-2 rounded-lg font-semibold flex-1">Save Changes</button>
+          </div>
+      </form>
+  </div>
+  
   <!-- Firebase (v12) -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
     import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
-    import { getFirestore, collection, onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+    import { getFirestore, collection, onSnapshot, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-analytics.js";
- 
+
     const firebaseConfig = {
       apiKey: "AIzaSyCWgqGvXzXWBUWd_W-q7uEuARIBZj_JXyI",
       authDomain: "peptide-inventory.firebaseapp.com",
@@ -289,23 +368,39 @@
       appId: "1:547049240971:web:83b2e836fee57bb41f578e",
       measurementId: "G-1W58JMJN37"
     };
- 
+
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db   = getFirestore(app);
     try { getAnalytics(app); } catch (e) { /* ignore if blocked */ }
- 
+
     const qs = (id) => document.getElementById(id);
     let userId = null;
     let totalRevenue = 0;
     let totalCost = 0;
-    let paidOrdersCache = [];
- 
+    let allOrdersCache = [];
+
+    // Constants for Firestore collection paths to keep things clean and reusable
+    const INVENTORY_COLLECTION_PATH = 'inventory';
+    const ORDERS_COLLECTION_PATH = 'orders';
+    const INVENTORY_DOC_ID = 'eH6V9W9nSgX7Y4Z5J2k8'; // Replace with a dynamic ID if needed
+
+    // DOM References for the new Edit Order feature
+    const editOrderBackdrop = qs('edit-order-backdrop');
+    const editOrderModal = qs('edit-order-modal');
+    const closeEditModalBtn = qs('close-edit-modal-btn');
+    const editOrderForm = qs('edit-order-form');
+    const deleteOrderBtn = qs('delete-order-btn');
+
+    /**
+     * @description Displays a custom modal with a message.
+     * @param {string} message The message to display.
+     */
     function showModal(message) {
       qs('modal-message').textContent = message;
       qs('alert-modal').classList.remove('hidden');
     }
- 
+
     /**
      * @description Simple email validation function using a regex.
      * @param {string} email
@@ -315,7 +410,7 @@
       const re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
       return re.test(String(email).toLowerCase());
     }
- 
+
     // Function to copy text to clipboard, uses a temporary textarea for cross-browser support in iframes
     function copyToClipboard(text) {
         const textarea = document.createElement('textarea');
@@ -332,7 +427,7 @@
             document.body.removeChild(textarea);
         }
     }
- 
+
     function formatTimestamp(ts) {
       if (!ts) return 'Unknown date';
       try {
@@ -346,25 +441,25 @@
       } catch (_) {}
       return 'Unknown date';
     }
- 
+
     function currency(n) {
       const num = typeof n === 'number' ? n : Number(n ?? 0);
       return num.toFixed(2);
     }
- 
+
     function updateFinancialUI() {
         const totalProfit = totalRevenue - totalCost;
         qs('total-cost').textContent = `$${totalCost.toFixed(2)}`;
         qs('total-revenue').textContent = `$${totalRevenue.toFixed(2)}`;
         qs('total-profit').textContent = `$${totalProfit.toFixed(2)}`;
     }
- 
+
     function updateUI(user) {
       const status = qs('status');
       const userDisplay = qs('user-id-display');
       const mainContent = qs('main-content');
       const loginForm = qs('login-form');
- 
+
       if (user) {
         userId = user.uid;
         status.textContent = 'Status: Signed in';
@@ -381,7 +476,7 @@
         loginForm.classList.remove('hidden');
       }
     }
- 
+
     function listenForInventory() {
       if (!userId) return;
       const ref = collection(db, 'inventory');
@@ -398,38 +493,38 @@
           tbody.appendChild(tr);
           return;
         }
- 
+
         totalCost = 0;
- 
+
         snap.forEach((d) => {
           const item = d.data();
           const tr = document.createElement('tr');
           tr.dataset.id = d.id;
           tr.className = 'hover:bg-gray-700 transition-colors duration-150';
- 
+
           const nameTd = document.createElement('td');
           nameTd.className = 'px-6 py-4 whitespace-nowrap text-sm font-medium text-cyan-300';
           nameTd.textContent = item.name ?? '(no name)';
           nameTd.setAttribute('contenteditable', 'false');
           nameTd.dataset.field = 'name';
- 
+
           const codeTd = document.createElement('td');
           codeTd.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-400';
           codeTd.textContent = item.code ?? '(no code)';
- 
+
           const inventoryTd = document.createElement('td');
           inventoryTd.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-400';
           inventoryTd.textContent = item.currentInventory ?? 0;
           inventoryTd.setAttribute('contenteditable', 'false');
           inventoryTd.dataset.field = 'currentInventory';
- 
+
           const priceTd = document.createElement('td');
           priceTd.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-400';
           priceTd.textContent = item.sellPricePerVial ? `$${item.sellPricePerVial}` : '$0';
           priceTd.setAttribute('contenteditable', 'false');
           priceTd.dataset.field = 'sellPricePerVial';
           priceTd.dataset.originalPrice = item.sellPricePerVial;
- 
+
           const totalItemCostTd = document.createElement('td');
           totalItemCostTd.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-400';
           let totalItemCost = 0;
@@ -440,13 +535,13 @@
             }, 0);
           }
           totalItemCostTd.textContent = `$${totalItemCost.toFixed(2)}`;
- 
+
           const vialsSoldTd = document.createElement('td');
           vialsSoldTd.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-400';
           vialsSoldTd.textContent = item.vialsSold ?? 0;
           vialsSoldTd.setAttribute('contenteditable', 'false');
           vialsSoldTd.dataset.field = 'vialsSold';
- 
+
           const imageTd = document.createElement('td');
           imageTd.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-400 max-w-24 overflow-hidden text-ellipsis cursor-pointer';
           imageTd.textContent = item.image ?? 'N/A';
@@ -468,7 +563,7 @@
               copyToClipboard(coaTd.textContent);
             }
           });
- 
+
           const actionTd = document.createElement('td');
           actionTd.className = 'px-6 py-4 whitespace-nowrap text-center text-sm font-medium';
           const editSaveBtn = document.createElement('button');
@@ -478,7 +573,7 @@
           editSaveBtn.addEventListener('click', () => {
               const isEditing = editSaveBtn.textContent === 'Edit';
               const editableTds = [nameTd, inventoryTd, priceTd, vialsSoldTd, imageTd, coaTd];
- 
+
               if (isEditing) {
                   editSaveBtn.textContent = 'Save';
                   editSaveBtn.className = 'btn-neon-lime px-3 py-1 rounded-lg font-semibold text-xs';
@@ -495,7 +590,7 @@
                   const newVialsSold = parseInt(vialsSoldTd.textContent.trim(), 10);
                   const newImage = imageTd.textContent.trim();
                   const newCoa = coaTd.textContent.trim();
- 
+
                   const updateData = {};
                   if (newName !== (item.name ?? '')) updateData.name = newName;
                   if (!isNaN(newQuantity) && newQuantity !== item.currentInventory) updateData.currentInventory = newQuantity;
@@ -515,7 +610,7 @@
                   } else {
                       showModal('No changes to save.');
                   }
- 
+
                   editSaveBtn.textContent = 'Edit';
                   editSaveBtn.className = 'btn-neon-cyan px-3 py-1 rounded-lg font-semibold text-xs';
                   editableTds.forEach(td => {
@@ -525,7 +620,7 @@
               }
           });
           actionTd.appendChild(editSaveBtn);
- 
+
           tr.appendChild(nameTd);
           tr.appendChild(codeTd);
           tr.appendChild(inventoryTd);
@@ -536,7 +631,7 @@
           tr.appendChild(coaTd);
           tr.appendChild(actionTd);
           tbody.appendChild(tr);
- 
+
           if (item.costHistory && Array.isArray(item.costHistory)) {
             totalCost += item.costHistory.reduce((sum, historyItem) => {
               const cost = (historyItem.costPerKit || 0) * (historyItem.totalKitsBought || 0);
@@ -558,17 +653,17 @@
         tbody.appendChild(tr);
       });
     }
- 
+
     function listenForOrders() {
       const ordersContainer = qs('orders-container');
       const loadingElement  = qs('loading-orders');
       
       const ref = collection(db, 'orders');
- 
+
       onSnapshot(ref, (snap) => {
         ordersContainer.innerHTML = '';
         loadingElement.style.display = 'none';
- 
+
         if (snap.empty) {
           ordersContainer.innerHTML = `
             <div class="text-center text-gray-500 py-12">
@@ -579,16 +674,16 @@
         }
         
         totalRevenue = 0;
-        const orderData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        paidOrdersCache = orderData.filter(o => o.paymentStatus === 'Paid');
- 
-        orderData.sort((a, b) => {
+        allOrdersCache = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const paidOrders = allOrdersCache.filter(o => o.paymentStatus === 'Paid');
+
+        const sortedOrders = [...allOrdersCache].sort((a, b) => {
           const timeA = a.timestamp ? a.timestamp.toMillis() : 0;
           const timeB = b.timestamp ? b.timestamp.toMillis() : 0;
           return timeB - timeA;
         });
- 
-        orderData.forEach((order) => {
+
+        sortedOrders.forEach((order) => {
           const timestamp = formatTimestamp(order.timestamp);
           const items = Array.isArray(order.items) ? order.items : [];
           
@@ -602,23 +697,23 @@
                 <span class="font-medium text-cyan-300">$${price}</span>
               </li>`;
           }).join('');
- 
+
           const computed = items.reduce((sum, it) => sum + (Number(it?.unitPrice || 0) * Number(it?.quantity || 1)), 0);
           const totalSafe = (order.total != null) ? currency(order.total) : currency(computed);
- 
+
           if (order.paymentStatus === 'Paid') {
             totalRevenue += Number(order.total || computed);
           }
- 
+
           const status = order.paymentStatus || 'Unknown';
           const statusClass = status === 'Paid' ? 'bg-lime-900 text-lime-300' : 'bg-rose-900 text-rose-300';
- 
+
           const contact = order.contactInfo || {};
           const orderIdText = order.orderId || order.id;
- 
+
           const card = `
-            <div class="order-card rounded-xl p-6 shadow-md border border-gray-700">
-              <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center border-b pb-4 mb-4 border-gray-700">
+            <div class="order-card rounded-xl p-6 shadow-md border border-gray-700 relative">
+              <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start border-b pb-4 mb-4 border-gray-700">
                 <div>
                   <h3 class="text-lg font-bold text-cyan-500 mb-1">Order ID:
                     <span class="font-normal text-sm sm:text-base break-words text-gray-300">${orderIdText}</span>
@@ -647,6 +742,12 @@
                   <p><span class="font-medium">Address:</span> ${contact.shippingAddress || 'Not Provided'}</p>
                 </div>
               </div>
+              <!-- Edit button positioned at the bottom right of the card -->
+              <div class="absolute bottom-4 right-4">
+                <button class="edit-order-btn btn-neon-lime text-xs px-3 py-1 rounded-lg" data-order-id="${order.id}">
+                  Edit Order
+                </button>
+              </div>
             </div>`;
           ordersContainer.insertAdjacentHTML('beforeend', card);
         });
@@ -663,7 +764,7 @@
           </div>`;
       });
     }
- 
+
     function renderBarChart(containerId, data, title, isCurrency) {
       const container = qs(containerId);
       container.innerHTML = '';
@@ -671,27 +772,27 @@
         container.innerHTML = `<p class="text-center text-gray-500 italic text-sm">No data available.</p>`;
         return;
       }
- 
+
       const margin = { top: 20, right: 20, bottom: 60, left: 60 };
       const width = container.clientWidth - margin.left - margin.right;
       const height = 250 - margin.top - margin.bottom;
- 
+
       const svg = d3.select(container)
         .append("svg")
         .attr("width", width + margin.left + margin.right)
         .attr("height", height + margin.top + margin.bottom)
         .append("g")
         .attr("transform", `translate(${margin.left},${margin.top})`);
- 
+
       const x = d3.scaleBand()
         .range([0, width])
         .domain(data.map(d => d.label))
         .padding(0.1);
- 
+
       const y = d3.scaleLinear()
         .range([height, 0])
         .domain([0, d3.max(data, d => d.value) || 1]);
- 
+
       svg.append("g")
         .attr("class", "axis x-axis")
         .attr("transform", `translate(0,${height})`)
@@ -701,11 +802,11 @@
         .attr("dx", "-.8em")
         .attr("dy", ".15em")
         .attr("transform", "rotate(-45)");
- 
+
       svg.append("g")
         .attr("class", "axis y-axis")
         .call(d3.axisLeft(y).tickFormat(d => isCurrency ? `$${d3.format(".2s")(d)}` : d3.format(".0f")(d)));
- 
+
       svg.selectAll(".bar")
         .data(data)
         .enter().append("rect")
@@ -714,7 +815,7 @@
         .attr("y", d => y(d.value))
         .attr("width", x.bandwidth())
         .attr("height", d => height - y(d.value));
- 
+
       svg.selectAll(".bar-label")
           .data(data)
           .enter().append("text")
@@ -723,7 +824,7 @@
           .attr("y", d => y(d.value) - 5)
           .text(d => isCurrency ? `$${currency(d.value)}` : d3.format(".0f")(d.value));
     }
- 
+
     function renderList(containerId, data, isCurrency) {
       const container = qs(containerId);
       container.innerHTML = '';
@@ -734,7 +835,7 @@
       
       const list = d3.select(container).append('ul')
         .attr('class', 'infographic-list text-sm space-y-1');
- 
+
       data.forEach((d, i) => {
         list.append('li')
           .html(`<span class="rank">${i + 1}.</span> <span>${d.label}</span> <span class="font-medium">${isCurrency ? `$${currency(d.value)}` : d3.format(".0f")(d.value)}</span>`);
@@ -743,13 +844,15 @@
     
     function renderInfographics() {
       const placeholder = qs('infographic-placeholder');
+      const paidOrdersCache = allOrdersCache.filter(o => o.paymentStatus === 'Paid');
+      
       if (paidOrdersCache.length === 0) {
         placeholder.style.display = 'block';
         return;
       } else {
         placeholder.style.display = 'none';
       }
- 
+
       const monthlySales = d3.group(paidOrdersCache, d => {
         const date = d.timestamp.toDate();
         return `${date.getFullYear()}-${date.getMonth() + 1}`;
@@ -764,21 +867,21 @@
         };
       }).sort((a,b) => new Date(a.label) - new Date(b.label));
       renderBarChart('chart-monthly-revenue', monthlyData, 'Monthly Revenue', true);
- 
+
       const customerSales = d3.group(paidOrdersCache, d => d.contactInfo?.fullName || 'Anonymous');
       const customerData = Array.from(customerSales, ([customer, orders]) => {
         const total = d3.sum(orders, d => Number(d.total));
         return { label: customer, value: total };
       }).sort((a, b) => b.value - a.value).slice(0, 10);
       renderList('chart-top-customers', customerData, true);
- 
+
       const productRevenue = d3.group(paidOrdersCache.flatMap(o => o.items), i => i.name || 'Unknown Product');
       const productRevenueData = Array.from(productRevenue, ([product, items]) => {
         const total = d3.sum(items, i => Number(i.unitPrice) * Number(i.quantity));
         return { label: product, value: total };
       }).sort((a, b) => b.value - a.value).slice(0, 10);
       renderBarChart('chart-top-products-revenue', productRevenueData, 'Top Products (Revenue)', true);
- 
+
       const productQuantity = d3.group(paidOrdersCache.flatMap(o => o.items), i => i.name || 'Unknown Product');
       const productQuantityData = Array.from(productQuantity, ([product, items]) => {
         const total = d3.sum(items, i => Number(i.quantity));
@@ -786,63 +889,180 @@
       }).sort((a, b) => b.value - a.value).slice(0, 10);
       renderBarChart('chart-top-products-quantity', productQuantityData, 'Top Products (Quantity)', false);
     }
- 
+
+    /**
+     * @description Opens the edit order modal and populates it with the order data.
+     * @param {object} orderData The Firestore document data for the order.
+     */
+    function openEditModal(orderData) {
+        qs('edit-order-id').value = orderData.id;
+        qs('edit-order-total').value = orderData.total ?? 0;
+        qs('edit-order-status').value = orderData.paymentStatus ?? 'Unpaid';
+        
+        const itemsListContainer = qs('edit-order-items-list');
+        itemsListContainer.innerHTML = '';
+        (orderData.items || []).forEach((item, index) => {
+            const itemElement = document.createElement('div');
+            itemElement.className = 'flex items-center gap-2';
+            itemElement.innerHTML = `
+                <input type="text" value="${item.name || ''}" class="flex-1 bg-gray-800 border border-gray-600 rounded-md p-2 text-sm text-gray-300" placeholder="Item Name" disabled>
+                <input type="number" step="0.01" value="${item.unitPrice || 0}" class="w-24 bg-gray-800 border border-gray-600 rounded-md p-2 text-sm text-gray-300" data-item-index="${index}" data-field="unitPrice" disabled>
+                <input type="number" value="${item.quantity || 1}" class="w-16 bg-gray-800 border border-gray-600 rounded-md p-2 text-sm text-gray-300" data-item-index="${index}" data-field="quantity" disabled>
+            `;
+            itemsListContainer.appendChild(itemElement);
+        });
+
+        editOrderModal.classList.remove('hidden');
+        editOrderBackdrop.classList.remove('hidden');
+        editOrderModal.classList.add('is-open');
+        editOrderBackdrop.classList.add('is-open');
+    }
+
+    /**
+     * @description Closes the edit order modal.
+     */
+    function closeEditModal() {
+        editOrderModal.classList.remove('is-open');
+        editOrderBackdrop.classList.remove('is-open');
+        // Use a timeout to hide the modal after the transition
+        setTimeout(() => {
+          editOrderModal.classList.add('hidden');
+          editOrderBackdrop.classList.add('hidden');
+        }, 300);
+    }
+
+    /**
+     * @description Handles the form submission to update the order.
+     * @param {Event} e The form submit event.
+     */
+    async function handleEditOrder(e) {
+        e.preventDefault();
+        const orderId = qs('edit-order-id').value;
+        const total = parseFloat(qs('edit-order-total').value);
+        const paymentStatus = qs('edit-order-status').value;
+
+        if (isNaN(total)) {
+            showModal('Please enter a valid number for the total.');
+            return;
+        }
+
+        try {
+            const orderRef = doc(db, ORDERS_COLLECTION_PATH, orderId);
+            await updateDoc(orderRef, {
+                total: total,
+                paymentStatus: paymentStatus
+            });
+            showModal('Order updated successfully!');
+            closeEditModal();
+        } catch (error) {
+            console.error('Error updating order:', error);
+            showModal(`Failed to update order: ${error.message}`);
+        }
+    }
+
+    /**
+     * @description Deletes an order from the database.
+     * @param {string} orderId The ID of the order to delete.
+     */
+    async function handleDeleteOrder(orderId) {
+        const confirmed = window.confirm(`Are you sure you want to delete order ${orderId}? This cannot be undone.`);
+        if (!confirmed) {
+            return;
+        }
+
+        try {
+            await deleteDoc(doc(db, ORDERS_COLLECTION_PATH, orderId));
+            showModal(`Order ${orderId} has been deleted.`);
+            closeEditModal();
+        } catch (error) {
+            console.error('Error deleting order:', error);
+            showModal(`Failed to delete order: ${error.message}`);
+        }
+    }
+
+    /**
+     * @description Attaches all event listeners for the application.
+     */
+    function attachEventListeners() {
+      // Event listener for the login form.
+      qs('auth-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = qs('email').value;
+        const password = qs('password').value;
+        
+        if (!isValidEmail(email)) {
+          showModal('Please enter a valid email address.');
+          return;
+        }
+
+        try {
+            await signInWithEmailAndPassword(auth, email, password);
+            showModal('Login successful!');
+        } catch (error) {
+            console.error("Login failed:", error);
+            let errorMessage = "Login failed. Check your credentials.";
+            if (error.code === 'auth/wrong-password') {
+                errorMessage = "Incorrect password. Please try again.";
+            } else if (error.code === 'auth/user-not-found') {
+                errorMessage = "Admin user not found.";
+            }
+            showModal(errorMessage);
+        }
+      });
+      
+      qs('signout-btn').addEventListener('click', async () => {
+        try {
+          await signOut(auth);
+          showModal('Signed out successfully.');
+        } catch (error) {
+          console.error("Sign out failed:", error);
+          showModal(`Sign out failed: ${error.message}`);
+        }
+      });
+      
+      qs('close-modal-btn').addEventListener('click', () => qs('alert-modal').classList.add('hidden'));
+
+      window.addEventListener('resize', () => {
+        if (allOrdersCache.length > 0) {
+          renderInfographics();
+        }
+      });
+
+      // Event delegation for dynamically created "Edit Order" buttons
+      qs('orders-container').addEventListener('click', (e) => {
+          const editButton = e.target.closest('.edit-order-btn');
+          if (editButton) {
+              const orderId = editButton.dataset.orderId;
+              const orderToEdit = allOrdersCache.find(order => order.id === orderId);
+              if (orderToEdit) {
+                  openEditModal(orderToEdit);
+              }
+          }
+      });
+
+      // Event listeners for the new Order Edit Modal
+      editOrderForm.addEventListener('submit', handleEditOrder);
+      closeEditModalBtn.addEventListener('click', closeEditModal);
+      editOrderBackdrop.addEventListener('click', closeEditModal);
+      deleteOrderBtn.addEventListener('click', (e) => {
+          const orderId = qs('edit-order-id').value;
+          if (orderId) {
+              handleDeleteOrder(orderId);
+          } else {
+              showModal('No order selected to delete.');
+          }
+      });
+    }
+
     // Boot
-    window.addEventListener('load', async () => {
+    window.addEventListener('load', () => {
       try {
-        // Auth state listener is crucial for managing UI state
         onAuthStateChanged(auth, (user) => {
           console.log('Auth state changed:', user ? user.uid : 'None');
           updateUI(user);
         });
         
-        // Event listener for the login form. This now ONLY checks for a single user.
-        qs('login-btn').addEventListener('click', async (e) => {
-          e.preventDefault();
-          const email = qs('email').value;
-          const password = qs('password').value;
-          
-          if (!isValidEmail(email)) {
-            showModal('Please enter a valid email address.');
-            return;
-          }
- 
-          try {
-              // We no longer need to check credentials manually.
-              // Firebase handles authentication, and Firestore rules handle authorization.
-              await signInWithEmailAndPassword(auth, email, password);
-              // If the sign-in is successful, the onAuthStateChanged listener will handle the UI.
-              showModal('Login successful!');
-          } catch (error) {
-              console.error("Login failed:", error);
-              // Firebase provides helpful error messages
-              let errorMessage = "Login failed. Check your credentials.";
-              if (error.code === 'auth/wrong-password') {
-                  errorMessage = "Incorrect password. Please try again.";
-              } else if (error.code === 'auth/user-not-found') {
-                  errorMessage = "Admin user not found.";
-              }
-              showModal(errorMessage);
-          }
-        });
-        
-        qs('signout-btn').addEventListener('click', async () => {
-          try {
-            await signOut(auth);
-            showModal('Signed out successfully.');
-          } catch (error) {
-            console.error("Sign out failed:", error);
-            showModal(`Sign out failed: ${error.message}`);
-          }
-        });
-        
-        qs('close-modal-btn').addEventListener('click', () => qs('alert-modal').classList.add('hidden'));
- 
-        window.addEventListener('resize', () => {
-          if (paidOrdersCache.length > 0) {
-            renderInfographics();
-          }
-        });
+        attachEventListeners();
       } catch (err) {
         console.error('Init failed:', err);
         qs('status').textContent = `Error: ${err.message}`;
