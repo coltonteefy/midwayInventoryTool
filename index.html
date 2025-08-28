@@ -7,8 +7,6 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Using a monospaced font for a futuristic, terminal-like feel -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap">
-  <!-- D3.js for data visualization -->
-  <script src="https://d3js.org/d3.v7.min.js"></script>
   <style>
     /* Global styles for the cyberpunk theme */
     body {
@@ -74,36 +72,6 @@
         background-color: #1f2937; /* Dark gray for the card background */
         border: 1px solid #374151; /* Border color for the card */
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-    /* D3 chart styling */
-    .chart-container {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        padding: 1rem;
-    }
-    .bar {
-        fill: #06b6d4; /* Cyan color for bars */
-        stroke: #1e1b4b; /* Dark purple border */
-        stroke-width: 1px;
-    }
-    .bar-label {
-        fill: #e2e8f0; /* Off-white for labels */
-        font-size: 10px;
-        text-anchor: middle;
-    }
-    .axis path,
-    .axis line {
-        stroke: #4b5563; /* Darker gray for axis lines */
-    }
-    .axis text {
-        fill: #9ca3af; /* Lighter gray for axis labels */
-        font-size: 10px;
-    }
-    .bar-y-label {
-        fill: #e2e8f0;
-        font-size: 10px;
-        text-anchor: end;
     }
     /* Infographic card layout */
     .infographic-grid {
@@ -284,22 +252,22 @@
           <!-- Monthly Revenue Card -->
           <div class="infographic-card rounded-lg p-4">
             <h3 class="text-md font-semibold text-center text-cyan-300 mb-4">Monthly Revenue</h3>
-            <div id="chart-monthly-revenue" class="chart-container"></div>
+            <ul id="list-monthly-revenue" class="infographic-list"></ul>
           </div>
           <!-- Top Customers Card -->
           <div class="infographic-card rounded-lg p-4">
             <h3 class="text-md font-semibold text-center text-cyan-300 mb-4">Top Customers</h3>
-            <div id="chart-top-customers" class="chart-container"></div>
+            <ul id="list-top-customers" class="infographic-list"></ul>
           </div>
           <!-- Top Products by Revenue Card -->
           <div class="infographic-card rounded-lg p-4">
             <h3 class="text-md font-semibold text-center text-cyan-300 mb-4">Top Products (Revenue)</h3>
-            <div id="chart-top-products-revenue" class="chart-container"></div>
+            <ul id="list-top-products-revenue" class="infographic-list"></ul>
           </div>
           <!-- Top Products by Quantity Card -->
           <div class="infographic-card rounded-lg p-4">
             <h3 class="text-md font-semibold text-center text-cyan-300 mb-4">Top Products (Quantity)</h3>
-            <div id="chart-top-products-quantity" class="chart-container"></div>
+            <ul id="list-top-products-quantity" class="infographic-list"></ul>
           </div>
         </div>
         <div id="infographic-placeholder" class="text-center py-12 text-gray-500">
@@ -330,6 +298,11 @@
       </div>
       <form id="edit-order-form" class="space-y-4">
           <input type="hidden" id="edit-order-id">
+          <!-- New input field for customer's name -->
+          <div>
+              <label for="edit-contact-name" class="block text-sm font-medium text-gray-400">Customer Name</label>
+              <input type="text" id="edit-contact-name" class="mt-1 block w-full bg-gray-900 border border-gray-700 text-gray-300 rounded-md shadow-sm p-2 focus:ring-cyan-500 focus:border-cyan-500" required>
+          </div>
           <div>
               <label for="edit-order-total" class="block text-sm font-medium text-gray-400">Total Amount</label>
               <input type="number" step="0.01" id="edit-order-total" class="mt-1 block w-full bg-gray-900 border border-gray-700 text-gray-300 rounded-md shadow-sm p-2 focus:ring-cyan-500 focus:border-cyan-500" required>
@@ -343,7 +316,7 @@
           </div>
           <div id="edit-order-items-list" class="space-y-2">
               <h3 class="text-md font-semibold text-gray-400 mt-4">Items:</h3>
-              <!-- Editable items will be rendered here -->
+              <!-- Editable items will be rendered here with labels -->
           </div>
           <div class="flex justify-between gap-4 mt-6">
               <button type="button" id="delete-order-btn" class="btn-neon-red px-4 py-2 rounded-lg font-semibold flex-1">Delete Order</button>
@@ -765,129 +738,91 @@
       });
     }
 
-    function renderBarChart(containerId, data, title, isCurrency) {
-      const container = qs(containerId);
-      container.innerHTML = '';
-      if (data.length === 0) {
-        container.innerHTML = `<p class="text-center text-gray-500 italic text-sm">No data available.</p>`;
-        return;
-      }
-
-      const margin = { top: 20, right: 20, bottom: 60, left: 60 };
-      const width = container.clientWidth - margin.left - margin.right;
-      const height = 250 - margin.top - margin.bottom;
-
-      const svg = d3.select(container)
-        .append("svg")
-        .attr("width", width + margin.left + margin.right)
-        .attr("height", height + margin.top + margin.bottom)
-        .append("g")
-        .attr("transform", `translate(${margin.left},${margin.top})`);
-
-      const x = d3.scaleBand()
-        .range([0, width])
-        .domain(data.map(d => d.label))
-        .padding(0.1);
-
-      const y = d3.scaleLinear()
-        .range([height, 0])
-        .domain([0, d3.max(data, d => d.value) || 1]);
-
-      svg.append("g")
-        .attr("class", "axis x-axis")
-        .attr("transform", `translate(0,${height})`)
-        .call(d3.axisBottom(x))
-        .selectAll("text")
-        .style("text-anchor", "end")
-        .attr("dx", "-.8em")
-        .attr("dy", ".15em")
-        .attr("transform", "rotate(-45)");
-
-      svg.append("g")
-        .attr("class", "axis y-axis")
-        .call(d3.axisLeft(y).tickFormat(d => isCurrency ? `$${d3.format(".2s")(d)}` : d3.format(".0f")(d)));
-
-      svg.selectAll(".bar")
-        .data(data)
-        .enter().append("rect")
-        .attr("class", "bar")
-        .attr("x", d => x(d.label))
-        .attr("y", d => y(d.value))
-        .attr("width", x.bandwidth())
-        .attr("height", d => height - y(d.value));
-
-      svg.selectAll(".bar-label")
-          .data(data)
-          .enter().append("text")
-          .attr("class", "bar-label")
-          .attr("x", d => x(d.label) + x.bandwidth() / 2)
-          .attr("y", d => y(d.value) - 5)
-          .text(d => isCurrency ? `$${currency(d.value)}` : d3.format(".0f")(d.value));
-    }
-
-    function renderList(containerId, data, isCurrency) {
-      const container = qs(containerId);
-      container.innerHTML = '';
-      if (data.length === 0) {
-        container.innerHTML = `<p class="text-center text-gray-500 italic text-sm">No data available.</p>`;
-        return;
-      }
-      
-      const list = d3.select(container).append('ul')
-        .attr('class', 'infographic-list text-sm space-y-1');
-
-      data.forEach((d, i) => {
-        list.append('li')
-          .html(`<span class="rank">${i + 1}.</span> <span>${d.label}</span> <span class="font-medium">${isCurrency ? `$${currency(d.value)}` : d3.format(".0f")(d.value)}</span>`);
-      });
-    }
-    
     function renderInfographics() {
       const placeholder = qs('infographic-placeholder');
-      const paidOrdersCache = allOrdersCache.filter(o => o.paymentStatus === 'Paid');
-      
-      if (paidOrdersCache.length === 0) {
-        placeholder.style.display = 'block';
+      const containerMonthly = qs('list-monthly-revenue');
+      const containerCustomers = qs('list-top-customers');
+      const containerProductsRev = qs('list-top-products-revenue');
+      const containerProductsQty = qs('list-top-products-quantity');
+
+      containerMonthly.innerHTML = '';
+      containerCustomers.innerHTML = '';
+      containerProductsRev.innerHTML = '';
+      containerProductsQty.innerHTML = '';
+
+      if (allOrdersCache.length === 0) {
+        placeholder.classList.remove('hidden');
         return;
-      } else {
-        placeholder.style.display = 'none';
       }
+      placeholder.classList.add('hidden');
 
-      const monthlySales = d3.group(paidOrdersCache, d => {
-        const date = d.timestamp.toDate();
-        return `${date.getFullYear()}-${date.getMonth() + 1}`;
+      // 1. Monthly Revenue
+      const monthlyRevenue = {};
+      allOrdersCache.forEach(order => {
+        if (order.paymentStatus === 'Paid' && order.timestamp) {
+          const month = order.timestamp.toDate().toLocaleString('en-US', { month: 'short', year: '2-digit' });
+          monthlyRevenue[month] = (monthlyRevenue[month] || 0) + (order.total || 0);
+        }
       });
-      const monthlyData = Array.from(monthlySales, ([month, orders]) => {
-        const total = d3.sum(orders, d => Number(d.total));
-        const [year, monthNum] = month.split('-');
-        const date = new Date(year, monthNum - 1);
-        return {
-          label: d3.timeFormat("%b '%y")(date),
-          value: total
-        };
-      }).sort((a,b) => new Date(a.label) - new Date(b.label));
-      renderBarChart('chart-monthly-revenue', monthlyData, 'Monthly Revenue', true);
+      const sortedMonths = Object.keys(monthlyRevenue).sort((a, b) => {
+        const [monthA, yearA] = a.split(' ');
+        const [monthB, yearB] = b.split(' ');
+        return new Date(`01 ${monthA} 20${yearA}`) - new Date(`01 ${monthB} 20${yearB}`);
+      });
+      sortedMonths.forEach(month => {
+        const li = document.createElement('li');
+        li.innerHTML = `<span>${month}</span><span class="font-bold text-cyan-300">$${currency(monthlyRevenue[month])}</span>`;
+        containerMonthly.appendChild(li);
+      });
+      
+      // 2. Top Customers
+      const customerRevenue = {};
+      allOrdersCache.forEach(order => {
+        if (order.paymentStatus === 'Paid' && order.contactInfo?.fullName) {
+          const name = order.contactInfo.fullName;
+          customerRevenue[name] = (customerRevenue[name] || 0) + (order.total || 0);
+        }
+      });
+      const sortedCustomers = Object.entries(customerRevenue).sort(([, a], [, b]) => b - a).slice(0, 5);
+      sortedCustomers.forEach(([name, revenue]) => {
+        const li = document.createElement('li');
+        li.innerHTML = `<span>${name}</span><span class="font-bold text-cyan-300">$${currency(revenue)}</span>`;
+        containerCustomers.appendChild(li);
+      });
 
-      const customerSales = d3.group(paidOrdersCache, d => d.contactInfo?.fullName || 'Anonymous');
-      const customerData = Array.from(customerSales, ([customer, orders]) => {
-        const total = d3.sum(orders, d => Number(d.total));
-        return { label: customer, value: total };
-      }).sort((a, b) => b.value - a.value).slice(0, 10);
-      renderList('chart-top-customers', customerData, true);
+      // 3. Top Products by Revenue
+      const productRevenue = {};
+      allOrdersCache.forEach(order => {
+        if (order.paymentStatus === 'Paid' && order.items) {
+          order.items.forEach(item => {
+            const name = item.name || 'Unknown Item';
+            productRevenue[name] = (productRevenue[name] || 0) + (item.unitPrice * item.quantity);
+          });
+        }
+      });
+      const sortedProductsRev = Object.entries(productRevenue).sort(([, a], [, b]) => b - a).slice(0, 5);
+      sortedProductsRev.forEach(([name, revenue]) => {
+        const li = document.createElement('li');
+        li.innerHTML = `<span>${name}</span><span class="font-bold text-cyan-300">$${currency(revenue)}</span>`;
+        containerProductsRev.appendChild(li);
+      });
 
-      const productRevenue = d3.group(paidOrdersCache.flatMap(o => o.items), i => i.name || 'Unknown Product');
-      const productRevenueData = Array.from(productRevenue, ([product, items]) => {
-        const total = d3.sum(items, i => Number(i.unitPrice) * Number(i.quantity));
-        return { label: product, value: total };
-      }).sort((a, b) => b.value - a.value).slice(0, 10);
-      renderBarChart('chart-top-products-revenue', productRevenueData, 'Top Products (Revenue)', true);
-
-      const productQuantity = d3.group(paidOrdersCache.flatMap(o => o.items), i => i.name || 'Unknown Product');
-      const productQuantityData = Array.from(productQuantity, ([product, items]) => {
-        const total = d3.sum(items, i => Number(i.quantity));
-        return { label: product, value: total };
-      }).sort((a, b) => b.value - a.value).slice(0, 10);
-      renderBarChart('chart-top-products-quantity', productQuantityData, 'Top Products (Quantity)', false);
+      // 4. Top Products by Quantity
+      const productQuantity = {};
+      allOrdersCache.forEach(order => {
+        if (order.items) {
+          order.items.forEach(item => {
+            const name = item.name || 'Unknown Item';
+            productQuantity[name] = (productQuantity[name] || 0) + (item.quantity || 0);
+          });
+        }
+      });
+      const sortedProductsQty = Object.entries(productQuantity).sort(([, a], [, b]) => b - a).slice(0, 5);
+      sortedProductsQty.forEach(([name, quantity]) => {
+        const li = document.createElement('li');
+        li.innerHTML = `<span>${name}</span><span class="font-bold text-cyan-300">${quantity} sold</span>`;
+        containerProductsQty.appendChild(li);
+      });
     }
 
     /**
@@ -896,6 +831,8 @@
      */
     function openEditModal(orderData) {
         qs('edit-order-id').value = orderData.id;
+        // Populate the new customer name field
+        qs('edit-contact-name').value = orderData.contactInfo?.fullName || '';
         qs('edit-order-total').value = orderData.total ?? 0;
         qs('edit-order-status').value = orderData.paymentStatus ?? 'Unpaid';
         
@@ -904,10 +841,16 @@
         (orderData.items || []).forEach((item, index) => {
             const itemElement = document.createElement('div');
             itemElement.className = 'flex items-center gap-2';
+            // Added labels to the item inputs
             itemElement.innerHTML = `
-                <input type="text" value="${item.name || ''}" class="flex-1 bg-gray-800 border border-gray-600 rounded-md p-2 text-sm text-gray-300" placeholder="Item Name" disabled>
-                <input type="number" step="0.01" value="${item.unitPrice || 0}" class="w-24 bg-gray-800 border border-gray-600 rounded-md p-2 text-sm text-gray-300" data-item-index="${index}" data-field="unitPrice" disabled>
-                <input type="number" value="${item.quantity || 1}" class="w-16 bg-gray-800 border border-gray-600 rounded-md p-2 text-sm text-gray-300" data-item-index="${index}" data-field="quantity" disabled>
+                <label for="edit-item-name-${index}" class="sr-only">Item Name</label>
+                <input type="text" id="edit-item-name-${index}" value="${item.name || ''}" class="flex-1 bg-gray-800 border border-gray-600 rounded-md p-2 text-sm text-gray-300" placeholder="Item Name" disabled>
+                
+                <label for="edit-item-price-${index}" class="sr-only">Unit Price</label>
+                <input type="number" step="0.01" id="edit-item-price-${index}" value="${item.unitPrice || 0}" class="w-24 bg-gray-800 border border-gray-600 rounded-md p-2 text-sm text-gray-300" data-item-index="${index}" data-field="unitPrice">
+                
+                <label for="edit-item-quantity-${index}" class="sr-only">Quantity</label>
+                <input type="number" id="edit-item-quantity-${index}" value="${item.quantity || 1}" class="w-16 bg-gray-800 border border-gray-600 rounded-md p-2 text-sm text-gray-300" data-item-index="${index}" data-field="quantity">
             `;
             itemsListContainer.appendChild(itemElement);
         });
@@ -940,17 +883,58 @@
         const orderId = qs('edit-order-id').value;
         const total = parseFloat(qs('edit-order-total').value);
         const paymentStatus = qs('edit-order-status').value;
+        // Get the new customer name from the input field
+        const newCustomerName = qs('edit-contact-name').value.trim();
 
         if (isNaN(total)) {
             showModal('Please enter a valid number for the total.');
             return;
+        }
+        if (!newCustomerName) {
+            showModal('Customer name cannot be empty.');
+            return;
+        }
+
+        // Gather the updated item data
+        const itemInputs = document.querySelectorAll('#edit-order-items-list input[data-item-index]');
+        const updatedItems = [];
+        const originalOrder = allOrdersCache.find(o => o.id === orderId);
+
+        for (let i = 0; i < itemInputs.length / 3; i++) {
+            const nameInput = qs(`edit-item-name-${i}`);
+            const priceInput = qs(`edit-item-price-${i}`);
+            const quantityInput = qs(`edit-item-quantity-${i}`);
+
+            const originalItem = originalOrder.items[i];
+            const updatedItem = { ...originalItem };
+
+            const newPrice = parseFloat(priceInput.value);
+            const newQuantity = parseInt(quantityInput.value, 10);
+            
+            // Validate the new values
+            if (isNaN(newPrice) || newPrice < 0) {
+                showModal(`Invalid price for item ${i + 1}. Please enter a positive number.`);
+                return;
+            }
+            if (isNaN(newQuantity) || newQuantity < 0) {
+                showModal(`Invalid quantity for item ${i + 1}. Please enter a positive integer.`);
+                return;
+            }
+
+            // Update the item object with the new values
+            updatedItem.unitPrice = newPrice;
+            updatedItem.quantity = newQuantity;
+            
+            updatedItems.push(updatedItem);
         }
 
         try {
             const orderRef = doc(db, ORDERS_COLLECTION_PATH, orderId);
             await updateDoc(orderRef, {
                 total: total,
-                paymentStatus: paymentStatus
+                paymentStatus: paymentStatus,
+                'contactInfo.fullName': newCustomerName,
+                items: updatedItems
             });
             showModal('Order updated successfully!');
             closeEditModal();
@@ -1021,12 +1005,6 @@
       });
       
       qs('close-modal-btn').addEventListener('click', () => qs('alert-modal').classList.add('hidden'));
-
-      window.addEventListener('resize', () => {
-        if (allOrdersCache.length > 0) {
-          renderInfographics();
-        }
-      });
 
       // Event delegation for dynamically created "Edit Order" buttons
       qs('orders-container').addEventListener('click', (e) => {
