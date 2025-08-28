@@ -352,17 +352,16 @@
     let totalRevenue = 0;
     let totalCost = 0;
     let allOrdersCache = [];
-    // New: Cache for previous orders to detect state changes
+    // Cache for previous orders to detect real state changes between snapshots
     let previousOrdersCache = new Map();
-    // New: Cache for inventory items to quickly find them by name
+    // Cache for inventory items to quickly find them by name
     let inventoryCache = {};
 
-    // Constants for Firestore collection paths to keep things clean and reusable
+    // Constants for Firestore collection paths
     const INVENTORY_COLLECTION_PATH = 'inventory';
     const ORDERS_COLLECTION_PATH = 'orders';
-    const INVENTORY_DOC_ID = 'eH6V9W9nSgX7Y4Z5J2k8'; // Replace with a dynamic ID if needed
 
-    // DOM References for the new Edit Order feature
+    // DOM References for the Edit Order feature
     const editOrderBackdrop = qs('edit-order-backdrop');
     const editOrderModal = qs('edit-order-modal');
     const closeEditModalBtn = qs('close-edit-modal-btn');
@@ -388,7 +387,7 @@
       return re.test(String(email).toLowerCase());
     }
 
-    // Function to copy text to clipboard, uses a temporary textarea for cross-browser support in iframes
+    // Function to copy text to clipboard (works inside iframes)
     function copyToClipboard(text) {
         const textarea = document.createElement('textarea');
         textarea.value = text;
@@ -444,7 +443,7 @@
         mainContent.classList.remove('hidden');
         loginForm.classList.add('hidden');
         listenForInventory();
-        listenForOrders();
+        listenForOrders(); // start orders listener after auth
       } else {
         userId = null;
         status.textContent = 'Status: Signed out';
@@ -456,7 +455,7 @@
 
     function listenForInventory() {
       if (!userId) return;
-      const ref = collection(db, 'inventory');
+      const ref = collection(db, INVENTORY_COLLECTION_PATH);
       onSnapshot(ref, (snap) => {
         const tbody = qs('inventory-list');
         tbody.innerHTML = '';
@@ -580,7 +579,7 @@
                   if (newCoa !== (item.coa ?? '')) updateData.coa = newCoa;
                   
                   if (Object.keys(updateData).length > 0) {
-                      const itemRef = doc(db, 'inventory', docId);
+                      const itemRef = doc(db, INVENTORY_COLLECTION_PATH, docId);
                       updateDoc(itemRef, updateData)
                           .then(() => showModal(`Data updated for ${newName}.`))
                           .catch((e) => {
@@ -673,14 +672,14 @@
         const itemChanges = new Map(); // name -> net change in quantity
 
         // Process previous items to get quantities to subtract
-        for (const item of prevItems) {
+        for (const item of prevItems || []) {
             const name = item.name;
             const quantity = item.quantity || 0;
             itemChanges.set(name, (itemChanges.get(name) || 0) - quantity);
         }
 
         // Process current items to get quantities to add
-        for (const item of currentItems) {
+        for (const item of currentItems || []) {
             const name = item.name;
             const quantity = item.quantity || 0;
             itemChanges.set(name, (itemChanges.get(name) || 0) + quantity);
@@ -701,15 +700,69 @@
         }
     }
 
+    /**
+     * @description Listens for order changes and processes ONLY real updates (no writes on first load).
+     * Uses docChanges() to differentiate added/modified/removed.
+     */
     function listenForOrders() {
       const ordersContainer = qs('orders-container');
       const loadingElement  = qs('loading-orders');
-      
-      const ref = collection(db, 'orders');
+      const ref = collection(db, ORDERS_COLLECTION_PATH);
 
       onSnapshot(ref, (snap) => {
-        ordersContainer.innerHTML = '';
+        // --- 1) Handle *real* changes only (initial load won't trigger writes) ---
+        snap.docChanges().forEach((change) => {
+          const id = change.doc.id;
+          const currentOrder = { id, ...change.doc.data() };
+
+          if (change.type === 'added') {
+            // First time seeing this doc in this client session — seed cache only.
+            previousOrdersCache.set(id, currentOrder);
+            return;
+          }
+
+          if (change.type === 'removed') {
+            // Optionally, if a Paid order is deleted, you might decrement vials here.
+            previousOrdersCache.delete(id);
+            return;
+          }
+
+          if (change.type === 'modified') {
+            const previousOrder = previousOrdersCache.get(id);
+            // If somehow we don't have previous (shouldn't happen), just seed and skip.
+            if (!previousOrder) {
+              previousOrdersCache.set(id, currentOrder);
+              return;
+            }
+
+            const prevPaid = previousOrder.paymentStatus === 'Paid';
+            const curPaid  = currentOrder.paymentStatus === 'Paid';
+
+            // Transition: Unpaid -> Paid
+            if (!prevPaid && curPaid) {
+              updateVialsSold(currentOrder.id, 'increment', currentOrder.items);
+            }
+            // Transition: Paid -> Unpaid
+            else if (prevPaid && !curPaid) {
+              updateVialsSold(currentOrder.id, 'decrement', currentOrder.items);
+            }
+            // Still Paid, but items changed (adjust by diff)
+            else if (prevPaid && curPaid) {
+              const prevItemsStr = JSON.stringify(previousOrder.items || []);
+              const curItemsStr  = JSON.stringify(currentOrder.items  || []);
+              if (prevItemsStr !== curItemsStr) {
+                compareOrderItemsAndUpdateVials(previousOrder.items || [], currentOrder.items || []);
+              }
+            }
+
+            // Update cache for this doc
+            previousOrdersCache.set(id, currentOrder);
+          }
+        });
+
+        // --- 2) Rebuild UI + aggregates from the full snapshot ---
         loadingElement.style.display = 'none';
+        ordersContainer.innerHTML = '';
 
         if (snap.empty) {
           ordersContainer.innerHTML = `
@@ -717,49 +770,27 @@
               <p class="text-lg">No orders found.</p>
               <p class="text-sm mt-2">Your orders will appear here once they've been placed.</p>
             </div>`;
-          // Clear cache and bail
+          // Reset caches/metrics
+          allOrdersCache = [];
+          totalRevenue = 0;
           previousOrdersCache.clear();
+          updateFinancialUI();
+          renderInfographics();
           return;
         }
-        
+
+        // Recompute allOrdersCache and metrics for UI
         totalRevenue = 0;
-        allOrdersCache = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        allOrdersCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-        // --- New Logic to update inventory based on order status changes ---
-        snap.docs.forEach((doc) => {
-          const currentOrder = { id: doc.id, ...doc.data() };
-          const previousOrder = previousOrdersCache.get(currentOrder.id);
-
-          const wasPaid = previousOrder?.paymentStatus === 'Paid';
-          const isPaid = currentOrder.paymentStatus === 'Paid';
-          const wasUnpaid = previousOrder?.paymentStatus !== 'Paid';
-          const isUnpaid = currentOrder.paymentStatus !== 'Paid';
-
-          // Case 1: Transition from Unpaid to Paid
-          if (wasUnpaid && isPaid) {
-            updateVialsSold(currentOrder.id, 'increment', currentOrder.items);
-          }
-          // Case 2: Transition from Paid to Unpaid
-          else if (wasPaid && isUnpaid) {
-            updateVialsSold(currentOrder.id, 'decrement', currentOrder.items);
-          }
-          // Case 3: Order was already paid, but contents changed
-          else if (wasPaid && isPaid) {
-             if (JSON.stringify(previousOrder.items) !== JSON.stringify(currentOrder.items)) {
-                compareOrderItemsAndUpdateVials(previousOrder.items, currentOrder.items);
-             }
-          }
-        });
-
-        // Update the cache with the current state for the next snapshot
+        // Ensure cache mirrors latest state (for future change comparisons)
         previousOrdersCache.clear();
         snap.docs.forEach(d => previousOrdersCache.set(d.id, { id: d.id, ...d.data() }));
-        // --- End of new logic ---
 
-
+        // Sort and render cards (same as before)
         const sortedOrders = [...allOrdersCache].sort((a, b) => {
-          const timeA = a.timestamp ? a.timestamp.toMillis() : 0;
-          const timeB = b.timestamp ? b.timestamp.toMillis() : 0;
+          const timeA = a.timestamp?.toMillis?.() ?? 0;
+          const timeB = b.timestamp?.toMillis?.() ?? 0;
           return timeB - timeA;
         });
 
@@ -768,9 +799,9 @@
           const items = Array.isArray(order.items) ? order.items : [];
           
           const itemsList = items.map(item => {
-            const name = (item && item.name) ? item.name : 'Item';
-            const price = (item && item.unitPrice != null) ? currency(item.unitPrice) : '0.00';
-            const quantity = (item && item.quantity != null) ? item.quantity : 1;
+            const name = item?.name ?? 'Item';
+            const price = currency(item?.unitPrice ?? 0);
+            const quantity = item?.quantity ?? 1;
             return `
               <li class="flex justify-between items-center mb-1">
                 <span class="text-gray-400">${name} (x${quantity})</span>
