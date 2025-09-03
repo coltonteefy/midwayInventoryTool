@@ -140,13 +140,36 @@
         pointer-events: auto;
         transform: translate(-50%, -50%) scale(1);
     }
+    .full-page-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #0d0c1d;
+      z-index: 50;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+    .full-page-modal.is-open {
+      display: flex;
+    }
   </style>
 </head>
 <body class="flex flex-col items-center min-h-screen p-4">
 
   <div class="bg-gray-800 p-8 rounded-xl shadow-2xl neon-glow w-full lg:px-12 xl:px-24 space-y-6">
-    <h1 class="text-3xl font-bold text-center text-white text-glow-cyan">MIDWAY GRAY INVENTORY LOG</h1>
-
+    <div class="flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
+        <h1 class="text-3xl font-bold text-center text-white text-glow-cyan">MIDWAY GRAY INVENTORY LOG</h1>
+        
+    </div>
+    
+    <div id="auth-buttons" class="space-x-4">
+            <button id="add-cost-btn" class="btn-neon-lime px-4 py-2 rounded-lg font-semibold text-xs hidden">Add Cost History</button>
+            <button id="signout-btn" class="btn-neon-cyan px-4 py-2 rounded-lg font-semibold text-xs hidden">Sign Out</button>
+        </div>
+    
     <div id="status" class="text-center text-sm text-gray-400">Status: Initializing...</div>
     <div id="user-id-display" class="text-center text-xs text-gray-500 break-all">User ID: N/A</div>
     
@@ -169,10 +192,6 @@
     </div>
 
     <div id="main-content" class="hidden space-y-8">
-      <div class="flex justify-end items-center">
-        <button id="signout-btn" class="btn-neon-cyan px-4 py-2 rounded-lg font-semibold text-xs">Sign Out</button>
-      </div>
-
       <!-- Inventory Section (now a table) -->
       <div class="space-y-4">
         <h2 class="text-xl font-semibold text-white text-glow-fuchsia">Inventory Data Stream</h2>
@@ -286,40 +305,6 @@
               </div>
           </form>
       </div>
-      
-      <!-- New: Add Cost History Section -->
-      <div class="space-y-4">
-        <h2 class="text-xl font-semibold text-white text-glow-fuchsia">Add Cost History to Existing Item</h2>
-        <form id="add-cost-form" class="bg-gray-900 p-4 rounded-lg border border-gray-700">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div class="w-full col-span-1 md:col-span-2">
-                  <label for="existing-item-select" class="block text-sm font-medium text-gray-400">Select Item</label>
-                  <select id="existing-item-select" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" required>
-                      <option value="">-- Select an item --</option>
-                  </select>
-              </div>
-              <div class="w-full">
-                  <label for="cost-per-kit" class="block text-sm font-medium text-gray-400">Cost per Kit</label>
-                  <input type="number" step="0.01" id="cost-per-kit" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="$0.00" required>
-              </div>
-              <div class="w-full">
-                  <label for="total-kits-bought" class="block text-sm font-medium text-gray-400">Total Kits Bought</label>
-                  <input type="number" id="total-kits-bought" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="0" required>
-              </div>
-              <div class="w-full">
-                  <label for="total-vials-per-kit" class="block text-sm font-medium text-gray-400">Total Vials per Kit</label>
-                  <input type="number" id="total-vials-per-kit" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="0" required>
-              </div>
-              <div class="w-full">
-                  <label for="purchase-date" class="block text-sm font-medium text-gray-400">Purchase Date</label>
-                  <input type="date" id="purchase-date" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" required>
-              </div>
-            </div>
-            <div class="flex justify-center mt-6">
-                <button type="submit" class="btn-neon-lime px-4 py-2 rounded-lg font-semibold w-full sm:w-auto">Add Cost Entry</button>
-            </div>
-        </form>
-      </div>
 
       <!-- New Cards for Total Cost, Revenue, and Profit -->
       <div class="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4 mt-8">
@@ -432,6 +417,49 @@
       </form>
   </div>
   
+  <!-- Add Cost History Full-Page Modal -->
+  <div id="add-cost-modal" class="full-page-modal">
+    <div class="bg-gray-900 p-8 rounded-xl shadow-2xl w-full max-w-2xl">
+      <div class="flex justify-between items-center text-lime-300 border-b pb-4 mb-4 border-gray-700">
+        <h2 class="text-2xl font-bold">Add Cost History to Existing Item</h2>
+        <button id="close-add-cost-modal-btn" class="p-2 rounded-full text-gray-400 hover:text-white transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <form id="add-cost-form" class="space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div class="w-full col-span-1 md:col-span-2">
+                <label for="existing-item-select" class="block text-sm font-medium text-gray-400">Select Item</label>
+                <select id="existing-item-select" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-lime-500 focus:border-lime-500" required>
+                    <option value="">-- Select an item --</option>
+                </select>
+            </div>
+            <div class="w-full">
+                <label for="cost-per-kit" class="block text-sm font-medium text-gray-400">Cost per Kit</label>
+                <input type="number" step="0.01" id="cost-per-kit" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-lime-500 focus:border-lime-500" placeholder="$0.00" required>
+            </div>
+            <div class="w-full">
+                <label for="total-kits-bought" class="block text-sm font-medium text-gray-400">Total Kits Bought</label>
+                <input type="number" id="total-kits-bought" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-lime-500 focus:border-lime-500" placeholder="0" required>
+            </div>
+            <div class="w-full">
+                <label for="total-vials-per-kit" class="block text-sm font-medium text-gray-400">Total Vials per Kit</label>
+                <input type="number" id="total-vials-per-kit" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-lime-500 focus:border-lime-500" placeholder="0" required>
+            </div>
+            <div class="w-full">
+                <label for="purchase-date" class="block text-sm font-medium text-gray-400">Purchase Date</label>
+                <input type="date" id="purchase-date" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-lime-500 focus:border-lime-500" required>
+            </div>
+          </div>
+          <div class="flex justify-center mt-6">
+              <button type="submit" class="btn-neon-lime px-4 py-2 rounded-lg font-semibold w-full sm:w-auto">Add Cost Entry</button>
+          </div>
+      </form>
+    </div>
+  </div>
+  
   <!-- Firebase (v12) -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
@@ -497,6 +525,11 @@
     const totalKitsBoughtInput = qs('total-kits-bought');
     const totalVialsPerKitInput = qs('total-vials-per-kit');
     const purchaseDateInput = qs('purchase-date');
+    
+    // DOM References for Add Cost History Modal
+    const addCostModal = qs('add-cost-modal');
+    const addCostBtn = qs('add-cost-btn');
+    const closeAddCostModalBtn = qs('close-add-cost-modal-btn');
 
 
     /**
@@ -566,6 +599,8 @@
       const userDisplay = qs('user-id-display');
       const mainContent = qs('main-content');
       const loginForm = qs('login-form');
+      const signoutBtn = qs('signout-btn');
+      const addCostBtn = qs('add-cost-btn');
 
       if (user) {
         userId = user.uid;
@@ -573,6 +608,8 @@
         userDisplay.textContent = 'User ID: ' + userId;
         mainContent.classList.remove('hidden');
         loginForm.classList.add('hidden');
+        signoutBtn.classList.remove('hidden');
+        addCostBtn.classList.remove('hidden');
         listenForInventory();
         listenForOrders(); // start orders listener after auth
       } else {
@@ -581,6 +618,8 @@
         userDisplay.textContent = 'User ID: N/A';
         mainContent.classList.add('hidden');
         loginForm.classList.remove('hidden');
+        signoutBtn.classList.add('hidden');
+        addCostBtn.classList.add('hidden');
       }
     }
 
@@ -1403,6 +1442,16 @@
             showModal(`Failed to add new cost history: ${error.message}`);
         }
     }
+    
+    // Function to open the Add Cost History modal
+    function openAddCostModal() {
+      addCostModal.classList.add('is-open');
+    }
+    
+    // Function to close the Add Cost History modal
+    function closeAddCostModal() {
+      addCostModal.classList.remove('is-open');
+    }
 
     /**
      * @description Attaches all event listeners for the application.
@@ -1476,6 +1525,10 @@
       
       // New event listener for the Add Cost History form
       addCostForm.addEventListener('submit', handleNewCostHistory);
+      
+      // Event listeners for the new Add Cost History modal
+      addCostBtn.addEventListener('click', openAddCostModal);
+      closeAddCostModalBtn.addEventListener('click', closeAddCostModal);
     }
 
     // Boot
