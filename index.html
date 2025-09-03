@@ -187,6 +187,9 @@
                   Code
                 </th>
                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                  Blend
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
                   Current Inventory
                 </th>
                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
@@ -197,6 +200,9 @@
                 </th>
                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
                   Vials Sold
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                  Total Vial Weight (mg)
                 </th>
                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider w-20">
                   Image
@@ -213,7 +219,108 @@
           </table>
         </div>
       </div>
+
+      <!-- New: Add Inventory Item Section -->
+      <div class="space-y-4">
+          <h2 class="text-xl font-semibold text-white text-glow-fuchsia">Add New Inventory Item</h2>
+          <form id="add-item-form" class="bg-gray-900 p-4 rounded-lg border border-gray-700">
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                  <div class="w-full">
+                      <label for="new-item-name" class="block text-sm font-medium text-gray-400">Item Name</label>
+                      <input type="text" id="new-item-name" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="e.g., MIDWAY GRAY 5mg" required>
+                  </div>
+                  <div class="w-full">
+                      <label for="new-item-code" class="block text-sm font-medium text-gray-400">Item Code</label>
+                      <input type="text" id="new-item-code" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="e.g., MG-05" required>
+                  </div>
+                  <div class="w-full">
+                    <label for="new-item-vials-sold" class="block text-sm font-medium text-gray-400">Vials Sold (Initial)</label>
+                    <input type="number" id="new-item-vials-sold" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" value="0" min="0" required>
+                  </div>
+                  <div class="w-full">
+                    <label for="new-item-price" class="block text-sm font-medium text-gray-400">Sell Price per Vial ($)</label>
+                    <input type="number" step="0.01" id="new-item-price" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" value="0" min="0" required>
+                  </div>
+                  <div class="w-full">
+                    <label for="new-item-total-vial-weight" class="block text-sm font-medium text-gray-400">Total Vial Weight (mg)</label>
+                    <input type="number" step="0.01" id="new-item-total-vial-weight" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" value="0" min="0" required>
+                  </div>
+                  <div class="w-full">
+                    <div class="flex items-center space-x-2 mt-7">
+                        <input type="checkbox" id="new-item-blend" class="h-4 w-4 text-cyan-500 rounded-md focus:ring-cyan-500 border-gray-600">
+                        <label for="new-item-blend" class="block text-sm font-medium text-gray-400">Is a Blend?</label>
+                    </div>
+                  </div>
+                  <div class="w-full col-span-1 sm:col-span-2 lg:col-span-3">
+                      <label for="new-item-image" class="block text-sm font-medium text-gray-400">Image URL</label>
+                      <input type="url" id="new-item-image" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="https://example.com/image.jpg">
+                  </div>
+                  <div class="w-full col-span-1 sm:col-span-2 lg:col-span-3">
+                      <label for="new-item-coa" class="block text-sm font-medium text-gray-400">COA URL</label>
+                      <input type="url" id="new-item-coa" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="https://example.com/coa.pdf">
+                  </div>
+              </div>
+              <div class="space-y-4 mt-6 p-4 rounded-lg border-2 border-dashed border-gray-700">
+                  <h3 class="text-lg font-semibold text-white text-glow-fuchsia">Initial Cost History</h3>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div class="w-full">
+                          <label for="new-cost-per-kit" class="block text-sm font-medium text-gray-400">Cost per Kit</label>
+                          <input type="number" step="0.01" id="new-cost-per-kit" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="$0.00" required>
+                      </div>
+                      <div class="w-full">
+                          <label for="new-total-kits-bought" class="block text-sm font-medium text-gray-400">Total Kits Bought</label>
+                          <input type="number" id="new-total-kits-bought" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="0" required>
+                      </div>
+                      <div class="w-full">
+                          <label for="new-total-vials-per-kit" class="block text-sm font-medium text-gray-400">Total Vials per Kit</label>
+                          <input type="number" id="new-total-vials-per-kit" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="0" required>
+                      </div>
+                      <div class="w-full col-span-1 sm:col-span-2 lg:col-span-3">
+                          <label for="new-purchase-date" class="block text-sm font-medium text-gray-400">Purchase Date</label>
+                          <input type="date" id="new-purchase-date" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" required>
+                      </div>
+                  </div>
+              </div>
+              <div class="flex justify-center mt-6">
+                  <button type="submit" class="btn-neon-cyan px-4 py-2 rounded-lg font-semibold w-full sm:w-auto">Add Item</button>
+              </div>
+          </form>
+      </div>
       
+      <!-- New: Add Cost History Section -->
+      <div class="space-y-4">
+        <h2 class="text-xl font-semibold text-white text-glow-fuchsia">Add Cost History to Existing Item</h2>
+        <form id="add-cost-form" class="bg-gray-900 p-4 rounded-lg border border-gray-700">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div class="w-full col-span-1 md:col-span-2">
+                  <label for="existing-item-select" class="block text-sm font-medium text-gray-400">Select Item</label>
+                  <select id="existing-item-select" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" required>
+                      <option value="">-- Select an item --</option>
+                  </select>
+              </div>
+              <div class="w-full">
+                  <label for="cost-per-kit" class="block text-sm font-medium text-gray-400">Cost per Kit</label>
+                  <input type="number" step="0.01" id="cost-per-kit" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="$0.00" required>
+              </div>
+              <div class="w-full">
+                  <label for="total-kits-bought" class="block text-sm font-medium text-gray-400">Total Kits Bought</label>
+                  <input type="number" id="total-kits-bought" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="0" required>
+              </div>
+              <div class="w-full">
+                  <label for="total-vials-per-kit" class="block text-sm font-medium text-gray-400">Total Vials per Kit</label>
+                  <input type="number" id="total-vials-per-kit" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="0" required>
+              </div>
+              <div class="w-full">
+                  <label for="purchase-date" class="block text-sm font-medium text-gray-400">Purchase Date</label>
+                  <input type="date" id="purchase-date" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" required>
+              </div>
+            </div>
+            <div class="flex justify-center mt-6">
+                <button type="submit" class="btn-neon-lime px-4 py-2 rounded-lg font-semibold w-full sm:w-auto">Add Cost Entry</button>
+            </div>
+        </form>
+      </div>
+
       <!-- New Cards for Total Cost, Revenue, and Profit -->
       <div class="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4 mt-8">
         <!-- Total Cost Card -->
@@ -329,7 +436,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
     import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
-    import { getFirestore, collection, onSnapshot, doc, updateDoc, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+    import { getFirestore, collection, onSnapshot, doc, updateDoc, deleteDoc, getDocs, addDoc, setDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-analytics.js";
 
     const firebaseConfig = {
@@ -367,6 +474,30 @@
     const closeEditModalBtn = qs('close-edit-modal-btn');
     const editOrderForm = qs('edit-order-form');
     const deleteOrderBtn = qs('delete-order-btn');
+    
+    // DOM References for Add Item feature
+    const addItemForm = qs('add-item-form');
+    const newItemNameInput = qs('new-item-name');
+    const newItemCodeInput = qs('new-item-code');
+    const newItemVialsSoldInput = qs('new-item-vials-sold');
+    const newItemPriceInput = qs('new-item-price');
+    const newItemTotalVialWeightInput = qs('new-item-total-vial-weight');
+    const newItemBlendInput = qs('new-item-blend');
+    const newItemImageInput = qs('new-item-image');
+    const newItemCoaInput = qs('new-item-coa');
+    const newCostPerKitInput = qs('new-cost-per-kit');
+    const newTotalKitsBoughtInput = qs('new-total-kits-bought');
+    const newTotalVialsPerKitInput = qs('new-total-vials-per-kit');
+    const newPurchaseDateInput = qs('new-purchase-date');
+    
+    // DOM References for Add Cost History feature
+    const addCostForm = qs('add-cost-form');
+    const existingItemSelect = qs('existing-item-select');
+    const costPerKitInput = qs('cost-per-kit');
+    const totalKitsBoughtInput = qs('total-kits-bought');
+    const totalVialsPerKitInput = qs('total-vials-per-kit');
+    const purchaseDateInput = qs('purchase-date');
+
 
     /**
      * @description Displays a custom modal with a message.
@@ -383,7 +514,7 @@
      * @returns {boolean}
      */
     function isValidEmail(email) {
-      const re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+      const re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-1,3]\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
       return re.test(String(email).toLowerCase());
     }
 
@@ -429,7 +560,7 @@
         qs('total-revenue').textContent = `$${totalRevenue.toFixed(2)}`;
         qs('total-profit').textContent = `$${totalProfit.toFixed(2)}`;
     }
-
+    
     function updateUI(user) {
       const status = qs('status');
       const userDisplay = qs('user-id-display');
@@ -459,10 +590,11 @@
       onSnapshot(ref, (snap) => {
         const tbody = qs('inventory-list');
         tbody.innerHTML = '';
+        existingItemSelect.innerHTML = '<option value="">-- Select an item --</option>'; // Clear and re-populate dropdown
         if (snap.empty) {
           const tr = document.createElement('tr');
           const td = document.createElement('td');
-          td.setAttribute('colspan', '9');
+          td.setAttribute('colspan', '11');
           td.className = 'text-gray-500 italic px-6 py-4 whitespace-nowrap';
           td.textContent = 'No inventory items.';
           tr.appendChild(td);
@@ -476,7 +608,14 @@
         
         snap.forEach((d) => {
           const item = d.data();
-          inventoryCache[item.name] = { id: d.id, ...item };
+          inventoryCache[d.id] = { id: d.id, ...item };
+          
+          // Populate the dropdown for the "Add Cost History" form
+          const option = document.createElement('option');
+          option.value = d.id;
+          option.textContent = item.code ?? '(no code)';
+          existingItemSelect.appendChild(option);
+
           const tr = document.createElement('tr');
           tr.dataset.id = d.id;
           tr.className = 'hover:bg-gray-700 transition-colors duration-150';
@@ -490,7 +629,13 @@
           const codeTd = document.createElement('td');
           codeTd.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-400';
           codeTd.textContent = item.code ?? '(no code)';
+          codeTd.dataset.field = 'code';
 
+          const blendTd = document.createElement('td');
+          blendTd.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-400';
+          blendTd.textContent = item.blend ? 'Yes' : 'No';
+          blendTd.dataset.field = 'blend';
+          
           const inventoryTd = document.createElement('td');
           inventoryTd.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-400';
           inventoryTd.textContent = item.currentInventory ?? 0;
@@ -502,7 +647,6 @@
           priceTd.textContent = item.sellPricePerVial ? `$${item.sellPricePerVial}` : '$0';
           priceTd.setAttribute('contenteditable', 'false');
           priceTd.dataset.field = 'sellPricePerVial';
-          priceTd.dataset.originalPrice = item.sellPricePerVial;
 
           const totalItemCostTd = document.createElement('td');
           totalItemCostTd.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-400';
@@ -520,6 +664,12 @@
           vialsSoldTd.textContent = item.vialsSold ?? 0;
           vialsSoldTd.setAttribute('contenteditable', 'false');
           vialsSoldTd.dataset.field = 'vialsSold';
+          
+          const totalVialWeightTd = document.createElement('td');
+          totalVialWeightTd.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-400';
+          totalVialWeightTd.textContent = item.totalVialWeight ?? 0;
+          totalVialWeightTd.setAttribute('contenteditable', 'false');
+          totalVialWeightTd.dataset.field = 'totalVialWeight';
 
           const imageTd = document.createElement('td');
           imageTd.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-400 max-w-24 overflow-hidden text-ellipsis cursor-pointer';
@@ -551,7 +701,7 @@
           
           editSaveBtn.addEventListener('click', () => {
               const isEditing = editSaveBtn.textContent === 'Edit';
-              const editableTds = [nameTd, inventoryTd, priceTd, vialsSoldTd, imageTd, coaTd];
+              const editableTds = [nameTd, inventoryTd, priceTd, vialsSoldTd, imageTd, coaTd, totalVialWeightTd];
 
               if (isEditing) {
                   editSaveBtn.textContent = 'Save';
@@ -567,6 +717,7 @@
                   let newPrice = priceTd.textContent.trim();
                   newPrice = parseFloat(newPrice.replace(/^\$/, ''));
                   const newVialsSold = parseInt(vialsSoldTd.textContent.trim(), 10);
+                  const newTotalVialWeight = parseFloat(totalVialWeightTd.textContent.trim());
                   const newImage = imageTd.textContent.trim();
                   const newCoa = coaTd.textContent.trim();
 
@@ -575,6 +726,7 @@
                   if (!isNaN(newQuantity) && newQuantity !== item.currentInventory) updateData.currentInventory = newQuantity;
                   if (!isNaN(newPrice) && newPrice !== item.sellPricePerVial) updateData.sellPricePerVial = newPrice;
                   if (!isNaN(newVialsSold) && newVialsSold !== item.vialsSold) updateData.vialsSold = newVialsSold;
+                  if (!isNaN(newTotalVialWeight) && newTotalVialWeight !== item.totalVialWeight) updateData.totalVialWeight = newTotalVialWeight;
                   if (newImage !== (item.image ?? '')) updateData.image = newImage;
                   if (newCoa !== (item.coa ?? '')) updateData.coa = newCoa;
                   
@@ -602,10 +754,12 @@
 
           tr.appendChild(nameTd);
           tr.appendChild(codeTd);
+          tr.appendChild(blendTd);
           tr.appendChild(inventoryTd);
           tr.appendChild(priceTd);
           tr.appendChild(totalItemCostTd);
           tr.appendChild(vialsSoldTd);
+          tr.appendChild(totalVialWeightTd);
           tr.appendChild(imageTd);
           tr.appendChild(coaTd);
           tr.appendChild(actionTd);
@@ -625,7 +779,7 @@
         tbody.innerHTML = '';
         const tr = document.createElement('tr');
         const td = document.createElement('td');
-        td.setAttribute('colspan', '9');
+        td.setAttribute('colspan', '11');
         td.className = 'px-6 py-4 whitespace-nowrap text-sm text-red-500';
         td.textContent = 'Error loading inventory.';
         tr.appendChild(td);
@@ -1101,6 +1255,154 @@
             showModal(`Failed to delete order: ${error.message}`);
         }
     }
+    
+    /**
+     * @description Handles the form submission to add a new inventory item.
+     * @param {Event} e The form submit event.
+     */
+    async function handleAddItem(e) {
+        e.preventDefault();
+        const name = newItemNameInput.value.trim();
+        const code = newItemCodeInput.value.trim();
+        const blend = newItemBlendInput.checked;
+        const currentInventory = parseInt(newTotalKitsBoughtInput.value, 10) * parseInt(newTotalVialsPerKitInput.value, 10);
+        const sellPricePerVial = parseFloat(newItemPriceInput.value);
+        const totalVialWeight = parseFloat(newItemTotalVialWeightInput.value);
+        const image = newItemImageInput.value.trim();
+        const coa = newItemCoaInput.value.trim();
+        const vialsSold = parseInt(newItemVialsSoldInput.value, 10);
+        
+        const costPerKit = parseFloat(newCostPerKitInput.value);
+        const totalKitsBought = parseInt(newTotalKitsBoughtInput.value, 10);
+        const totalVialsPerKit = parseInt(newTotalVialsPerKitInput.value, 10);
+        const purchaseDate = newPurchaseDateInput.value;
+
+
+      if (!name || !code) {
+        showModal('Item Name and Code are required.');
+        return;
+      }
+      if (isNaN(currentInventory) || currentInventory < 0) {
+        showModal('Initial Inventory must be a non-negative number.');
+        return;
+      }
+      if (isNaN(sellPricePerVial) || sellPricePerVial < 0) {
+        showModal('Sell Price must be a non-negative number.');
+        return;
+      }
+      if (isNaN(totalVialWeight) || totalVialWeight < 0) {
+        showModal('Total Vial Weight must be a non-negative number.');
+        return;
+      }
+      if (isNaN(vialsSold) || vialsSold < 0) {
+        showModal('Vials Sold must be a non-negative number.');
+        return;
+      }
+      if (isNaN(costPerKit) || costPerKit < 0) {
+        showModal('Cost Per Kit must be a non-negative number.');
+        return;
+      }
+      if (isNaN(totalKitsBought) || totalKitsBought < 0) {
+        showModal('Total Kits Bought must be a non-negative number.');
+        return;
+      }
+      if (isNaN(totalVialsPerKit) || totalVialsPerKit < 0) {
+        showModal('Total Vials Per Kit must be a non-negative number.');
+        return;
+      }
+      if (!purchaseDate) {
+        showModal('Purchase Date is required.');
+        return;
+      }
+
+      const newCostEntry = {
+        costPerKit,
+        purchaseDate,
+        totalKitsBought,
+        totalVialWeightInMg: totalVialWeight,
+        totalVialsPerKit
+      };
+      
+      const newItem = {
+        name,
+        code,
+        blend,
+        currentInventory,
+        sellPricePerVial,
+        totalVialWeight,
+        image: image || 'N/A',
+        coa: coa || 'N/A',
+        vialsSold,
+        costHistory: [newCostEntry]
+      };
+      
+      try {
+        const itemRef = doc(db, INVENTORY_COLLECTION_PATH, code);
+        await setDoc(itemRef, newItem);
+        showModal('New item added to inventory successfully!');
+        addItemForm.reset();
+      } catch (error) {
+        console.error('Error adding new item:', error);
+        showModal(`Failed to add new item: ${error.message}`);
+      }
+    }
+    
+    /**
+     * @description Handles the form submission to add a new cost history entry to an existing item.
+     * @param {Event} e The form submit event.
+     */
+    async function handleNewCostHistory(e) {
+        e.preventDefault();
+        const itemId = existingItemSelect.value;
+        
+        if (!itemId) {
+            showModal('Please select an item from the dropdown.');
+            return;
+        }
+        
+        const costPerKit = parseFloat(costPerKitInput.value);
+        const totalKitsBought = parseInt(totalKitsBoughtInput.value, 10);
+        const totalVialsPerKit = parseInt(totalVialsPerKitInput.value, 10);
+        const purchaseDate = purchaseDateInput.value;
+        const totalVialWeight = inventoryCache[itemId]?.totalVialWeight; // Use existing weight
+
+        if (isNaN(costPerKit) || costPerKit < 0) {
+            showModal('Cost Per Kit must be a non-negative number.');
+            return;
+        }
+        if (isNaN(totalKitsBought) || totalKitsBought < 0) {
+            showModal('Total Kits Bought must be a non-negative number.');
+            return;
+        }
+        if (isNaN(totalVialsPerKit) || totalVialsPerKit < 0) {
+            showModal('Total Vials Per Kit must be a non-negative number.');
+            return;
+        }
+        if (!purchaseDate) {
+            showModal('Purchase Date is required.');
+            return;
+        }
+
+        const newCostEntry = {
+            costPerKit,
+            purchaseDate,
+            totalKitsBought,
+            totalVialWeightInMg: totalVialWeight,
+            totalVialsPerKit
+        };
+        
+        try {
+            const itemRef = doc(db, INVENTORY_COLLECTION_PATH, itemId);
+            await updateDoc(itemRef, {
+                costHistory: arrayUnion(newCostEntry)
+            });
+            showModal('New cost history added successfully!');
+            addCostForm.reset();
+        } catch (error) {
+            console.error('Error adding new cost history:', error);
+            showModal(`Failed to add new cost history: ${error.message}`);
+        }
+    }
 
     /**
      * @description Attaches all event listeners for the application.
@@ -1168,6 +1470,12 @@
               showModal('No order selected to delete.');
           }
       });
+      
+      // New event listener for the Add Item form
+      addItemForm.addEventListener('submit', handleAddItem);
+      
+      // New event listener for the Add Cost History form
+      addCostForm.addEventListener('submit', handleNewCostHistory);
     }
 
     // Boot
