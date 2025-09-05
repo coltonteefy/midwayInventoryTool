@@ -406,10 +406,29 @@
                   <option value="Unpaid">Unpaid</option>
               </select>
           </div>
-          <div id="edit-order-items-list" class="space-y-2">
-              <h3 class="text-md font-semibold text-gray-400 mt-4">Items:</h3>
-              <!-- Editable items will be rendered here with labels -->
+          <!-- Item list with new item controls -->
+          <div class="space-y-4">
+            <h3 class="text-md font-semibold text-gray-400 mt-4">Order Items:</h3>
+            <div id="edit-order-items-list" class="space-y-2">
+                <!-- Editable items will be rendered here -->
+            </div>
+            
+            <!-- ADDED: UI to add a new item to the order -->
+            <div id="add-order-item-section" class="flex flex-col sm:flex-row gap-2 mt-4 items-end">
+                <div class="flex-1 w-full">
+                    <label for="add-item-select" class="block text-sm font-medium text-gray-400">Add Item</label>
+                    <select id="add-item-select" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500">
+                        <option value="">-- Select an item --</option>
+                    </select>
+                </div>
+                <div class="w-20">
+                    <label for="add-item-quantity" class="block text-sm font-medium text-gray-400">Qty</label>
+                    <input type="number" id="add-item-quantity" value="1" min="1" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-sm text-gray-300">
+                </div>
+                <button type="button" id="add-item-to-order-btn" class="btn-neon-lime px-4 py-2 rounded-lg font-semibold w-full sm:w-auto mt-4 sm:mt-0">Add</button>
+            </div>
           </div>
+          
           <div class="flex justify-between gap-4 mt-6">
               <button type="button" id="delete-order-btn" class="btn-neon-red px-4 py-2 rounded-lg font-semibold flex-1">Delete Order</button>
               <button type="submit" class="btn-neon-cyan px-4 py-2 rounded-lg font-semibold flex-1">Save Changes</button>
@@ -552,7 +571,7 @@
      * @returns {boolean}
      */
     function isValidEmail(email) {
-      const re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-1,3]\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+      const re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
       return re.test(String(email).toLowerCase());
     }
 
@@ -635,6 +654,11 @@
         const tbody = qs('inventory-list');
         tbody.innerHTML = '';
         existingItemSelect.innerHTML = '<option value="">-- Select an item --</option>'; // Clear and re-populate dropdown
+        
+        // ADDED: Clear and re-populate the "Add Item to Order" dropdown as well
+        const addItemSelect = qs('add-item-select');
+        addItemSelect.innerHTML = '<option value="">-- Select an item --</option>';
+
         if (snap.empty) {
           const tr = document.createElement('tr');
           const td = document.createElement('td');
@@ -659,6 +683,12 @@
           option.value = d.id;
           option.textContent = item.code ?? '(no code)';
           existingItemSelect.appendChild(option);
+
+          // ADDED: Populate the dropdown for the "Add Item to Order" modal
+          const addItemOption = document.createElement('option');
+          addItemOption.value = d.id;
+          addItemOption.textContent = item.name ?? '(no name)';
+          addItemSelect.appendChild(addItemOption);
 
           const tr = document.createElement('tr');
           tr.dataset.id = d.id;
@@ -837,66 +867,76 @@
      * @param {string} type 'increment' or 'decrement'.
      * @param {array} items The list of items to process.
      */
-    async function updateVialsSold(orderId, type, items) {
-      if (!items || items.length === 0) return;
-      
-      const inventoryUpdates = {};
+    // REPLACE the whole updateVialsSold(...) with this:
+async function updateInventorySalesImpact(orderId, type, items) {
+  // type: 'increment' when an order becomes Paid (sell items)
+  //       'decrement' when an order becomes Unpaid (return items to stock)
+  if (!items || items.length === 0) return;
 
-      for (const item of items) {
-        const inventoryItem = inventoryCache[item.name];
-        if (inventoryItem) {
-          const change = type === 'increment' ? item.quantity : -item.quantity;
-          const newVialsSold = (inventoryItem.vialsSold || 0) + change;
-          inventoryUpdates[inventoryItem.id] = { vialsSold: newVialsSold };
-        }
-      }
-
-      for (const invId in inventoryUpdates) {
-        try {
-          await updateDoc(doc(db, INVENTORY_COLLECTION_PATH, invId), inventoryUpdates[invId]);
-        } catch (error) {
-          console.error(`Error updating vialsSold for item ${invId}:`, error);
-          showModal(`Error updating inventory for an item in order ${orderId}. See console for details.`);
-        }
-      }
+  for (const item of items) {
+    const inv = Object.values(inventoryCache).find(i => i.name === item.name);
+    if (!inv) {
+      console.warn(`Could not find inventory item with name: ${item.name}`);
+      continue;
     }
+    const delta = Number(item.quantity || 0) * (type === 'increment' ? 1 : -1);
+
+    const newVialsSold = Number(inv.vialsSold || 0) + delta;
+    const newCurrentInventory = Math.max(0, Number(inv.currentInventory || 0) - delta);
+
+    try {
+      await updateDoc(doc(db, INVENTORY_COLLECTION_PATH, inv.id), {
+        vialsSold: newVialsSold,
+        currentInventory: newCurrentInventory
+      });
+    } catch (err) {
+      console.error(`Error updating inventory for ${inv.id}:`, err);
+      showModal(`Error updating inventory for an item in order ${orderId}. See console for details.`);
+    }
+  }
+}
+
 
     /**
      * @description Compares two item lists and updates vialsSold based on the net change.
      * @param {Array} prevItems The previous list of items.
      * @param {Array} currentItems The current list of items.
      */
-    function compareOrderItemsAndUpdateVials(prevItems, currentItems) {
-        const itemChanges = new Map(); // name -> net change in quantity
+    // REPLACE the entire compareOrderItemsAndUpdateVials(...) with this:
+// Make it async and await the writes
+async function compareOrderItemsAndUpdateVials(prevItems, currentItems) {
+  const itemChanges = new Map(); // name -> net change in quantity
 
-        // Process previous items to get quantities to subtract
-        for (const item of prevItems || []) {
-            const name = item.name;
-            const quantity = item.quantity || 0;
-            itemChanges.set(name, (itemChanges.get(name) || 0) - quantity);
-        }
+  for (const it of prevItems || []) {
+    itemChanges.set(it.name, (itemChanges.get(it.name) || 0) - Number(it.quantity || 0));
+  }
+  for (const it of currentItems || []) {
+    itemChanges.set(it.name, (itemChanges.get(it.name) || 0) + Number(it.quantity || 0));
+  }
 
-        // Process current items to get quantities to add
-        for (const item of currentItems || []) {
-            const name = item.name;
-            const quantity = item.quantity || 0;
-            itemChanges.set(name, (itemChanges.get(name) || 0) + quantity);
-        }
+  const updates = [];
+  for (const [name, change] of itemChanges.entries()) {
+    if (!change) continue;
+    const inv = Object.values(inventoryCache).find(i => i.name === name);
+    if (!inv) continue;
 
-        for (const [name, change] of itemChanges.entries()) {
-            if (change !== 0) {
-                const inventoryItem = inventoryCache[name];
-                if (inventoryItem) {
-                    const newVialsSold = (inventoryItem.vialsSold || 0) + change;
-                    try {
-                        updateDoc(doc(db, INVENTORY_COLLECTION_PATH, inventoryItem.id), { vialsSold: newVialsSold });
-                    } catch (error) {
-                        console.error(`Error updating vialsSold for ${name}:`, error);
-                    }
-                }
-            }
-        }
-    }
+    const newVialsSold = Number(inv.vialsSold || 0) + change;
+    const newCurrentInventory = Math.max(0, Number(inv.currentInventory || 0) - change);
+
+    // 👇 This is where the await goes
+    updates.push(
+      updateDoc(doc(db, INVENTORY_COLLECTION_PATH, inv.id), {
+        vialsSold: newVialsSold,
+        currentInventory: newCurrentInventory
+      })
+    );
+  }
+
+  // Optionally wait for all writes to finish
+  await Promise.all(updates);
+}
+
+
 
     /**
      * @description Listens for order changes and processes ONLY real updates (no writes on first load).
@@ -927,34 +967,45 @@
 
           if (change.type === 'modified') {
             const previousOrder = previousOrdersCache.get(id);
-            // If somehow we don't have previous (shouldn't happen), just seed and skip.
-            if (!previousOrder) {
-              previousOrdersCache.set(id, currentOrder);
-              return;
-            }
+if (!previousOrder) {
+  previousOrdersCache.set(id, currentOrder);
+  return;
+}
 
-            const prevPaid = previousOrder.paymentStatus === 'Paid';
-            const curPaid  = currentOrder.paymentStatus === 'Paid';
+const prevStatus = previousOrder.paymentStatus;
+const curStatus  = currentOrder.paymentStatus;
 
-            // Transition: Unpaid -> Paid
-            if (!prevPaid && curPaid) {
-              updateVialsSold(currentOrder.id, 'increment', currentOrder.items);
-            }
-            // Transition: Paid -> Unpaid
-            else if (prevPaid && !curPaid) {
-              updateVialsSold(currentOrder.id, 'decrement', currentOrder.items);
-            }
-            // Still Paid, but items changed (adjust by diff)
-            else if (prevPaid && curPaid) {
-              const prevItemsStr = JSON.stringify(previousOrder.items || []);
-              const curItemsStr  = JSON.stringify(currentOrder.items  || []);
-              if (prevItemsStr !== curItemsStr) {
-                compareOrderItemsAndUpdateVials(previousOrder.items || [], currentOrder.items || []);
-              }
-            }
+const wasPaid    = prevStatus === 'Paid';
+const wasUnpaid  = prevStatus === 'Unpaid';
+const isPaid     = curStatus  === 'Paid';
+const isUnpaid   = curStatus  === 'Unpaid';
 
-            // Update cache for this doc
-            previousOrdersCache.set(id, currentOrder);
+// Only act if BOTH sides are strictly within {Paid, Unpaid}
+const prevIsPaidOrUnpaid = wasPaid || wasUnpaid;
+const curIsPaidOrUnpaid  = isPaid  || isUnpaid;
+
+if (prevIsPaidOrUnpaid && curIsPaidOrUnpaid) {
+  // Unpaid -> Paid: sell items
+  if (wasUnpaid && isPaid) {
+    updateInventorySalesImpact(currentOrder.id, 'increment', currentOrder.items);
+  }
+  // Paid -> Unpaid: return items to stock
+  else if (wasPaid && isUnpaid) {
+    updateInventorySalesImpact(currentOrder.id, 'decrement', currentOrder.items);
+  }
+  // Stayed Paid and items changed: adjust by the diff
+  else if (wasPaid && isPaid) {
+    const prevItemsStr = JSON.stringify(previousOrder.items || []);
+    const curItemsStr  = JSON.stringify(currentOrder.items  || []);
+    if (prevItemsStr !== curItemsStr) {
+      compareOrderItemsAndUpdateVials(previousOrder.items || [], currentOrder.items || []);
+    }
+  }
+}
+// Else: one side was Pending (or any other status) — do nothing for inventory
+
+// finally update cache
+previousOrdersCache.set(id, currentOrder);
           }
         });
 
@@ -1169,34 +1220,89 @@
     }
 
     /**
+     * @description Creates a new item DOM element for the edit order modal.
+     * @param {object} item The item object.
+     * @returns {HTMLElement} The created DOM element.
+     */
+    function createOrderItemElement(item) {
+        const itemElement = document.createElement('div');
+        itemElement.className = 'edit-order-item flex items-center gap-2 p-2 border border-gray-700 rounded-md';
+        itemElement.dataset.itemName = item.name;
+
+        // Use a span to display the item name since it's not editable.
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = item.name || 'Unknown Item';
+        nameSpan.className = 'flex-1 text-gray-300 text-sm font-semibold truncate';
+
+        const priceInput = document.createElement('input');
+        priceInput.type = 'number';
+        priceInput.step = '0.01';
+        priceInput.value = item.unitPrice || 0;
+        priceInput.className = 'w-24 bg-gray-800 border border-gray-600 rounded-md p-2 text-sm text-gray-300';
+        priceInput.placeholder = 'Price';
+        priceInput.dataset.field = 'unitPrice';
+
+        const quantityInput = document.createElement('input');
+        quantityInput.type = 'number';
+        quantityInput.value = item.quantity || 1;
+        quantityInput.min = '1';
+        quantityInput.className = 'w-16 bg-gray-800 border border-gray-600 rounded-md p-2 text-sm text-gray-300';
+        quantityInput.placeholder = 'Qty';
+        quantityInput.dataset.field = 'quantity';
+
+        const removeButton = document.createElement('button');
+        removeButton.type = 'button';
+        removeButton.className = 'btn-neon-red px-2 py-1 rounded-lg font-semibold text-xs ml-auto';
+        removeButton.textContent = 'Remove';
+        removeButton.addEventListener('click', () => {
+            itemElement.remove();
+            recalcEditModalTotal();
+        });
+
+        priceInput.addEventListener('input', recalcEditModalTotal);
+        quantityInput.addEventListener('input', recalcEditModalTotal);
+
+        itemElement.appendChild(nameSpan);
+        itemElement.appendChild(priceInput);
+        itemElement.appendChild(quantityInput);
+        itemElement.appendChild(removeButton);
+
+        return itemElement;
+    }
+
+
+    // ADD this helper somewhere above openEditModal/handleEditOrder:
+function recalcEditModalTotal() {
+  const itemEls = document.querySelectorAll('#edit-order-items-list .edit-order-item');
+  let total = 0;
+  itemEls.forEach(el => {
+    const price = parseFloat(el.querySelector('[data-field="unitPrice"]').value) || 0;
+    const qty   = parseInt(el.querySelector('[data-field="quantity"]').value, 10) || 0;
+    total += price * qty;
+  });
+  // If you have shipping/tax fields, add here before assigning:
+  qs('edit-order-total').value = total.toFixed(2);
+}
+
+
+    /**
      * @description Opens the edit order modal and populates it with the order data.
      * @param {object} orderData The Firestore document data for the order.
      */
     function openEditModal(orderData) {
         qs('edit-order-id').value = orderData.id;
-        // Populate the new customer name field
         qs('edit-contact-name').value = orderData.contactInfo?.fullName || '';
         qs('edit-order-total').value = orderData.total ?? 0;
         qs('edit-order-status').value = orderData.paymentStatus ?? 'Unpaid';
         
         const itemsListContainer = qs('edit-order-items-list');
         itemsListContainer.innerHTML = '';
-        (orderData.items || []).forEach((item, index) => {
-            const itemElement = document.createElement('div');
-            itemElement.className = 'flex items-center gap-2';
-            // Added labels to the item inputs
-            itemElement.innerHTML = `
-                <label for="edit-item-name-${index}" class="sr-only">Item Name</label>
-                <input type="text" id="edit-item-name-${index}" value="${item.name || ''}" class="flex-1 bg-gray-800 border border-gray-600 rounded-md p-2 text-sm text-gray-300" placeholder="Item Name" disabled>
-                
-                <label for="edit-item-price-${index}" class="sr-only">Unit Price</label>
-                <input type="number" step="0.01" id="edit-item-price-${index}" value="${item.unitPrice || 0}" class="w-24 bg-gray-800 border border-gray-600 rounded-md p-2 text-sm text-gray-300" data-item-index="${index}" data-field="unitPrice">
-                
-                <label for="edit-item-quantity-${index}" class="sr-only">Quantity</label>
-                <input type="number" id="edit-item-quantity-${index}" value="${item.quantity || 1}" class="w-16 bg-gray-800 border border-gray-600 rounded-md p-2 text-sm text-gray-300" data-item-index="${index}" data-field="quantity">
-            `;
+        (orderData.items || []).forEach(item => {
+            const itemElement = createOrderItemElement(item);
             itemsListContainer.appendChild(itemElement);
         });
+
+        recalcEditModalTotal();
 
         editOrderModal.classList.remove('hidden');
         editOrderBackdrop.classList.remove('hidden');
@@ -1222,68 +1328,63 @@
      * @param {Event} e The form submit event.
      */
     async function handleEditOrder(e) {
-        e.preventDefault();
-        const orderId = qs('edit-order-id').value;
-        const total = parseFloat(qs('edit-order-total').value);
-        const paymentStatus = qs('edit-order-status').value;
-        // Get the new customer name from the input field
-        const newCustomerName = qs('edit-contact-name').value.trim();
+  e.preventDefault();
+  const orderId = qs('edit-order-id').value;
+  const paymentStatus = qs('edit-order-status').value;
+  const newCustomerName = qs('edit-contact-name').value.trim();
 
-        if (isNaN(total)) {
-            showModal('Please enter a valid number for the total.');
-            return;
-        }
-        if (!newCustomerName) {
-            showModal('Customer name cannot be empty.');
-            return;
-        }
-
-        // Gather the updated item data
-        // Gather the updated item data
-const originalOrder = allOrdersCache.find(o => o.id === orderId);
-const updatedItems = [];
-
-for (let i = 0; i < (originalOrder.items?.length || 0); i++) {
-  const priceInput = qs(`edit-item-price-${i}`);
-  const quantityInput = qs(`edit-item-quantity-${i}`);
-
-  const originalItem = originalOrder.items[i] || {};
-  const updatedItem = { ...originalItem };
-
-  const newPrice = parseFloat(priceInput?.value);
-  const newQuantity = parseInt(quantityInput?.value, 10);
-
-  if (isNaN(newPrice) || newPrice < 0) {
-    showModal(`Invalid price for item ${i + 1}. Please enter a positive number.`);
-    return;
-  }
-  if (isNaN(newQuantity) || newQuantity < 0) {
-    showModal(`Invalid quantity for item ${i + 1}. Please enter a positive integer.`);
+  if (!newCustomerName) {
+    showModal('Customer name cannot be empty.');
     return;
   }
 
-  updatedItem.unitPrice = newPrice;
-  updatedItem.quantity = newQuantity;
+  // 1) Gather items from DOM
+  const updatedItems = [];
+  const itemElements = document.querySelectorAll('#edit-order-items-list .edit-order-item');
+  for (const el of itemElements) {
+    const itemName = el.dataset.itemName;
+    const price = parseFloat(el.querySelector('[data-field="unitPrice"]').value);
+    const qty   = parseInt(el.querySelector('[data-field="quantity"]').value, 10);
 
-  updatedItems.push(updatedItem);
+    if (isNaN(price) || price < 0) {
+      showModal(`Invalid price for item "${itemName}". Please enter a positive number.`);
+      return;
+    }
+    if (isNaN(qty) || qty <= 0) {
+      showModal(`Invalid quantity for item "${itemName}". Please enter a positive integer.`);
+      return;
+    }
+
+    updatedItems.push({ name: itemName, unitPrice: price, quantity: qty });
+  }
+
+  if (updatedItems.length === 0) {
+    showModal('An order must have at least one item.');
+    return;
+  }
+
+  // 2) Compute a fresh total from items (add shipping/tax here if you have them)
+  let t = 0;
+  updatedItems.forEach(i => { t += Number(i.unitPrice) * Number(i.quantity); });
+  const total = Number.isFinite(t) ? Number(t.toFixed(2)) : 0;
+
+  // 3) Persist
+  try {
+    const orderRef = doc(db, ORDERS_COLLECTION_PATH, orderId);
+    await updateDoc(orderRef, {
+      total,
+      paymentStatus,
+      'contactInfo.fullName': newCustomerName,
+      items: updatedItems
+    });
+    showModal('Order updated successfully!');
+    closeEditModal();
+  } catch (error) {
+    console.error('Error updating order:', error);
+    showModal(`Failed to update order: ${error.message}`);
+  }
 }
 
-
-        try {
-            const orderRef = doc(db, ORDERS_COLLECTION_PATH, orderId);
-            await updateDoc(orderRef, {
-                total: total,
-                paymentStatus: paymentStatus,
-                'contactInfo.fullName': newCustomerName,
-                items: updatedItems
-            });
-            showModal('Order updated successfully!');
-            closeEditModal();
-        } catch (error) {
-            console.error('Error updating order:', error);
-            showModal(`Failed to update order: ${error.message}`);
-        }
-    }
 
     /**
      * @description Deletes an order from the database.
@@ -1523,6 +1624,49 @@ for (let i = 0; i < (originalOrder.items?.length || 0); i++) {
         }
       }
     }
+    
+    /**
+     * @description Handles the addition of a new item to the order edit modal.
+     */
+    function handleAddItemToOrder() {
+        const select = qs('add-item-select');
+        const quantityInput = qs('add-item-quantity');
+        const selectedId = select.value;
+        const quantity = parseInt(quantityInput.value, 10);
+
+        if (!selectedId) {
+            showModal('Please select an item to add.');
+            return;
+        }
+
+        if (isNaN(quantity) || quantity <= 0) {
+            showModal('Quantity must be a positive number.');
+            return;
+        }
+
+        const selectedItem = inventoryCache[selectedId];
+        if (!selectedItem) {
+            showModal('Selected item not found in inventory.');
+            return;
+        }
+
+        const newItem = {
+            name: selectedItem.name,
+            unitPrice: selectedItem.sellPricePerVial,
+            quantity: quantity
+        };
+
+        const itemsListContainer = qs('edit-order-items-list');
+        const newItemElement = createOrderItemElement(newItem);
+        itemsListContainer.appendChild(newItemElement);
+
+        recalcEditModalTotal();
+        
+        // Reset the form fields
+        select.value = '';
+        quantityInput.value = '1';
+    }
+
 
     /**
      * @description Attaches all event listeners for the application.
@@ -1608,6 +1752,9 @@ for (let i = 0; i < (originalOrder.items?.length || 0); i++) {
       // Event listeners for the new Add Cost History modal
       addCostBtn.addEventListener('click', openAddCostModal);
       closeAddCostModalBtn.addEventListener('click', closeAddCostModal);
+      
+      // ADDED: Listener for the "Add" button in the Edit Order modal
+      qs('add-item-to-order-btn').addEventListener('click', handleAddItemToOrder);
     }
 
     // Boot
