@@ -1239,37 +1239,35 @@
         }
 
         // Gather the updated item data
-        const itemInputs = document.querySelectorAll('#edit-order-items-list input[data-item-index]');
-        const updatedItems = [];
-        const originalOrder = allOrdersCache.find(o => o.id === orderId);
+        // Gather the updated item data
+const originalOrder = allOrdersCache.find(o => o.id === orderId);
+const updatedItems = [];
 
-        for (let i = 0; i < itemInputs.length / 3; i++) {
-            const nameInput = qs(`edit-item-name-${i}`);
-            const priceInput = qs(`edit-item-price-${i}`);
-            const quantityInput = qs(`edit-item-quantity-${i}`);
+for (let i = 0; i < (originalOrder.items?.length || 0); i++) {
+  const priceInput = qs(`edit-item-price-${i}`);
+  const quantityInput = qs(`edit-item-quantity-${i}`);
 
-            const originalItem = originalOrder.items[i];
-            const updatedItem = { ...originalItem };
+  const originalItem = originalOrder.items[i] || {};
+  const updatedItem = { ...originalItem };
 
-            const newPrice = parseFloat(priceInput.value);
-            const newQuantity = parseInt(quantityInput.value, 10);
-            
-            // Validate the new values
-            if (isNaN(newPrice) || newPrice < 0) {
-                showModal(`Invalid price for item ${i + 1}. Please enter a positive number.`);
-                return;
-            }
-            if (isNaN(newQuantity) || newQuantity < 0) {
-                showModal(`Invalid quantity for item ${i + 1}. Please enter a positive integer.`);
-                return;
-            }
+  const newPrice = parseFloat(priceInput?.value);
+  const newQuantity = parseInt(quantityInput?.value, 10);
 
-            // Update the item object with the new values
-            updatedItem.unitPrice = newPrice;
-            updatedItem.quantity = newQuantity;
-            
-            updatedItems.push(updatedItem);
-        }
+  if (isNaN(newPrice) || newPrice < 0) {
+    showModal(`Invalid price for item ${i + 1}. Please enter a positive number.`);
+    return;
+  }
+  if (isNaN(newQuantity) || newQuantity < 0) {
+    showModal(`Invalid quantity for item ${i + 1}. Please enter a positive integer.`);
+    return;
+  }
+
+  updatedItem.unitPrice = newPrice;
+  updatedItem.quantity = newQuantity;
+
+  updatedItems.push(updatedItem);
+}
+
 
         try {
             const orderRef = doc(db, ORDERS_COLLECTION_PATH, orderId);
