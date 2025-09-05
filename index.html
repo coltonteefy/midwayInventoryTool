@@ -466,6 +466,8 @@
     import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
     import { getFirestore, collection, onSnapshot, doc, updateDoc, deleteDoc, getDocs, addDoc, setDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-analytics.js";
+    // ADDED: Firebase Functions (callables)
+    import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-functions.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCWgqGvXzXWBUWd_W-q7uEuARIBZj_JXyI",
@@ -481,6 +483,9 @@
     const auth = getAuth(app);
     const db   = getFirestore(app);
     try { getAnalytics(app); } catch (e) { /* ignore if blocked */ }
+    // ADDED: init Functions
+    const fns = getFunctions(app);
+    const resendFn = httpsCallable(fns, "resendOrderConfirmation");
 
     const qs = (id) => document.getElementById(id);
     let userId = null;
@@ -1046,10 +1051,15 @@
                   <p><span class="font-medium">Address:</span> ${contact.shippingAddress || 'Not Provided'}</p>
                 </div>
               </div>
-              <!-- Edit button positioned at the bottom right of the card -->
-              <div class="absolute bottom-4 right-4">
+              <!-- REPLACED: Actions container -> now has Edit + Resend stacked -->
+              <div class="absolute bottom-4 right-4 flex flex-col items-end space-y-2">
                 <button class="edit-order-btn btn-neon-lime text-xs px-3 py-1 rounded-lg" data-order-id="${order.id}">
                   Edit Order
+                </button>
+
+                <!-- ADDED: Resend Email button -->
+                <button class="resend-order-btn btn-neon-cyan text-xs px-3 py-1 rounded-lg" data-order-id="${order.id}">
+                  Resend Email
                 </button>
               </div>
             </div>`;
@@ -1060,6 +1070,8 @@
       }, (error) => {
         console.error('Error listening to orders:', error);
         showModal('Failed to load orders. Check console for details.');
+        const ordersContainer = qs('orders-container');
+        const loadingElement  = qs('loading-orders');
         loadingElement.style.display = 'none';
         ordersContainer.innerHTML = `
           <div class="text-center text-red-500 py-12">
@@ -1410,7 +1422,7 @@
             return;
         }
         if (isNaN(totalKitsBought) || totalKitsBought < 0) {
-            showModal('Total Kits Bought must be a non-negative number.');
+            showModal('Cost Per Kit must be a non-negative number.');
             return;
         }
         if (isNaN(totalVialsPerKit) || totalVialsPerKit < 0) {
@@ -1451,6 +1463,67 @@
     // Function to close the Add Cost History modal
     function closeAddCostModal() {
       addCostModal.classList.remove('is-open');
+    }
+
+    // ADDED: Build a clean order payload & call the callable to resend
+    async function resendOrderEmailById(orderId, buttonEl) {
+      const order = allOrdersCache.find(o => o.id === orderId);
+      if (!order) {
+        showModal(`Order not found: ${orderId}`);
+        return;
+      }
+
+      // Build a safe, minimal snapshot (ensures orderId exists)
+      const items = Array.isArray(order.items) ? order.items.map(i => ({
+        id: i?.id ?? "",
+        name: i?.name ?? "",
+        quantity: Number(i?.quantity ?? 0),
+        unitPrice: Number(i?.unitPrice ?? 0)
+      })) : [];
+
+      const computedSubtotal = items.reduce((s, i) => s + (Number(i.unitPrice) * Number(i.quantity)), 0);
+      const shipping = Number(order.shippingCost ?? 0);
+      const total = Number(order.total ?? (computedSubtotal + shipping));
+
+      const payloadOrder = {
+        orderId: order.orderId || order.id,
+        contactInfo: {
+          fullName: order.contactInfo?.fullName ?? "",
+          email: order.contactInfo?.email ?? "",
+          phone: order.contactInfo?.phone ?? "",
+          shippingAddress: order.contactInfo?.shippingAddress ?? ""
+        },
+        items,
+        subtotal: Number(order.subtotal ?? computedSubtotal),
+        shippingCost: shipping,
+        total,
+        paymentStatus: order.paymentStatus ?? "unpaid",
+        timestampISO:
+          (order.timestamp?.toDate?.() && order.timestamp.toDate().toISOString()) ||
+          new Date().toISOString()
+      };
+
+      // UI: disable while sending
+      const originalText = buttonEl?.textContent;
+      if (buttonEl) {
+        buttonEl.disabled = true;
+        buttonEl.textContent = "Resending...";
+        buttonEl.classList.add("opacity-70", "cursor-not-allowed");
+      }
+
+      try {
+        const res = await resendFn({ order: payloadOrder }); // calls Cloud Function
+        showModal(`Resent confirmation to ${payloadOrder.contactInfo.email}`);
+      } catch (err) {
+        console.error("Resend failed:", err);
+        showModal(`Resend failed: ${err.message || "See console"}`);
+      } finally {
+        if (buttonEl) {
+          buttonEl.disabled = false;
+          buttonEl.textContent = originalText || "Resend Email";
+          buttonEl.classList.remove("opacity-70", "cursor-not-allowed");
+        }
+      }
     }
 
     /**
@@ -1495,7 +1568,7 @@
       
       qs('close-modal-btn').addEventListener('click', () => qs('alert-modal').classList.add('hidden'));
 
-      // Event delegation for dynamically created "Edit Order" buttons
+      // Event delegation for dynamically created Edit + Resend buttons
       qs('orders-container').addEventListener('click', (e) => {
           const editButton = e.target.closest('.edit-order-btn');
           if (editButton) {
@@ -1504,6 +1577,14 @@
               if (orderToEdit) {
                   openEditModal(orderToEdit);
               }
+              return;
+          }
+
+          // ADDED: Handle Resend Email button
+          const resendButton = e.target.closest('.resend-order-btn');
+          if (resendButton) {
+            const orderId = resendButton.dataset.orderId;
+            resendOrderEmailById(orderId, resendButton);
           }
       });
 
