@@ -483,7 +483,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
     import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
-    import { getFirestore, collection, onSnapshot, doc, updateDoc, deleteDoc, getDocs, addDoc, setDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+    import { getFirestore, collection, onSnapshot, doc, updateDoc, deleteDoc, getDocs, addDoc, setDoc, arrayUnion, increment } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-analytics.js";
     // ADDED: Firebase Functions (callables)
     import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-functions.js";
@@ -868,33 +868,36 @@
      * @param {array} items The list of items to process.
      */
     // REPLACE the whole updateVialsSold(...) with this:
+// REPLACE your existing updateInventorySalesImpact with this:
 async function updateInventorySalesImpact(orderId, type, items) {
-  // type: 'increment' when an order becomes Paid (sell items)
-  //       'decrement' when an order becomes Unpaid (return items to stock)
+  // type: 'increment' when Unpaid -> Paid, 'decrement' when Paid -> Unpaid
   if (!items || items.length === 0) return;
 
   for (const item of items) {
-    const inv = Object.values(inventoryCache).find(i => i.name === item.name);
+    // Prefer id match; fallback to name
+    const inv = item.id
+      ? inventoryCache[item.id]
+      : Object.values(inventoryCache).find(i => i.name === item.name);
+
     if (!inv) {
-      console.warn(`Could not find inventory item with name: ${item.name}`);
+      console.warn(`Inventory not found for item`, item);
       continue;
     }
-    const delta = Number(item.quantity || 0) * (type === 'increment' ? 1 : -1);
 
-    const newVialsSold = Number(inv.vialsSold || 0) + delta;
-    const newCurrentInventory = Math.max(0, Number(inv.currentInventory || 0) - delta);
+    const delta = Number(item.quantity || 0) * (type === 'increment' ? 1 : -1);
 
     try {
       await updateDoc(doc(db, INVENTORY_COLLECTION_PATH, inv.id), {
-        vialsSold: newVialsSold,
-        currentInventory: newCurrentInventory
+        // Only vialsSold moves on Paid/Unpaid transitions
+        vialsSold: increment(delta)
       });
     } catch (err) {
-      console.error(`Error updating inventory for ${inv.id}:`, err);
-      showModal(`Error updating inventory for an item in order ${orderId}. See console for details.`);
+      console.error(`Error updating vialsSold for ${inv.id}:`, err);
+      showModal(`Error updating vialsSold for an item in order ${orderId}. See console for details.`);
     }
   }
 }
+
 
 
     /**
@@ -904,37 +907,36 @@ async function updateInventorySalesImpact(orderId, type, items) {
      */
     // REPLACE the entire compareOrderItemsAndUpdateVials(...) with this:
 // Make it async and await the writes
+// REPLACE your compareOrderItemsAndUpdateVials with this:
 async function compareOrderItemsAndUpdateVials(prevItems, currentItems) {
-  const itemChanges = new Map(); // name -> net change in quantity
+  const changes = new Map(); // key -> net qty change
 
   for (const it of prevItems || []) {
-    itemChanges.set(it.name, (itemChanges.get(it.name) || 0) - Number(it.quantity || 0));
+    const key = it.id || it.name;
+    changes.set(key, (changes.get(key) || 0) - Number(it.quantity || 0));
   }
   for (const it of currentItems || []) {
-    itemChanges.set(it.name, (itemChanges.get(it.name) || 0) + Number(it.quantity || 0));
+    const key = it.id || it.name;
+    changes.set(key, (changes.get(key) || 0) + Number(it.quantity || 0));
   }
 
   const updates = [];
-  for (const [name, change] of itemChanges.entries()) {
+  for (const [key, change] of changes.entries()) {
     if (!change) continue;
-    const inv = Object.values(inventoryCache).find(i => i.name === name);
+
+    // Find inventory by id first, then by name
+    const inv = inventoryCache[key] || Object.values(inventoryCache).find(i => i.name === key);
     if (!inv) continue;
 
-    const newVialsSold = Number(inv.vialsSold || 0) + change;
-    const newCurrentInventory = Math.max(0, Number(inv.currentInventory || 0) - change);
-
-    // 👇 This is where the await goes
-    updates.push(
-      updateDoc(doc(db, INVENTORY_COLLECTION_PATH, inv.id), {
-        vialsSold: newVialsSold,
-        currentInventory: newCurrentInventory
-      })
-    );
+    updates.push(updateDoc(doc(db, INVENTORY_COLLECTION_PATH, inv.id), {
+      // Only adjust vialsSold here
+      vialsSold: increment(change)
+    }));
   }
 
-  // Optionally wait for all writes to finish
   await Promise.all(updates);
 }
+
 
 
 
@@ -960,10 +962,36 @@ async function compareOrderItemsAndUpdateVials(prevItems, currentItems) {
           }
 
           if (change.type === 'removed') {
-            // Optionally, if a Paid order is deleted, you might decrement vials here.
-            previousOrdersCache.delete(id);
-            return;
-          }
+  const previousOrder = previousOrdersCache.get(id);
+  if (previousOrder && Array.isArray(previousOrder.items)) {
+    const wasPaid = previousOrder.paymentStatus === 'Paid';
+
+    (async () => {
+      for (const it of previousOrder.items) {
+        // Prefer id, fallback to name
+        const inv = it.id
+          ? inventoryCache[it.id]
+          : Object.values(inventoryCache).find(i => i.name === (it.name || ''));
+
+        if (!inv) continue;
+
+        const qty = Number(it.quantity || 0);
+        const updates = { currentInventory: increment(qty) };
+        if (wasPaid) updates.vialsSold = increment(-qty);
+
+        try {
+          await updateDoc(doc(db, INVENTORY_COLLECTION_PATH, inv.id), updates);
+        } catch (err) {
+          console.error(`Error rolling back inventory for ${inv.id}:`, err);
+        }
+      }
+    })();
+  }
+
+  previousOrdersCache.delete(id);
+  return;
+}
+
 
           if (change.type === 'modified') {
             const previousOrder = previousOrdersCache.get(id);
@@ -1061,6 +1089,23 @@ previousOrdersCache.set(id, currentOrder);
           const computed = items.reduce((sum, it) => sum + (Number(it?.unitPrice || 0) * Number(it?.quantity || 1)), 0);
           const totalSafe = (order.total != null) ? currency(order.total) : currency(computed);
 
+          // pre-promo subtotal from items
+const prePromo = computed;
+// discounted subtotal saved by server (falls back to prePromo)
+const discountedSubtotal = Number(order.subtotal ?? prePromo);
+// $ off from items (percent/fixed promos)
+const itemDiscount = Math.max(0, prePromo - discountedSubtotal);
+// shipping info
+const shippingCostSafe = Number(order.shippingCost ?? 0);
+const hasFreeShip = shippingCostSafe === 0 && (order.promo?.type === 'free_shipping');
+// a small promo badge
+const promoBadgeHtml = order.promo
+  ? `<span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-cyan-900 text-cyan-200 border border-cyan-700">
+       Promo: ${order.promo.code || order.promo.label || '—'}${order.promo.type === 'percent' && order.promo.value ? ` (${order.promo.value}% )` : ''}
+     </span>`
+  : '';
+
+
           if (order.paymentStatus === 'Paid') {
             totalRevenue += Number(order.total || computed);
           }
@@ -1072,48 +1117,61 @@ previousOrdersCache.set(id, currentOrder);
           const orderIdText = order.orderId || order.id;
 
           const card = `
-            <div class="order-card rounded-xl p-6 shadow-md border border-gray-700 relative">
-              <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start border-b pb-4 mb-4 border-gray-700">
-                <div>
-                  <h3 class="text-lg font-bold text-cyan-500 mb-1">Order ID:
-                    <span class="font-normal text-sm sm:text-base break-words text-gray-300">${orderIdText}</span>
-                  </h3>
-                  <p class="text-sm text-gray-500">Order Placed on ${timestamp}</p>
-                </div>
-                <div class="mt-4 sm:mt-0 text-left sm:text-right">
-                  <p class="font-semibold text-lg text-cyan-500">Total: $${totalSafe}</p>
-                  <span class="inline-block mt-1 px-3 py-1 text-xs font-semibold rounded-full ${statusClass}">
-                    ${status}
-                  </span>
-                </div>
-              </div>
-              <div class="mb-4">
-                <p class="font-semibold text-gray-400 mb-2">Order Items:</p>
-                <ul class="list-none space-y-2 text-sm">
-                  ${itemsList || '<li class="text-gray-500 italic">No items.</li>'}
-                </ul>
-              </div>
-              <div>
-                <p class="font-semibold text-gray-400 mb-2">Contact Info:</p>
-                <div class="text-sm text-gray-500 space-y-1">
-                  <p><span class="font-medium">Name:</span> ${contact.fullName || 'Not Provided'}</p>
-                  <p><span class="font-medium">Email:</span> ${contact.email || 'Not Provided'}</p>
-                  <p><span class="font-medium">Phone:</span> ${contact.phone || 'Not Provided'}</p>
-                  <p><span class="font-medium">Address:</span> ${contact.shippingAddress || 'Not Provided'}</p>
-                </div>
-              </div>
-              <!-- REPLACED: Actions container -> now has Edit + Resend stacked -->
-              <div class="absolute bottom-4 right-4 flex flex-col items-end space-y-2">
-                <button class="edit-order-btn btn-neon-lime text-xs px-3 py-1 rounded-lg" data-order-id="${order.id}">
-                  Edit Order
-                </button>
+  <div class="order-card rounded-xl p-6 shadow-md border border-gray-700 relative">
+    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start border-b pb-4 mb-4 border-gray-700">
+      <div>
+        <h3 class="text-lg font-bold text-cyan-500 mb-1">
+          Order ID:
+          <span class="font-normal text-sm sm:text-base break-words text-gray-300">${orderIdText}</span>
+        </h3>
+        <p class="text-sm text-gray-500">Order Placed on ${timestamp}</p>
+        ${promoBadgeHtml ? `<div class="mt-2">${promoBadgeHtml}</div>` : ``}
+      </div>
+      <div class="mt-4 sm:mt-0 text-left sm:text-right">
+        <p class="font-semibold text-lg text-cyan-500">Total: $${totalSafe}</p>
+        <span class="inline-block mt-1 px-3 py-1 text-xs font-semibold rounded-full ${statusClass}">
+          ${status}
+        </span>
 
-                <!-- ADDED: Resend Email button -->
-                <button class="resend-order-btn btn-neon-cyan text-xs px-3 py-1 rounded-lg" data-order-id="${order.id}">
-                  Resend Email
-                </button>
-              </div>
-            </div>`;
+        <!-- NEW: quick breakdown -->
+        <div class="mt-2 text-xs text-gray-400 space-y-1">
+          <div><span class="text-gray-500">Subtotal:</span> $${currency(discountedSubtotal)}</div>
+          ${itemDiscount > 0
+            ? `<div><span class="text-gray-500">Items discount:</span> <span class="text-green-300 font-semibold">-$${currency(itemDiscount)}</span></div>`
+            : ``}
+          <div>
+            <span class="text-gray-500">Shipping:</span>
+            ${hasFreeShip ? `<span class="text-green-300 font-semibold">FREE</span>` : `$${currency(shippingCostSafe)}`}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mb-4">
+      <p class="font-semibold text-gray-400 mb-2">Order Items:</p>
+      <ul class="list-none space-y-2 text-sm">
+        ${itemsList || '<li class="text-gray-500 italic">No items.</li>'}
+      </ul>
+    </div>
+    <div>
+      <p class="font-semibold text-gray-400 mb-2">Contact Info:</p>
+      <div class="text-sm text-gray-500 space-y-1">
+        <p><span class="font-medium">Name:</span> ${contact.fullName || 'Not Provided'}</p>
+        <p><span class="font-medium">Email:</span> ${contact.email || 'Not Provided'}</p>
+        <p><span class="font-medium">Phone:</span> ${contact.phone || 'Not Provided'}</p>
+        <p><span class="font-medium">Address:</span> ${contact.shippingAddress || 'Not Provided'}</p>
+      </div>
+    </div>
+
+    <div class="absolute bottom-4 right-4 flex flex-col items-end space-y-2">
+      <button class="edit-order-btn btn-neon-lime text-xs px-3 py-1 rounded-lg" data-order-id="${order.id}">
+        Edit Order
+      </button>
+      <button class="resend-order-btn btn-neon-cyan text-xs px-3 py-1 rounded-lg" data-order-id="${order.id}">
+        Resend Email
+      </button>
+    </div>
+  </div>`;
           ordersContainer.insertAdjacentHTML('beforeend', card);
         });
         updateFinancialUI();
@@ -1651,6 +1709,7 @@ function recalcEditModalTotal() {
         }
 
         const newItem = {
+            id: selectedItem.id,
             name: selectedItem.name,
             unitPrice: selectedItem.sellPricePerVial,
             quantity: quantity
