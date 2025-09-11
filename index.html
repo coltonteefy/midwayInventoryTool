@@ -399,6 +399,10 @@
               <label for="edit-order-total" class="block text-sm font-medium text-gray-400">Total Amount</label>
               <input type="number" step="0.01" id="edit-order-total" class="mt-1 block w-full bg-gray-900 border border-gray-700 text-gray-300 rounded-md shadow-sm p-2 focus:ring-cyan-500 focus:border-cyan-500" required>
           </div>
+          <!-- NEW: read-only shipping info so you see what will be preserved -->
+<div class="text-sm text-gray-400 -mt-2">
+  Shipping (preserved): <span id="edit-shipping-display">$0.00</span>
+</div>
           <div>
               <label for="edit-order-status" class="block text-sm font-medium text-gray-400">Payment Status</label>
               <select id="edit-order-status" class="mt-1 block w-full bg-gray-900 border border-gray-700 text-gray-300 rounded-md shadow-sm p-2 focus:ring-cyan-500 focus:border-cyan-500" required>
@@ -412,6 +416,38 @@
             <div id="edit-order-items-list" class="space-y-2">
                 <!-- Editable items will be rendered here -->
             </div>
+
+            <!-- NEW: Shipping & Tracking -->
+<div class="space-y-4 mt-6">
+  <h3 class="text-md font-semibold text-gray-400">Shipping & Tracking</h3>
+
+  <!-- Existing tracking entries render here -->
+  <div id="edit-order-tracking-list" class="space-y-2"></div>
+
+  <!-- Hidden field to mirror current tracking array (kept in sync by JS) -->
+  <input type="hidden" id="edit-order-tracking-hidden" value="[]">
+
+  <!-- Controls to add a new tracking entry -->
+  <div class="flex flex-col sm:flex-row gap-2 items-end">
+    <div class="w-full sm:w-48">
+      <label for="edit-track-carrier" class="block text-sm font-medium text-gray-400">Carrier</label>
+      <select id="edit-track-carrier" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500">
+        <option value="">-- Select --</option>
+        <option>USPS</option>
+        <option>UPS</option>
+        <option>FedEx</option>
+        <option>DHL</option>
+        <option>Other</option>
+      </select>
+    </div>
+    <div class="flex-1 w-full">
+      <label for="edit-track-number" class="block text-sm font-medium text-gray-400">Tracking Number</label>
+      <input id="edit-track-number" type="text" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="e.g., 9400 1234 5678 9012 3456 78">
+    </div>
+    <button type="button" id="edit-track-add-btn" class="btn-neon-lime px-4 py-2 rounded-lg font-semibold w-full sm:w-auto mt-4 sm:mt-0">Add Tracking</button>
+  </div>
+</div>
+
             
             <!-- ADDED: UI to add a new item to the order -->
             <div id="add-order-item-section" class="flex flex-col sm:flex-row gap-2 mt-4 items-end">
@@ -481,393 +517,483 @@
   
   <!-- Firebase (v12) -->
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
-    import { getFirestore, collection, onSnapshot, doc, updateDoc, deleteDoc, getDocs, addDoc, setDoc, arrayUnion, increment } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
-    import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-analytics.js";
-    // ADDED: Firebase Functions (callables)
-    import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-functions.js";
+  // Firebase (v12) 
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+import { getFirestore, collection, onSnapshot, doc, updateDoc, deleteDoc, addDoc, setDoc, arrayUnion, increment } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-analytics.js";
+// ADDED: Firebase Functions (callables)
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-functions.js";
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyCWgqGvXzXWBUWd_W-q7uEuARIBZj_JXyI",
-      authDomain: "peptide-inventory.firebaseapp.com",
-      projectId: "peptide-inventory",
-      storageBucket: "peptide-inventory.firebasestorage.app",
-      messagingSenderId: "547049240971",
-      appId: "1:547049240971:web:83b2e836fee57bb41f578e",
-      measurementId: "G-1W58JMJN37"
-    };
+const firebaseConfig = {
+  apiKey: "AIzaSyCWgqGvXzXWBUWd_W-q7uEuARIBZj_JXyI",
+  authDomain: "peptide-inventory.firebaseapp.com",
+  projectId: "peptide-inventory",
+  storageBucket: "peptide-inventory.firebasestorage.app",
+  messagingSenderId: "547049240971",
+  appId: "1:547049240971:web:83b2e836fee57bb41f578e",
+  measurementId: "G-1W58JMJN37"
+};
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db   = getFirestore(app);
-    try { getAnalytics(app); } catch (e) { /* ignore if blocked */ }
-    // ADDED: init Functions
-    const fns = getFunctions(app);
-    const resendFn = httpsCallable(fns, "resendOrderConfirmation");
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db   = getFirestore(app);
+try { getAnalytics(app); } catch (e) { /* ignore if blocked */ }
+// ADDED: init Functions
+const fns = getFunctions(app);
+const resendFn = httpsCallable(fns, "resendOrderConfirmation");
 
-    const qs = (id) => document.getElementById(id);
-    let userId = null;
-    let totalRevenue = 0;
-    let totalCost = 0;
-    let allOrdersCache = [];
-    // Cache for previous orders to detect real state changes between snapshots
-    let previousOrdersCache = new Map();
-    // Cache for inventory items to quickly find them by name
-    let inventoryCache = {};
+const qs = (id) => document.getElementById(id);
+let userId = null;
+let totalRevenue = 0;
+let totalCost = 0;
+let allOrdersCache = [];
+// Cache for previous orders to detect real state changes between snapshots
+let previousOrdersCache = new Map();
+// Cache for inventory items to quickly find them by name
+let inventoryCache = {};
 
-    // Constants for Firestore collection paths
-    const INVENTORY_COLLECTION_PATH = 'inventory';
-    const ORDERS_COLLECTION_PATH = 'orders';
+// Constants for Firestore collection paths
+const INVENTORY_COLLECTION_PATH = 'inventory';
+const ORDERS_COLLECTION_PATH = 'orders';
 
-    // DOM References for the Edit Order feature
-    const editOrderBackdrop = qs('edit-order-backdrop');
-    const editOrderModal = qs('edit-order-modal');
-    const closeEditModalBtn = qs('close-edit-modal-btn');
-    const editOrderForm = qs('edit-order-form');
-    const deleteOrderBtn = qs('delete-order-btn');
+// DOM References for the Edit Order feature
+const editOrderBackdrop = qs('edit-order-backdrop');
+const editOrderModal = qs('edit-order-modal');
+const closeEditModalBtn = qs('close-edit-modal-btn');
+const editOrderForm = qs('edit-order-form');
+const deleteOrderBtn = qs('delete-order-btn');
+
+// DOM References for Add Item feature
+const addItemForm = qs('add-item-form');
+const newItemNameInput = qs('new-item-name');
+const newItemCodeInput = qs('new-item-code');
+const newItemVialsSoldInput = qs('new-item-vials-sold');
+const newItemPriceInput = qs('new-item-price');
+const newItemTotalVialWeightInput = qs('new-item-total-vial-weight');
+const newItemBlendInput = qs('new-item-blend');
+const newItemImageInput = qs('new-item-image');
+const newItemCoaInput = qs('new-item-coa');
+const newCostPerKitInput = qs('new-cost-per-kit');
+const newTotalKitsBoughtInput = qs('new-total-kits-bought');
+const newTotalVialsPerKitInput = qs('new-total-vials-per-kit');
+const newPurchaseDateInput = qs('new-purchase-date');
+
+// DOM References for Add Cost History feature
+const addCostForm = qs('add-cost-form');
+const existingItemSelect = qs('existing-item-select');
+const costPerKitInput = qs('cost-per-kit');
+const totalKitsBoughtInput = qs('total-kits-bought');
+const totalVialsPerKitInput = qs('total-vials-per-kit');
+const purchaseDateInput = qs('purchase-date');
+
+// DOM References for Add Cost History Modal
+const addCostModal = qs('add-cost-modal');
+const addCostBtn = qs('add-cost-btn');
+const closeAddCostModalBtn = qs('close-add-cost-modal-btn');
+
+/**
+ * @description Displays a custom modal with a message.
+ * @param {string} message The message to display.
+ */
+function showModal(message) {
+  qs('modal-message').textContent = message;
+  qs('alert-modal').classList.remove('hidden');
+}
+
+/**
+ * @description Simple email validation function using a regex.
+ * @param {string} email
+ * @returns {boolean}
+ */
+function isValidEmail(email) {
+  const re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+  return re.test(String(email).toLowerCase());
+}
+
+// Function to copy text to clipboard (works inside iframes)
+function copyToClipboard(text) {
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  document.body.appendChild(textarea);
+  textarea.select();
+  try {
+    document.execCommand('copy');
+    showModal('Copied to clipboard!');
+  } catch (err) {
+    console.error('Failed to copy text:', err);
+    showModal('Failed to copy. Please select and copy manually.');
+  } finally {
+    document.body.removeChild(textarea);
+  }
+}
+
+function formatTimestamp(ts) {
+  if (!ts) return 'Unknown date';
+  try {
+    if (typeof ts.toDate === 'function') {
+      return ts.toDate().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    }
+    const d = new Date(ts);
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    }
+  } catch (_) {}
+  return 'Unknown date';
+}
+
+function currency(n) {
+  const num = typeof n === 'number' ? n : Number(n ?? 0);
+  return num.toFixed(2);
+}
+
+// Apply existing promo to a pre-discount items subtotal
+function applyPromoSubtotal(preSubtotal, promo) {
+  const base = Number(preSubtotal || 0);
+  if (!promo || !promo.type) return Number(base.toFixed(2));
+
+  const type = String(promo.type).toLowerCase();
+
+  // Percent off (e.g., 10%)
+  if (type === 'percent' && Number.isFinite(promo.value)) {
+    const pct = Math.max(0, Math.min(100, Number(promo.value)));
+    return Number((base * (1 - pct / 100)).toFixed(2));
+  }
+
+  // Fixed amount off (e.g., $5)
+  if (type === 'fixed' && Number.isFinite(promo.value)) {
+    return Math.max(0, Number((base - Number(promo.value)).toFixed(2)));
+  }
+
+  // Free shipping affects shipping, not items subtotal
+  return Number(base.toFixed(2));
+}
+
+
+function updateFinancialUI() {
+  const totalProfit = totalRevenue - totalCost;
+  qs('total-cost').textContent = `$${totalCost.toFixed(2)}`;
+  qs('total-revenue').textContent = `$${totalRevenue.toFixed(2)}`;
+  qs('total-profit').textContent = `$${totalProfit.toFixed(2)}`;
+}
+
+/* ============================
+ * NEW: Tracking helpers
+ * ============================ */
+const CARRIERS = ["USPS", "UPS", "FedEx", "DHL", "Other"];
+
+function buildTrackingUrl(carrier, trackingNumber) {
+  const n = (trackingNumber || "").trim();
+  const c = (carrier || "").toLowerCase();
+  if (!n) return "";
+  if (c === "usps")  return `https://tools.usps.com/go/TrackConfirmAction?tLabels=${encodeURIComponent(n)}`;
+  if (c === "ups")   return `https://www.ups.com/track?loc=en_US&tracknum=${encodeURIComponent(n)}`;
+  if (c === "fedex") return `https://www.fedex.com/fedextrack/?trknbr=${encodeURIComponent(n)}`;
+  if (c === "dhl")   return `https://www.dhl.com/us-en/home/tracking.html?tracking-id=${encodeURIComponent(n)}`;
+  return `https://www.google.com/search?q=${encodeURIComponent((carrier || "tracking") + " " + n)}`;
+}
+
+// In-memory fallback if hidden input is missing
+let _trackingMemoryCache = [];
+function readTrackingFromModal() {
+  const hidden = qs('edit-order-tracking-hidden');
+  if (!hidden) return _trackingMemoryCache.slice();
+  try {
+    return JSON.parse(hidden.value || "[]");
+  } catch {
+    return [];
+  }
+}
+function setTrackingHidden(arr) {
+  const hidden = qs('edit-order-tracking-hidden');
+  _trackingMemoryCache = Array.isArray(arr) ? arr.slice() : [];
+  if (hidden) hidden.value = JSON.stringify(_trackingMemoryCache);
+}
+
+// Render current tracking list in modal
+function renderTrackingList(trackingArr) {
+  const list = qs('edit-order-tracking-list');
+  if (!list) return;
+  list.innerHTML = '';
+  (trackingArr || []).forEach((t, idx) => {
+    const url = t.url || buildTrackingUrl(t.carrier, t.number);
+    const row = document.createElement('div');
+    row.className = 'flex items-center gap-2 p-2 border border-gray-700 rounded-md';
+    row.innerHTML = `
+      <span class="flex-1 text-gray-300 text-sm truncate">
+        <span class="font-semibold">${t.carrier || 'Carrier'}</span> — ${t.number || '—'}
+      </span>
+      <a href="${url}" target="_blank" rel="noopener" class="underline text-cyan-300 text-xs">Open</a>
+      <button type="button" class="btn-neon-red px-2 py-1 rounded-lg font-semibold text-xs" data-remove="${idx}">Remove</button>
+    `;
+    list.appendChild(row);
+  });
+  // wire remove buttons
+  list.querySelectorAll('[data-remove]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = Number(btn.dataset.remove);
+      const cur = readTrackingFromModal();
+      cur.splice(idx, 1);
+      setTrackingHidden(cur);
+      renderTrackingList(cur);
+    });
+  });
+}
+
+/* ============================
+ * Auth UI
+ * ============================ */
+function updateUI(user) {
+  const status = qs('status');
+  const userDisplay = qs('user-id-display');
+  const mainContent = qs('main-content');
+  const loginForm = qs('login-form');
+  const signoutBtn = qs('signout-btn');
+  const addCostBtn = qs('add-cost-btn');
+
+  if (user) {
+    userId = user.uid;
+    status.textContent = 'Status: Signed in';
+    userDisplay.textContent = 'User ID: ' + userId;
+    mainContent.classList.remove('hidden');
+    loginForm.classList.add('hidden');
+    signoutBtn.classList.remove('hidden');
+    addCostBtn.classList.remove('hidden');
+    listenForInventory();
+    listenForOrders(); // start orders listener after auth
+  } else {
+    userId = null;
+    status.textContent = 'Status: Signed out';
+    userDisplay.textContent = 'User ID: N/A';
+    mainContent.classList.add('hidden');
+    loginForm.classList.remove('hidden');
+    signoutBtn.classList.add('hidden');
+    addCostBtn.classList.add('hidden');
+  }
+}
+
+/* ============================
+ * Inventory listener
+ * ============================ */
+function listenForInventory() {
+  if (!userId) return;
+  const ref = collection(db, INVENTORY_COLLECTION_PATH);
+  onSnapshot(ref, (snap) => {
+    const tbody = qs('inventory-list');
+    tbody.innerHTML = '';
+    existingItemSelect.innerHTML = '<option value="">-- Select an item --</option>'; // Clear and re-populate dropdown
     
-    // DOM References for Add Item feature
-    const addItemForm = qs('add-item-form');
-    const newItemNameInput = qs('new-item-name');
-    const newItemCodeInput = qs('new-item-code');
-    const newItemVialsSoldInput = qs('new-item-vials-sold');
-    const newItemPriceInput = qs('new-item-price');
-    const newItemTotalVialWeightInput = qs('new-item-total-vial-weight');
-    const newItemBlendInput = qs('new-item-blend');
-    const newItemImageInput = qs('new-item-image');
-    const newItemCoaInput = qs('new-item-coa');
-    const newCostPerKitInput = qs('new-cost-per-kit');
-    const newTotalKitsBoughtInput = qs('new-total-kits-bought');
-    const newTotalVialsPerKitInput = qs('new-total-vials-per-kit');
-    const newPurchaseDateInput = qs('new-purchase-date');
+    // ADDED: Clear and re-populate the "Add Item to Order" dropdown as well
+    const addItemSelect = qs('add-item-select');
+    if (addItemSelect) addItemSelect.innerHTML = '<option value="">-- Select an item --</option>';
+
+    if (snap.empty) {
+      const tr = document.createElement('tr');
+      const td = document.createElement('td');
+      td.setAttribute('colspan', '11');
+      td.className = 'text-gray-500 italic px-6 py-4 whitespace-nowrap';
+      td.textContent = 'No inventory items.';
+      tr.appendChild(td);
+      tbody.appendChild(tr);
+      return;
+    }
+
+    totalCost = 0;
+    // Update the inventory cache for quick lookups
+    inventoryCache = {};
     
-    // DOM References for Add Cost History feature
-    const addCostForm = qs('add-cost-form');
-    const existingItemSelect = qs('existing-item-select');
-    const costPerKitInput = qs('cost-per-kit');
-    const totalKitsBoughtInput = qs('total-kits-bought');
-    const totalVialsPerKitInput = qs('total-vials-per-kit');
-    const purchaseDateInput = qs('purchase-date');
-    
-    // DOM References for Add Cost History Modal
-    const addCostModal = qs('add-cost-modal');
-    const addCostBtn = qs('add-cost-btn');
-    const closeAddCostModalBtn = qs('close-add-cost-modal-btn');
+    snap.forEach((d) => {
+      const item = d.data();
+      inventoryCache[d.id] = { id: d.id, ...item };
+      
+      // Populate the dropdown for the "Add Cost History" form
+      const option = document.createElement('option');
+      option.value = d.id;
+      option.textContent = item.code ?? '(no code)';
+      existingItemSelect.appendChild(option);
 
-
-    /**
-     * @description Displays a custom modal with a message.
-     * @param {string} message The message to display.
-     */
-    function showModal(message) {
-      qs('modal-message').textContent = message;
-      qs('alert-modal').classList.remove('hidden');
-    }
-
-    /**
-     * @description Simple email validation function using a regex.
-     * @param {string} email
-     * @returns {boolean}
-     */
-    function isValidEmail(email) {
-      const re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-      return re.test(String(email).toLowerCase());
-    }
-
-    // Function to copy text to clipboard (works inside iframes)
-    function copyToClipboard(text) {
-        const textarea = document.createElement('textarea');
-        textarea.value = text;
-        document.body.appendChild(textarea);
-        textarea.select();
-        try {
-            document.execCommand('copy');
-            showModal('Copied to clipboard!');
-        } catch (err) {
-            console.error('Failed to copy text:', err);
-            showModal('Failed to copy. Please select and copy manually.');
-        } finally {
-            document.body.removeChild(textarea);
-        }
-    }
-
-    function formatTimestamp(ts) {
-      if (!ts) return 'Unknown date';
-      try {
-        if (typeof ts.toDate === 'function') {
-          return ts.toDate().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-        }
-        const d = new Date(ts);
-        if (!isNaN(d.getTime())) {
-          return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-        }
-      } catch (_) {}
-      return 'Unknown date';
-    }
-
-    function currency(n) {
-      const num = typeof n === 'number' ? n : Number(n ?? 0);
-      return num.toFixed(2);
-    }
-
-    function updateFinancialUI() {
-        const totalProfit = totalRevenue - totalCost;
-        qs('total-cost').textContent = `$${totalCost.toFixed(2)}`;
-        qs('total-revenue').textContent = `$${totalRevenue.toFixed(2)}`;
-        qs('total-profit').textContent = `$${totalProfit.toFixed(2)}`;
-    }
-    
-    function updateUI(user) {
-      const status = qs('status');
-      const userDisplay = qs('user-id-display');
-      const mainContent = qs('main-content');
-      const loginForm = qs('login-form');
-      const signoutBtn = qs('signout-btn');
-      const addCostBtn = qs('add-cost-btn');
-
-      if (user) {
-        userId = user.uid;
-        status.textContent = 'Status: Signed in';
-        userDisplay.textContent = 'User ID: ' + userId;
-        mainContent.classList.remove('hidden');
-        loginForm.classList.add('hidden');
-        signoutBtn.classList.remove('hidden');
-        addCostBtn.classList.remove('hidden');
-        listenForInventory();
-        listenForOrders(); // start orders listener after auth
-      } else {
-        userId = null;
-        status.textContent = 'Status: Signed out';
-        userDisplay.textContent = 'User ID: N/A';
-        mainContent.classList.add('hidden');
-        loginForm.classList.remove('hidden');
-        signoutBtn.classList.add('hidden');
-        addCostBtn.classList.add('hidden');
+      // ADDED: Populate the dropdown for the "Add Item to Order" modal
+      if (addItemSelect) {
+        const addItemOption = document.createElement('option');
+        addItemOption.value = d.id;
+        addItemOption.textContent = item.name ?? '(no name)';
+        addItemSelect.appendChild(addItemOption);
       }
-    }
 
-    function listenForInventory() {
-      if (!userId) return;
-      const ref = collection(db, INVENTORY_COLLECTION_PATH);
-      onSnapshot(ref, (snap) => {
-        const tbody = qs('inventory-list');
-        tbody.innerHTML = '';
-        existingItemSelect.innerHTML = '<option value="">-- Select an item --</option>'; // Clear and re-populate dropdown
-        
-        // ADDED: Clear and re-populate the "Add Item to Order" dropdown as well
-        const addItemSelect = qs('add-item-select');
-        addItemSelect.innerHTML = '<option value="">-- Select an item --</option>';
+      const tr = document.createElement('tr');
+      tr.dataset.id = d.id;
+      tr.className = 'hover:bg-gray-700 transition-colors duration-150';
 
-        if (snap.empty) {
-          const tr = document.createElement('tr');
-          const td = document.createElement('td');
-          td.setAttribute('colspan', '11');
-          td.className = 'text-gray-500 italic px-6 py-4 whitespace-nowrap';
-          td.textContent = 'No inventory items.';
-          tr.appendChild(td);
-          tbody.appendChild(tr);
-          return;
+      const nameTd = document.createElement('td');
+      nameTd.className = 'px-6 py-4 whitespace-nowrap text-sm font-medium text-cyan-300';
+      nameTd.textContent = item.name ?? '(no name)';
+      nameTd.setAttribute('contenteditable', 'false');
+      nameTd.dataset.field = 'name';
+
+      const codeTd = document.createElement('td');
+      codeTd.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-400';
+      codeTd.textContent = item.code ?? '(no code)';
+      codeTd.dataset.field = 'code';
+
+      const blendTd = document.createElement('td');
+      blendTd.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-400';
+      blendTd.textContent = item.blend ? 'Yes' : 'No';
+      blendTd.dataset.field = 'blend';
+      
+      const inventoryTd = document.createElement('td');
+      inventoryTd.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-400';
+      inventoryTd.textContent = item.currentInventory ?? 0;
+      inventoryTd.setAttribute('contenteditable', 'false');
+      inventoryTd.dataset.field = 'currentInventory';
+
+      const priceTd = document.createElement('td');
+      priceTd.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-400';
+      priceTd.textContent = item.sellPricePerVial ? `$${item.sellPricePerVial}` : '$0';
+      priceTd.setAttribute('contenteditable', 'false');
+      priceTd.dataset.field = 'sellPricePerVial';
+
+      const totalItemCostTd = document.createElement('td');
+      totalItemCostTd.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-400';
+      let totalItemCost = 0;
+      if (item.costHistory && Array.isArray(item.costHistory)) {
+        totalItemCost = item.costHistory.reduce((sum, historyItem) => {
+          const cost = (historyItem.costPerKit || 0) * (historyItem.totalKitsBought || 0);
+          return sum + cost;
+        }, 0);
+      }
+      totalItemCostTd.textContent = `$${totalItemCost.toFixed(2)}`;
+
+      const vialsSoldTd = document.createElement('td');
+      vialsSoldTd.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-400';
+      vialsSoldTd.textContent = item.vialsSold ?? 0;
+      vialsSoldTd.setAttribute('contenteditable', 'false');
+      vialsSoldTd.dataset.field = 'vialsSold';
+      
+      const totalVialWeightTd = document.createElement('td');
+      totalVialWeightTd.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-400';
+      totalVialWeightTd.textContent = item.totalVialWeight ?? 0;
+      totalVialWeightTd.setAttribute('contenteditable', 'false');
+      totalVialWeightTd.dataset.field = 'totalVialWeight';
+
+      const imageTd = document.createElement('td');
+      imageTd.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-400 max-w-24 overflow-hidden text-ellipsis cursor-pointer';
+      imageTd.textContent = item.image ?? 'N/A';
+      imageTd.dataset.field = 'image';
+      imageTd.setAttribute('contenteditable', 'false');
+      imageTd.addEventListener('click', () => {
+        if (imageTd.textContent && imageTd.textContent !== 'N/A') {
+          copyToClipboard(imageTd.textContent);
         }
+      });
+      
+      const coaTd = document.createElement('td');
+      coaTd.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-400 max-w-24 overflow-hidden text-ellipsis cursor-pointer';
+      coaTd.textContent = item.coa ?? 'N/A';
+      coaTd.dataset.field = 'coa';
+      coaTd.setAttribute('contenteditable', 'false');
+      coaTd.addEventListener('click', () => {
+        if (coaTd.textContent && coaTd.textContent !== 'N/A') {
+          copyToClipboard(coaTd.textContent);
+        }
+      });
 
-        totalCost = 0;
-        // Update the inventory cache for quick lookups
-        inventoryCache = {};
-        
-        snap.forEach((d) => {
-          const item = d.data();
-          inventoryCache[d.id] = { id: d.id, ...item };
+      const actionTd = document.createElement('td');
+      actionTd.className = 'px-6 py-4 whitespace-nowrap text-center text-sm font-medium';
+      const editSaveBtn = document.createElement('button');
+      editSaveBtn.textContent = 'Edit';
+      editSaveBtn.className = 'btn-neon-cyan px-3 py-1 rounded-lg font-semibold text-xs';
+      
+      editSaveBtn.addEventListener('click', () => {
+        const isEditing = editSaveBtn.textContent === 'Edit';
+        const editableTds = [nameTd, inventoryTd, priceTd, vialsSoldTd, imageTd, coaTd, totalVialWeightTd];
+
+        if (isEditing) {
+          editSaveBtn.textContent = 'Save';
+          editSaveBtn.className = 'btn-neon-lime px-3 py-1 rounded-lg font-semibold text-xs';
+          editableTds.forEach(td => {
+            td.setAttribute('contenteditable', 'true');
+            td.classList.add('is-editing');
+          });
+        } else {
+          const docId = tr.dataset.id;
+          const newName = nameTd.textContent.trim();
+          const newQuantity = parseInt(inventoryTd.textContent.trim(), 10);
+          let newPrice = priceTd.textContent.trim();
+          newPrice = parseFloat(newPrice.replace(/^\$/, ''));
+          const newVialsSold = parseInt(vialsSoldTd.textContent.trim(), 10);
+          const newTotalVialWeight = parseFloat(totalVialWeightTd.textContent.trim());
+          const newImage = imageTd.textContent.trim();
+          const newCoa = coaTd.textContent.trim();
+
+          const updateData = {};
+          if (newName !== (item.name ?? '')) updateData.name = newName;
+          if (!isNaN(newQuantity) && newQuantity !== item.currentInventory) updateData.currentInventory = newQuantity;
+          if (!isNaN(newPrice) && newPrice !== item.sellPricePerVial) updateData.sellPricePerVial = newPrice;
+          if (!isNaN(newVialsSold) && newVialsSold !== item.vialsSold) updateData.vialsSold = newVialsSold;
+          if (!isNaN(newTotalVialWeight) && newTotalVialWeight !== item.totalVialWeight) updateData.totalVialWeight = newTotalVialWeight;
+          if (newImage !== (item.image ?? '')) updateData.image = newImage;
+          if (newCoa !== (item.coa ?? '')) updateData.coa = newCoa;
           
-          // Populate the dropdown for the "Add Cost History" form
-          const option = document.createElement('option');
-          option.value = d.id;
-          option.textContent = item.code ?? '(no code)';
-          existingItemSelect.appendChild(option);
-
-          // ADDED: Populate the dropdown for the "Add Item to Order" modal
-          const addItemOption = document.createElement('option');
-          addItemOption.value = d.id;
-          addItemOption.textContent = item.name ?? '(no name)';
-          addItemSelect.appendChild(addItemOption);
-
-          const tr = document.createElement('tr');
-          tr.dataset.id = d.id;
-          tr.className = 'hover:bg-gray-700 transition-colors duration-150';
-
-          const nameTd = document.createElement('td');
-          nameTd.className = 'px-6 py-4 whitespace-nowrap text-sm font-medium text-cyan-300';
-          nameTd.textContent = item.name ?? '(no name)';
-          nameTd.setAttribute('contenteditable', 'false');
-          nameTd.dataset.field = 'name';
-
-          const codeTd = document.createElement('td');
-          codeTd.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-400';
-          codeTd.textContent = item.code ?? '(no code)';
-          codeTd.dataset.field = 'code';
-
-          const blendTd = document.createElement('td');
-          blendTd.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-400';
-          blendTd.textContent = item.blend ? 'Yes' : 'No';
-          blendTd.dataset.field = 'blend';
-          
-          const inventoryTd = document.createElement('td');
-          inventoryTd.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-400';
-          inventoryTd.textContent = item.currentInventory ?? 0;
-          inventoryTd.setAttribute('contenteditable', 'false');
-          inventoryTd.dataset.field = 'currentInventory';
-
-          const priceTd = document.createElement('td');
-          priceTd.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-400';
-          priceTd.textContent = item.sellPricePerVial ? `$${item.sellPricePerVial}` : '$0';
-          priceTd.setAttribute('contenteditable', 'false');
-          priceTd.dataset.field = 'sellPricePerVial';
-
-          const totalItemCostTd = document.createElement('td');
-          totalItemCostTd.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-400';
-          let totalItemCost = 0;
-          if (item.costHistory && Array.isArray(item.costHistory)) {
-            totalItemCost = item.costHistory.reduce((sum, historyItem) => {
-              const cost = (historyItem.costPerKit || 0) * (historyItem.totalKitsBought || 0);
-              return sum + cost;
-            }, 0);
+          if (Object.keys(updateData).length > 0) {
+            const itemRef = doc(db, INVENTORY_COLLECTION_PATH, docId);
+            updateDoc(itemRef, updateData)
+              .then(() => showModal(`Data updated for ${newName}.`))
+              .catch((e) => {
+                console.error('Error updating document:', e);
+                showModal('Error updating data. Check console for details.');
+              });
+          } else {
+            showModal('No changes to save.');
           }
-          totalItemCostTd.textContent = `$${totalItemCost.toFixed(2)}`;
 
-          const vialsSoldTd = document.createElement('td');
-          vialsSoldTd.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-400';
-          vialsSoldTd.textContent = item.vialsSold ?? 0;
-          vialsSoldTd.setAttribute('contenteditable', 'false');
-          vialsSoldTd.dataset.field = 'vialsSold';
-          
-          const totalVialWeightTd = document.createElement('td');
-          totalVialWeightTd.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-400';
-          totalVialWeightTd.textContent = item.totalVialWeight ?? 0;
-          totalVialWeightTd.setAttribute('contenteditable', 'false');
-          totalVialWeightTd.dataset.field = 'totalVialWeight';
-
-          const imageTd = document.createElement('td');
-          imageTd.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-400 max-w-24 overflow-hidden text-ellipsis cursor-pointer';
-          imageTd.textContent = item.image ?? 'N/A';
-          imageTd.dataset.field = 'image';
-          imageTd.setAttribute('contenteditable', 'false');
-          imageTd.addEventListener('click', () => {
-            if (imageTd.textContent && imageTd.textContent !== 'N/A') {
-              copyToClipboard(imageTd.textContent);
-            }
-          });
-          
-          const coaTd = document.createElement('td');
-          coaTd.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-400 max-w-24 overflow-hidden text-ellipsis cursor-pointer';
-          coaTd.textContent = item.coa ?? 'N/A';
-          coaTd.dataset.field = 'coa';
-          coaTd.setAttribute('contenteditable', 'false');
-          coaTd.addEventListener('click', () => {
-            if (coaTd.textContent && coaTd.textContent !== 'N/A') {
-              copyToClipboard(coaTd.textContent);
-            }
-          });
-
-          const actionTd = document.createElement('td');
-          actionTd.className = 'px-6 py-4 whitespace-nowrap text-center text-sm font-medium';
-          const editSaveBtn = document.createElement('button');
           editSaveBtn.textContent = 'Edit';
           editSaveBtn.className = 'btn-neon-cyan px-3 py-1 rounded-lg font-semibold text-xs';
-          
-          editSaveBtn.addEventListener('click', () => {
-              const isEditing = editSaveBtn.textContent === 'Edit';
-              const editableTds = [nameTd, inventoryTd, priceTd, vialsSoldTd, imageTd, coaTd, totalVialWeightTd];
-
-              if (isEditing) {
-                  editSaveBtn.textContent = 'Save';
-                  editSaveBtn.className = 'btn-neon-lime px-3 py-1 rounded-lg font-semibold text-xs';
-                  editableTds.forEach(td => {
-                      td.setAttribute('contenteditable', 'true');
-                      td.classList.add('is-editing');
-                  });
-              } else {
-                  const docId = tr.dataset.id;
-                  const newName = nameTd.textContent.trim();
-                  const newQuantity = parseInt(inventoryTd.textContent.trim(), 10);
-                  let newPrice = priceTd.textContent.trim();
-                  newPrice = parseFloat(newPrice.replace(/^\$/, ''));
-                  const newVialsSold = parseInt(vialsSoldTd.textContent.trim(), 10);
-                  const newTotalVialWeight = parseFloat(totalVialWeightTd.textContent.trim());
-                  const newImage = imageTd.textContent.trim();
-                  const newCoa = coaTd.textContent.trim();
-
-                  const updateData = {};
-                  if (newName !== (item.name ?? '')) updateData.name = newName;
-                  if (!isNaN(newQuantity) && newQuantity !== item.currentInventory) updateData.currentInventory = newQuantity;
-                  if (!isNaN(newPrice) && newPrice !== item.sellPricePerVial) updateData.sellPricePerVial = newPrice;
-                  if (!isNaN(newVialsSold) && newVialsSold !== item.vialsSold) updateData.vialsSold = newVialsSold;
-                  if (!isNaN(newTotalVialWeight) && newTotalVialWeight !== item.totalVialWeight) updateData.totalVialWeight = newTotalVialWeight;
-                  if (newImage !== (item.image ?? '')) updateData.image = newImage;
-                  if (newCoa !== (item.coa ?? '')) updateData.coa = newCoa;
-                  
-                  if (Object.keys(updateData).length > 0) {
-                      const itemRef = doc(db, INVENTORY_COLLECTION_PATH, docId);
-                      updateDoc(itemRef, updateData)
-                          .then(() => showModal(`Data updated for ${newName}.`))
-                          .catch((e) => {
-                              console.error('Error updating document:', e);
-                              showModal('Error updating data. Check console for details.');
-                          });
-                  } else {
-                      showModal('No changes to save.');
-                  }
-
-                  editSaveBtn.textContent = 'Edit';
-                  editSaveBtn.className = 'btn-neon-cyan px-3 py-1 rounded-lg font-semibold text-xs';
-                  editableTds.forEach(td => {
-                      td.setAttribute('contenteditable', 'false');
-                      td.classList.remove('is-editing');
-                  });
-              }
+          editableTds.forEach(td => {
+            td.setAttribute('contenteditable', 'false');
+            td.classList.remove('is-editing');
           });
-          actionTd.appendChild(editSaveBtn);
-
-          tr.appendChild(nameTd);
-          tr.appendChild(codeTd);
-          tr.appendChild(blendTd);
-          tr.appendChild(inventoryTd);
-          tr.appendChild(priceTd);
-          tr.appendChild(totalItemCostTd);
-          tr.appendChild(vialsSoldTd);
-          tr.appendChild(totalVialWeightTd);
-          tr.appendChild(imageTd);
-          tr.appendChild(coaTd);
-          tr.appendChild(actionTd);
-          tbody.appendChild(tr);
-
-          if (item.costHistory && Array.isArray(item.costHistory)) {
-            totalCost += item.costHistory.reduce((sum, historyItem) => {
-              const cost = (historyItem.costPerKit || 0) * (historyItem.totalKitsBought || 0);
-              return sum + cost;
-            }, 0);
-          }
-        });
-        updateFinancialUI();
-      }, (error) => {
-        console.error('Error listening to inventory:', error);
-        const tbody = qs('inventory-list');
-        tbody.innerHTML = '';
-        const tr = document.createElement('tr');
-        const td = document.createElement('td');
-        td.setAttribute('colspan', '11');
-        td.className = 'px-6 py-4 whitespace-nowrap text-sm text-red-500';
-        td.textContent = 'Error loading inventory.';
-        tr.appendChild(td);
-        tbody.appendChild(tr);
+        }
       });
-    }
+      actionTd.appendChild(editSaveBtn);
 
-    /**
-     * @description Updates the vialsSold count for items based on an order's payment status change.
-     * @param {string} orderId The ID of the order.
-     * @param {string} type 'increment' or 'decrement'.
-     * @param {array} items The list of items to process.
-     */
-    // REPLACE the whole updateVialsSold(...) with this:
+      tr.appendChild(nameTd);
+      tr.appendChild(codeTd);
+      tr.appendChild(blendTd);
+      tr.appendChild(inventoryTd);
+      tr.appendChild(priceTd);
+      tr.appendChild(totalItemCostTd);
+      tr.appendChild(vialsSoldTd);
+      tr.appendChild(totalVialWeightTd);
+      tr.appendChild(imageTd);
+      tr.appendChild(coaTd);
+      tr.appendChild(actionTd);
+      tbody.appendChild(tr);
+
+      if (item.costHistory && Array.isArray(item.costHistory)) {
+        totalCost += item.costHistory.reduce((sum, historyItem) => {
+          const cost = (historyItem.costPerKit || 0) * (historyItem.totalKitsBought || 0);
+          return sum + cost;
+        }, 0);
+      }
+    });
+    updateFinancialUI();
+  }, (error) => {
+    console.error('Error listening to inventory:', error);
+    const tbody = qs('inventory-list');
+    tbody.innerHTML = '';
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.setAttribute('colspan', '11');
+    td.className = 'px-6 py-4 whitespace-nowrap text-sm text-red-500';
+    td.textContent = 'Error loading inventory.';
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+  });
+}
+
+/* ============================
+ * Inventory/vialsSold helpers
+ * ============================ */
 // REPLACE your existing updateInventorySalesImpact with this:
 async function updateInventorySalesImpact(orderId, type, items) {
   // type: 'increment' when Unpaid -> Paid, 'decrement' when Paid -> Unpaid
@@ -898,15 +1024,6 @@ async function updateInventorySalesImpact(orderId, type, items) {
   }
 }
 
-
-
-    /**
-     * @description Compares two item lists and updates vialsSold based on the net change.
-     * @param {Array} prevItems The previous list of items.
-     * @param {Array} currentItems The current list of items.
-     */
-    // REPLACE the entire compareOrderItemsAndUpdateVials(...) with this:
-// Make it async and await the writes
 // REPLACE your compareOrderItemsAndUpdateVials with this:
 async function compareOrderItemsAndUpdateVials(prevItems, currentItems) {
   const changes = new Map(); // key -> net qty change
@@ -937,186 +1054,194 @@ async function compareOrderItemsAndUpdateVials(prevItems, currentItems) {
   await Promise.all(updates);
 }
 
+/* ============================
+ * Orders listener (cards + tracking UI)
+ * ============================ */
+function listenForOrders() {
+  const ordersContainer = qs('orders-container');
+  const loadingElement  = qs('loading-orders');
+  const ref = collection(db, ORDERS_COLLECTION_PATH);
 
+  onSnapshot(ref, (snap) => {
+    // --- 1) Handle *real* changes only (initial load won't trigger writes) ---
+    snap.docChanges().forEach((change) => {
+      const id = change.doc.id;
+      const currentOrder = { id, ...change.doc.data() };
 
-
-    /**
-     * @description Listens for order changes and processes ONLY real updates (no writes on first load).
-     * Uses docChanges() to differentiate added/modified/removed.
-     */
-    function listenForOrders() {
-      const ordersContainer = qs('orders-container');
-      const loadingElement  = qs('loading-orders');
-      const ref = collection(db, ORDERS_COLLECTION_PATH);
-
-      onSnapshot(ref, (snap) => {
-        // --- 1) Handle *real* changes only (initial load won't trigger writes) ---
-        snap.docChanges().forEach((change) => {
-          const id = change.doc.id;
-          const currentOrder = { id, ...change.doc.data() };
-
-          if (change.type === 'added') {
-            // First time seeing this doc in this client session — seed cache only.
-            previousOrdersCache.set(id, currentOrder);
-            return;
-          }
-
-          if (change.type === 'removed') {
-  const previousOrder = previousOrdersCache.get(id);
-  if (previousOrder && Array.isArray(previousOrder.items)) {
-    const wasPaid = previousOrder.paymentStatus === 'Paid';
-
-    (async () => {
-      for (const it of previousOrder.items) {
-        // Prefer id, fallback to name
-        const inv = it.id
-          ? inventoryCache[it.id]
-          : Object.values(inventoryCache).find(i => i.name === (it.name || ''));
-
-        if (!inv) continue;
-
-        const qty = Number(it.quantity || 0);
-        const updates = { currentInventory: increment(qty) };
-        if (wasPaid) updates.vialsSold = increment(-qty);
-
-        try {
-          await updateDoc(doc(db, INVENTORY_COLLECTION_PATH, inv.id), updates);
-        } catch (err) {
-          console.error(`Error rolling back inventory for ${inv.id}:`, err);
-        }
+      if (change.type === 'added') {
+        // First time seeing this doc in this client session — seed cache only.
+        previousOrdersCache.set(id, currentOrder);
+        return;
       }
-    })();
-  }
 
-  previousOrdersCache.delete(id);
-  return;
-}
+      if (change.type === 'removed') {
+        const previousOrder = previousOrdersCache.get(id);
+        if (previousOrder && Array.isArray(previousOrder.items)) {
+          const wasPaid = previousOrder.paymentStatus === 'Paid';
 
+          (async () => {
+            for (const it of previousOrder.items) {
+              // Prefer id, fallback to name
+              const inv = it.id
+                ? inventoryCache[it.id]
+                : Object.values(inventoryCache).find(i => i.name === (it.name || ''));
 
-          if (change.type === 'modified') {
-            const previousOrder = previousOrdersCache.get(id);
-if (!previousOrder) {
-  previousOrdersCache.set(id, currentOrder);
-  return;
-}
+              if (!inv) continue;
 
-const prevStatus = previousOrder.paymentStatus;
-const curStatus  = currentOrder.paymentStatus;
+              const qty = Number(it.quantity || 0);
+              const updates = { currentInventory: increment(qty) };
+              if (wasPaid) updates.vialsSold = increment(-qty);
 
-const wasPaid    = prevStatus === 'Paid';
-const wasUnpaid  = prevStatus === 'Unpaid';
-const isPaid     = curStatus  === 'Paid';
-const isUnpaid   = curStatus  === 'Unpaid';
+              try {
+                await updateDoc(doc(db, INVENTORY_COLLECTION_PATH, inv.id), updates);
+              } catch (err) {
+                console.error(`Error rolling back inventory for ${inv.id}:`, err);
+              }
+            }
+          })();
+        }
 
-// Only act if BOTH sides are strictly within {Paid, Unpaid}
-const prevIsPaidOrUnpaid = wasPaid || wasUnpaid;
-const curIsPaidOrUnpaid  = isPaid  || isUnpaid;
+        previousOrdersCache.delete(id);
+        return;
+      }
 
-if (prevIsPaidOrUnpaid && curIsPaidOrUnpaid) {
-  // Unpaid -> Paid: sell items
-  if (wasUnpaid && isPaid) {
-    updateInventorySalesImpact(currentOrder.id, 'increment', currentOrder.items);
-  }
-  // Paid -> Unpaid: return items to stock
-  else if (wasPaid && isUnpaid) {
-    updateInventorySalesImpact(currentOrder.id, 'decrement', currentOrder.items);
-  }
-  // Stayed Paid and items changed: adjust by the diff
-  else if (wasPaid && isPaid) {
-    const prevItemsStr = JSON.stringify(previousOrder.items || []);
-    const curItemsStr  = JSON.stringify(currentOrder.items  || []);
-    if (prevItemsStr !== curItemsStr) {
-      compareOrderItemsAndUpdateVials(previousOrder.items || [], currentOrder.items || []);
-    }
-  }
-}
-// Else: one side was Pending (or any other status) — do nothing for inventory
-
-// finally update cache
-previousOrdersCache.set(id, currentOrder);
-          }
-        });
-
-        // --- 2) Rebuild UI + aggregates from the full snapshot ---
-        loadingElement.style.display = 'none';
-        ordersContainer.innerHTML = '';
-
-        if (snap.empty) {
-          ordersContainer.innerHTML = `
-            <div class="text-center text-gray-500 py-12">
-              <p class="text-lg">No orders found.</p>
-              <p class="text-sm mt-2">Your orders will appear here once they've been placed.</p>
-            </div>`;
-          // Reset caches/metrics
-          allOrdersCache = [];
-          totalRevenue = 0;
-          previousOrdersCache.clear();
-          updateFinancialUI();
-          renderInfographics();
+      if (change.type === 'modified') {
+        const previousOrder = previousOrdersCache.get(id);
+        if (!previousOrder) {
+          previousOrdersCache.set(id, currentOrder);
           return;
         }
 
-        // Recompute allOrdersCache and metrics for UI
-        totalRevenue = 0;
-        allOrdersCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const prevStatus = previousOrder.paymentStatus;
+        const curStatus  = currentOrder.paymentStatus;
 
-        // Ensure cache mirrors latest state (for future change comparisons)
-        previousOrdersCache.clear();
-        snap.docs.forEach(d => previousOrdersCache.set(d.id, { id: d.id, ...d.data() }));
+        const wasPaid    = prevStatus === 'Paid';
+        const wasUnpaid  = prevStatus === 'Unpaid';
+        const isPaid     = curStatus  === 'Paid';
+        const isUnpaid   = curStatus  === 'Unpaid';
 
-        // Sort and render cards (same as before)
-        const sortedOrders = [...allOrdersCache].sort((a, b) => {
-          const timeA = a.timestamp?.toMillis?.() ?? 0;
-          const timeB = b.timestamp?.toMillis?.() ?? 0;
-          return timeB - timeA;
-        });
+        // Only act if BOTH sides are strictly within {Paid, Unpaid}
+        const prevIsPaidOrUnpaid = wasPaid || wasUnpaid;
+        const curIsPaidOrUnpaid  = isPaid  || isUnpaid;
 
-        sortedOrders.forEach((order) => {
-          const timestamp = formatTimestamp(order.timestamp);
-          const items = Array.isArray(order.items) ? order.items : [];
-          
-          const itemsList = items.map(item => {
-            const name = item?.name ?? 'Item';
-            const price = currency(item?.unitPrice ?? 0);
-            const quantity = item?.quantity ?? 1;
-            return `
-              <li class="flex justify-between items-center mb-1">
-                <span class="text-gray-400">${name} (x${quantity})</span>
-                <span class="font-medium text-cyan-300">$${price}</span>
-              </li>`;
-          }).join('');
-
-          const computed = items.reduce((sum, it) => sum + (Number(it?.unitPrice || 0) * Number(it?.quantity || 1)), 0);
-          const totalSafe = (order.total != null) ? currency(order.total) : currency(computed);
-
-          // pre-promo subtotal from items
-const prePromo = computed;
-// discounted subtotal saved by server (falls back to prePromo)
-const discountedSubtotal = Number(order.subtotal ?? prePromo);
-// $ off from items (percent/fixed promos)
-const itemDiscount = Math.max(0, prePromo - discountedSubtotal);
-// shipping info
-const shippingCostSafe = Number(order.shippingCost ?? 0);
-const hasFreeShip = shippingCostSafe === 0 && (order.promo?.type === 'free_shipping');
-// a small promo badge
-const promoBadgeHtml = order.promo
-  ? `<span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-cyan-900 text-cyan-200 border border-cyan-700">
-       Promo: ${order.promo.code || order.promo.label || '—'}${order.promo.type === 'percent' && order.promo.value ? ` (${order.promo.value}% )` : ''}
-     </span>`
-  : '';
-
-
-          if (order.paymentStatus === 'Paid') {
-            totalRevenue += Number(order.total || computed);
+        if (prevIsPaidOrUnpaid && curIsPaidOrUnpaid) {
+          // Unpaid -> Paid: sell items
+          if (wasUnpaid && isPaid) {
+            updateInventorySalesImpact(currentOrder.id, 'increment', currentOrder.items);
           }
+          // Paid -> Unpaid: return items to stock
+          else if (wasPaid && isUnpaid) {
+            updateInventorySalesImpact(currentOrder.id, 'decrement', currentOrder.items);
+          }
+          // Stayed Paid and items changed: adjust by the diff
+          else if (wasPaid && isPaid) {
+            const prevItemsStr = JSON.stringify(previousOrder.items || []);
+            const curItemsStr  = JSON.stringify(currentOrder.items  || []);
+            if (prevItemsStr !== curItemsStr) {
+              compareOrderItemsAndUpdateVials(previousOrder.items || [], currentOrder.items || []);
+            }
+          }
+        }
+        // Else: one side was Pending (or any other status) — do nothing for inventory
 
-          const status = order.paymentStatus || 'Unknown';
-          const statusClass = status === 'Paid' ? 'bg-lime-900 text-lime-300' : 'bg-rose-900 text-rose-300';
+        // finally update cache
+        previousOrdersCache.set(id, currentOrder);
+      }
+    });
 
-          const contact = order.contactInfo || {};
-          const orderIdText = order.orderId || order.id;
+    // --- 2) Rebuild UI + aggregates from the full snapshot ---
+    loadingElement.style.display = 'none';
+    ordersContainer.innerHTML = '';
 
-          const card = `
+    if (snap.empty) {
+      ordersContainer.innerHTML = `
+        <div class="text-center text-gray-500 py-12">
+          <p class="text-lg">No orders found.</p>
+          <p class="text-sm mt-2">Your orders will appear here once they've been placed.</p>
+        </div>`;
+      // Reset caches/metrics
+      allOrdersCache = [];
+      totalRevenue = 0;
+      previousOrdersCache.clear();
+      updateFinancialUI();
+      renderInfographics();
+      return;
+    }
+
+    // Recompute allOrdersCache and metrics for UI
+    totalRevenue = 0;
+    allOrdersCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    // Ensure cache mirrors latest state (for future change comparisons)
+    previousOrdersCache.clear();
+    snap.docs.forEach(d => previousOrdersCache.set(d.id, { id: d.id, ...d.data() }));
+
+    // Sort and render cards
+    const sortedOrders = [...allOrdersCache].sort((a, b) => {
+      const timeA = a.timestamp?.toMillis?.() ?? 0;
+      const timeB = b.timestamp?.toMillis?.() ?? 0;
+      return timeB - timeA;
+    });
+
+    sortedOrders.forEach((order) => {
+      const timestamp = formatTimestamp(order.timestamp);
+      const items = Array.isArray(order.items) ? order.items : [];
+      
+      const itemsList = items.map(item => {
+        const name = item?.name ?? 'Item';
+        const price = currency(item?.unitPrice ?? 0);
+        const quantity = item?.quantity ?? 1;
+        return `
+          <li class="flex justify-between items-center mb-1">
+            <span class="text-gray-400">${name} (x${quantity})</span>
+            <span class="font-medium text-cyan-300">$${price}</span>
+          </li>`;
+      }).join('');
+
+      const computed = items.reduce((sum, it) => sum + (Number(it?.unitPrice || 0) * Number(it?.quantity || 1)), 0);
+      const totalSafe = (order.total != null) ? currency(order.total) : currency(computed);
+
+      // pre-promo subtotal from items
+      const prePromo = computed;
+      // discounted subtotal saved by server (falls back to prePromo)
+      const discountedSubtotal = Number(order.subtotal ?? prePromo);
+      // $ off from items (percent/fixed promos)
+      const itemDiscount = Math.max(0, prePromo - discountedSubtotal);
+      // shipping info
+      const shippingCostSafe = Number(order.shippingCost ?? 0);
+      const hasFreeShip = shippingCostSafe === 0 && (order.promo?.type === 'free_shipping');
+      // a small promo badge
+      const promoBadgeHtml = order.promo
+        ? `<span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-cyan-900 text-cyan-200 border border-cyan-700">
+             Promo: ${order.promo.code || order.promo.label || '—'}${order.promo.type === 'percent' && order.promo.value ? ` (${order.promo.value}% )` : ''}
+           </span>`
+        : '';
+
+      if (order.paymentStatus === 'Paid') {
+        totalRevenue += Number(order.total || computed);
+      }
+
+      const status = order.paymentStatus || 'Unknown';
+      const statusClass = status === 'Paid' ? 'bg-lime-900 text-lime-300' : 'bg-rose-900 text-rose-300';
+
+      const contact = order.contactInfo || {};
+      const orderIdText = order.orderId || order.id;
+
+      // NEW: tracking info for card
+      const tracking = Array.isArray(order.tracking) ? order.tracking : [];
+      const trackingHtml = tracking.length
+        ? tracking.map((t,i) => {
+            const url = t.url || buildTrackingUrl(t.carrier, t.number);
+            const label = `${t.carrier || "Carrier"}: ${t.number || "—"}`;
+            return `
+              <div class="flex items-center gap-2 text-xs">
+                <a href="${url}" target="_blank" rel="noopener" class="underline text-cyan-300 hover:text-cyan-200">${label}</a>
+                <button type="button" class="btn-neon-cyan px-2 py-0.5 rounded copy-track" data-track="${t.number || ""}">Copy</button>
+              </div>`;
+          }).join("")
+        : `<span class="text-gray-500 text-xs italic">No tracking added yet</span>`;
+
+      const card = `
   <div class="order-card rounded-xl p-6 shadow-md border border-gray-700 relative">
     <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start border-b pb-4 mb-4 border-gray-700">
       <div>
@@ -1163,6 +1288,12 @@ const promoBadgeHtml = order.promo
       </div>
     </div>
 
+    <!-- NEW: Tracking section -->
+    <div class="mt-4">
+      <p class="font-semibold text-gray-400 mb-2">Tracking:</p>
+      <div class="space-y-1">${trackingHtml}</div>
+    </div>
+
     <div class="pt-10 bottom-4 right-4 flex flex-col items-end space-y-2">
       <button class="edit-order-btn btn-neon-lime text-xs px-3 py-1 rounded-lg" data-order-id="${order.id}">
         Edit Order
@@ -1172,164 +1303,173 @@ const promoBadgeHtml = order.promo
       </button>
     </div>
   </div>`;
-          ordersContainer.insertAdjacentHTML('beforeend', card);
+
+      ordersContainer.insertAdjacentHTML('beforeend', card);
+
+      // NEW: attach copy handlers for tracking (per-card)
+      const lastCard = ordersContainer.lastElementChild;
+      lastCard.querySelectorAll('.copy-track').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const val = btn.dataset.track || "";
+          if (val) copyToClipboard(val);
         });
-        updateFinancialUI();
-        renderInfographics();
-      }, (error) => {
-        console.error('Error listening to orders:', error);
-        showModal('Failed to load orders. Check console for details.');
-        const ordersContainer = qs('orders-container');
-        const loadingElement  = qs('loading-orders');
-        loadingElement.style.display = 'none';
-        ordersContainer.innerHTML = `
-          <div class="text-center text-red-500 py-12">
-            <p class="text-lg">An error occurred.</p>
-            <p class="text-sm mt-2">Check the console for more details.</p>
-          </div>`;
+      });
+    });
+
+    updateFinancialUI();
+    renderInfographics();
+  }, (error) => {
+    console.error('Error listening to orders:', error);
+    showModal('Failed to load orders. Check console for details.');
+    const ordersContainer = qs('orders-container');
+    const loadingElement  = qs('loading-orders');
+    loadingElement.style.display = 'none';
+    ordersContainer.innerHTML = `
+      <div class="text-center text-red-500 py-12">
+        <p class="text-lg">An error occurred.</p>
+        <p class="text-sm mt-2">Check the console for more details.</p>
+      </div>`;
+  });
+}
+
+/* ============================
+ * Infographics
+ * ============================ */
+function renderInfographics() {
+  const placeholder = qs('infographic-placeholder');
+  const containerMonthly = qs('list-monthly-revenue');
+  const containerCustomers = qs('list-top-customers');
+  const containerProductsRev = qs('list-top-products-revenue');
+  const containerProductsQty = qs('list-top-products-quantity');
+
+  containerMonthly.innerHTML = '';
+  containerCustomers.innerHTML = '';
+  containerProductsRev.innerHTML = '';
+  containerProductsQty.innerHTML = '';
+
+  if (allOrdersCache.length === 0) {
+    placeholder.classList.remove('hidden');
+    return;
+  }
+  placeholder.classList.add('hidden');
+
+  // 1. Monthly Revenue
+  const monthlyRevenue = {};
+  allOrdersCache.forEach(order => {
+    if (order.paymentStatus === 'Paid' && order.timestamp) {
+      const month = order.timestamp.toDate().toLocaleString('en-US', { month: 'short', year: '2-digit' });
+      monthlyRevenue[month] = (monthlyRevenue[month] || 0) + (order.total || 0);
+    }
+  });
+  const sortedMonths = Object.keys(monthlyRevenue).sort((a, b) => {
+    const [monthA, yearA] = a.split(' ');
+    const [monthB, yearB] = b.split(' ');
+    return new Date(`01 ${monthA} 20${yearA}`) - new Date(`01 ${monthB} 20${yearB}`);
+  });
+  sortedMonths.forEach(month => {
+    const li = document.createElement('li');
+    li.innerHTML = `<span>${month}</span><span class="font-bold text-cyan-300">$${currency(monthlyRevenue[month])}</span>`;
+    containerMonthly.appendChild(li);
+  });
+  
+  // 2. Top Customers
+  const customerRevenue = {};
+  allOrdersCache.forEach(order => {
+    if (order.paymentStatus === 'Paid' && order.contactInfo?.fullName) {
+      const name = order.contactInfo.fullName;
+      customerRevenue[name] = (customerRevenue[name] || 0) + (order.total || 0);
+    }
+  });
+  const sortedCustomers = Object.entries(customerRevenue).sort(([, a], [, b]) => b - a).slice(0, 5);
+  sortedCustomers.forEach(([name, revenue]) => {
+    const li = document.createElement('li');
+    li.innerHTML = `<span>${name}</span><span class="font-bold text-cyan-300">$${currency(revenue)}</span>`;
+    containerCustomers.appendChild(li);
+  });
+
+  // 3. Top Products by Revenue
+  const productRevenue = {};
+  allOrdersCache.forEach(order => {
+    if (order.paymentStatus === 'Paid' && order.items) {
+      order.items.forEach(item => {
+        const name = item.name || 'Unknown Item';
+        productRevenue[name] = (productRevenue[name] || 0) + (item.unitPrice * item.quantity);
       });
     }
+  });
+  const sortedProductsRev = Object.entries(productRevenue).sort(([, a], [, b]) => b - a).slice(0, 5);
+  sortedProductsRev.forEach(([name, revenue]) => {
+    const li = document.createElement('li');
+    li.innerHTML = `<span>${name}</span><span class="font-bold text-cyan-300">$${currency(revenue)}</span>`;
+    containerProductsRev.appendChild(li);
+  });
 
-    function renderInfographics() {
-      const placeholder = qs('infographic-placeholder');
-      const containerMonthly = qs('list-monthly-revenue');
-      const containerCustomers = qs('list-top-customers');
-      const containerProductsRev = qs('list-top-products-revenue');
-      const containerProductsQty = qs('list-top-products-quantity');
-
-      containerMonthly.innerHTML = '';
-      containerCustomers.innerHTML = '';
-      containerProductsRev.innerHTML = '';
-      containerProductsQty.innerHTML = '';
-
-      if (allOrdersCache.length === 0) {
-        placeholder.classList.remove('hidden');
-        return;
-      }
-      placeholder.classList.add('hidden');
-
-      // 1. Monthly Revenue
-      const monthlyRevenue = {};
-      allOrdersCache.forEach(order => {
-        if (order.paymentStatus === 'Paid' && order.timestamp) {
-          const month = order.timestamp.toDate().toLocaleString('en-US', { month: 'short', year: '2-digit' });
-          monthlyRevenue[month] = (monthlyRevenue[month] || 0) + (order.total || 0);
-        }
-      });
-      const sortedMonths = Object.keys(monthlyRevenue).sort((a, b) => {
-        const [monthA, yearA] = a.split(' ');
-        const [monthB, yearB] = b.split(' ');
-        return new Date(`01 ${monthA} 20${yearA}`) - new Date(`01 ${monthB} 20${yearB}`);
-      });
-      sortedMonths.forEach(month => {
-        const li = document.createElement('li');
-        li.innerHTML = `<span>${month}</span><span class="font-bold text-cyan-300">$${currency(monthlyRevenue[month])}</span>`;
-        containerMonthly.appendChild(li);
-      });
-      
-      // 2. Top Customers
-      const customerRevenue = {};
-      allOrdersCache.forEach(order => {
-        if (order.paymentStatus === 'Paid' && order.contactInfo?.fullName) {
-          const name = order.contactInfo.fullName;
-          customerRevenue[name] = (customerRevenue[name] || 0) + (order.total || 0);
-        }
-      });
-      const sortedCustomers = Object.entries(customerRevenue).sort(([, a], [, b]) => b - a).slice(0, 5);
-      sortedCustomers.forEach(([name, revenue]) => {
-        const li = document.createElement('li');
-        li.innerHTML = `<span>${name}</span><span class="font-bold text-cyan-300">$${currency(revenue)}</span>`;
-        containerCustomers.appendChild(li);
-      });
-
-      // 3. Top Products by Revenue
-      const productRevenue = {};
-      allOrdersCache.forEach(order => {
-        if (order.paymentStatus === 'Paid' && order.items) {
-          order.items.forEach(item => {
-            const name = item.name || 'Unknown Item';
-            productRevenue[name] = (productRevenue[name] || 0) + (item.unitPrice * item.quantity);
-          });
-        }
-      });
-      const sortedProductsRev = Object.entries(productRevenue).sort(([, a], [, b]) => b - a).slice(0, 5);
-      sortedProductsRev.forEach(([name, revenue]) => {
-        const li = document.createElement('li');
-        li.innerHTML = `<span>${name}</span><span class="font-bold text-cyan-300">$${currency(revenue)}</span>`;
-        containerProductsRev.appendChild(li);
-      });
-
-      // 4. Top Products by Quantity
-      const productQuantity = {};
-      allOrdersCache.forEach(order => {
-        if (order.items) {
-          order.items.forEach(item => {
-            const name = item.name || 'Unknown Item';
-            productQuantity[name] = (productQuantity[name] || 0) + (item.quantity || 0);
-          });
-        }
-      });
-      const sortedProductsQty = Object.entries(productQuantity).sort(([, a], [, b]) => b - a).slice(0, 5);
-      sortedProductsQty.forEach(([name, quantity]) => {
-        const li = document.createElement('li');
-        li.innerHTML = `<span>${name}</span><span class="font-bold text-cyan-300">${quantity} sold</span>`;
-        containerProductsQty.appendChild(li);
+  // 4. Top Products by Quantity
+  const productQuantity = {};
+  allOrdersCache.forEach(order => {
+    if (order.items) {
+      order.items.forEach(item => {
+        const name = item.name || 'Unknown Item';
+        productQuantity[name] = (productQuantity[name] || 0) + (item.quantity || 0);
       });
     }
+  });
+  const sortedProductsQty = Object.entries(productQuantity).sort(([, a], [, b]) => b - a).slice(0, 5);
+  sortedProductsQty.forEach(([name, quantity]) => {
+    const li = document.createElement('li');
+    li.innerHTML = `<span>${name}</span><span class="font-bold text-cyan-300">${quantity} sold</span>`;
+    containerProductsQty.appendChild(li);
+  });
+}
 
-    /**
-     * @description Creates a new item DOM element for the edit order modal.
-     * @param {object} item The item object.
-     * @returns {HTMLElement} The created DOM element.
-     */
-    function createOrderItemElement(item) {
-        const itemElement = document.createElement('div');
-        itemElement.className = 'edit-order-item flex items-center gap-2 p-2 border border-gray-700 rounded-md';
-        itemElement.dataset.itemName = item.name;
+/* ============================
+ * Edit Order Modal: items + totals
+ * ============================ */
+function createOrderItemElement(item) {
+  const itemElement = document.createElement('div');
+  itemElement.className = 'edit-order-item flex items-center gap-2 p-2 border border-gray-700 rounded-md';
+  itemElement.dataset.itemName = item.name;
 
-        // Use a span to display the item name since it's not editable.
-        const nameSpan = document.createElement('span');
-        nameSpan.textContent = item.name || 'Unknown Item';
-        nameSpan.className = 'flex-1 text-gray-300 text-sm font-semibold truncate';
+  const nameSpan = document.createElement('span');
+  nameSpan.textContent = item.name || 'Unknown Item';
+  nameSpan.className = 'flex-1 text-gray-300 text-sm font-semibold truncate';
 
-        const priceInput = document.createElement('input');
-        priceInput.type = 'number';
-        priceInput.step = '0.01';
-        priceInput.value = item.unitPrice || 0;
-        priceInput.className = 'w-24 bg-gray-800 border border-gray-600 rounded-md p-2 text-sm text-gray-300';
-        priceInput.placeholder = 'Price';
-        priceInput.dataset.field = 'unitPrice';
+  const priceInput = document.createElement('input');
+  priceInput.type = 'number';
+  priceInput.step = '0.01';
+  priceInput.value = item.unitPrice || 0;
+  priceInput.className = 'w-24 bg-gray-800 border border-gray-600 rounded-md p-2 text-sm text-gray-300';
+  priceInput.placeholder = 'Price';
+  priceInput.dataset.field = 'unitPrice';
 
-        const quantityInput = document.createElement('input');
-        quantityInput.type = 'number';
-        quantityInput.value = item.quantity || 1;
-        quantityInput.min = '1';
-        quantityInput.className = 'w-16 bg-gray-800 border border-gray-600 rounded-md p-2 text-sm text-gray-300';
-        quantityInput.placeholder = 'Qty';
-        quantityInput.dataset.field = 'quantity';
+  const quantityInput = document.createElement('input');
+  quantityInput.type = 'number';
+  quantityInput.value = item.quantity || 1;
+  quantityInput.min = '1';
+  quantityInput.className = 'w-16 bg-gray-800 border border-gray-600 rounded-md p-2 text-sm text-gray-300';
+  quantityInput.placeholder = 'Qty';
+  quantityInput.dataset.field = 'quantity';
 
-        const removeButton = document.createElement('button');
-        removeButton.type = 'button';
-        removeButton.className = 'btn-neon-red px-2 py-1 rounded-lg font-semibold text-xs ml-auto';
-        removeButton.textContent = 'Remove';
-        removeButton.addEventListener('click', () => {
-            itemElement.remove();
-            recalcEditModalTotal();
-        });
+  const removeButton = document.createElement('button');
+  removeButton.type = 'button';
+  removeButton.className = 'btn-neon-red px-2 py-1 rounded-lg font-semibold text-xs ml-auto';
+  removeButton.textContent = 'Remove';
+  removeButton.addEventListener('click', () => {
+    itemElement.remove();
+    recalcEditModalTotal();
+  });
 
-        priceInput.addEventListener('input', recalcEditModalTotal);
-        quantityInput.addEventListener('input', recalcEditModalTotal);
+  priceInput.addEventListener('input', recalcEditModalTotal);
+  quantityInput.addEventListener('input', recalcEditModalTotal);
 
-        itemElement.appendChild(nameSpan);
-        itemElement.appendChild(priceInput);
-        itemElement.appendChild(quantityInput);
-        itemElement.appendChild(removeButton);
+  itemElement.appendChild(nameSpan);
+  itemElement.appendChild(priceInput);
+  itemElement.appendChild(quantityInput);
+  itemElement.appendChild(removeButton);
 
-        return itemElement;
-    }
+  return itemElement;
+}
 
-
-    // ADD this helper somewhere above openEditModal/handleEditOrder:
 function recalcEditModalTotal() {
   const itemEls = document.querySelectorAll('#edit-order-items-list .edit-order-item');
   let total = 0;
@@ -1338,54 +1478,90 @@ function recalcEditModalTotal() {
     const qty   = parseInt(el.querySelector('[data-field="quantity"]').value, 10) || 0;
     total += price * qty;
   });
-  // If you have shipping/tax fields, add here before assigning:
   qs('edit-order-total').value = total.toFixed(2);
 }
 
+/* ============================
+ * Edit Order Modal: open/close
+ * ============================ */
+function openEditModal(orderData) {
+  qs('edit-order-id').value = orderData.id;
+  qs('edit-contact-name').value = orderData.contactInfo?.fullName || '';
+  qs('edit-order-total').value = orderData.total ?? 0;
+  qs('edit-order-status').value = orderData.paymentStatus ?? 'Unpaid';
+  
+  // NEW: show preserved shipping (and free shipping badge) in modal
+const shippingCost = Number(orderData?.shippingCost ?? 0);
+const freeShip = (orderData?.promo?.type === 'free_shipping') || shippingCost === 0;
+const shipEl = document.getElementById('edit-shipping-display');
+if (shipEl) {
+  shipEl.textContent = freeShip ? 'FREE' : `$${currency(shippingCost)}`;
+}
 
-    /**
-     * @description Opens the edit order modal and populates it with the order data.
-     * @param {object} orderData The Firestore document data for the order.
-     */
-    function openEditModal(orderData) {
-        qs('edit-order-id').value = orderData.id;
-        qs('edit-contact-name').value = orderData.contactInfo?.fullName || '';
-        qs('edit-order-total').value = orderData.total ?? 0;
-        qs('edit-order-status').value = orderData.paymentStatus ?? 'Unpaid';
-        
-        const itemsListContainer = qs('edit-order-items-list');
-        itemsListContainer.innerHTML = '';
-        (orderData.items || []).forEach(item => {
-            const itemElement = createOrderItemElement(item);
-            itemsListContainer.appendChild(itemElement);
-        });
+  
+  const itemsListContainer = qs('edit-order-items-list');
+  itemsListContainer.innerHTML = '';
+  (orderData.items || []).forEach(item => {
+    const itemElement = createOrderItemElement(item);
+    itemsListContainer.appendChild(itemElement);
+  });
 
-        recalcEditModalTotal();
+  // NEW: seed tracking UI
+  const trackingArr = Array.isArray(orderData.tracking) ? orderData.tracking : [];
+  setTrackingHidden(trackingArr);
+  renderTrackingList(trackingArr);
 
-        editOrderModal.classList.remove('hidden');
-        editOrderBackdrop.classList.remove('hidden');
-        editOrderModal.classList.add('is-open');
-        editOrderBackdrop.classList.add('is-open');
-    }
+  recalcEditModalTotal();
 
-    /**
-     * @description Closes the edit order modal.
-     */
-    function closeEditModal() {
-        editOrderModal.classList.remove('is-open');
-        editOrderBackdrop.classList.remove('is-open');
-        // Use a timeout to hide the modal after the transition
-        setTimeout(() => {
-          editOrderModal.classList.add('hidden');
-          editOrderBackdrop.classList.add('hidden');
-        }, 300);
-    }
+  editOrderModal.classList.remove('hidden');
+  editOrderBackdrop.classList.remove('hidden');
+  editOrderModal.classList.add('is-open');
+  editOrderBackdrop.classList.add('is-open');
+}
 
-    /**
-     * @description Handles the form submission to update the order.
-     * @param {Event} e The form submit event.
-     */
-    async function handleEditOrder(e) {
+function closeEditModal() {
+  editOrderModal.classList.remove('is-open');
+  editOrderBackdrop.classList.remove('is-open');
+  setTimeout(() => {
+    editOrderModal.classList.add('hidden');
+    editOrderBackdrop.classList.add('hidden');
+  }, 300);
+}
+
+/* ============================
+ * Edit Order Modal: add tracking entry
+ * ============================ */
+function handleAddTrackingEntry() {
+  const carrierSel = qs('edit-track-carrier');
+  const numberInp  = qs('edit-track-number');
+  if (!carrierSel || !numberInp) {
+    showModal('Tracking UI is not available in this view.');
+    return;
+  }
+  const carrier = carrierSel.value.trim();
+  const number  = numberInp.value.trim();
+  if (!carrier || !number) {
+    showModal('Please select a carrier and enter a tracking number.');
+    return;
+  }
+  const t = {
+    carrier,
+    number,
+    url: buildTrackingUrl(carrier, number),
+    addedAt: new Date().toISOString()
+  };
+  const cur = readTrackingFromModal();
+  cur.push(t);
+  setTrackingHidden(cur);
+  renderTrackingList(cur);
+  numberInp.value = '';
+}
+
+/* ============================
+ * Save / Delete Order
+ * ============================ */
+// REPLACE: Save without wiping shipping; recompute subtotal, reapply promo, and set total properly
+async function handleEditOrder(e) {
   e.preventDefault();
   const orderId = qs('edit-order-id').value;
   const paymentStatus = qs('edit-order-status').value;
@@ -1396,24 +1572,29 @@ function recalcEditModalTotal() {
     return;
   }
 
+  // Find current order to preserve shipping & promo
+  const existing = allOrdersCache.find(o => o.id === orderId) || {};
+  const existingShipping = Number(existing.shippingCost ?? 0);
+  const promo = existing.promo || null;
+
   // 1) Gather items from DOM
   const updatedItems = [];
-  const itemElements = document.querySelectorAll('#edit-order-items-list .edit-order-item');
-  for (const el of itemElements) {
+  const itemEls = document.querySelectorAll('#edit-order-items-list .edit-order-item');
+  for (const el of itemEls) {
     const itemName = el.dataset.itemName;
-    const price = parseFloat(el.querySelector('[data-field="unitPrice"]').value);
-    const qty   = parseInt(el.querySelector('[data-field="quantity"]').value, 10);
+    const unitPrice = parseFloat(el.querySelector('[data-field="unitPrice"]').value);
+    const quantity  = parseInt(el.querySelector('[data-field="quantity"]').value, 10);
 
-    if (isNaN(price) || price < 0) {
-      showModal(`Invalid price for item "${itemName}". Please enter a positive number.`);
+    if (!itemName) { showModal('One of the items is missing a name.'); return; }
+    if (!Number.isFinite(unitPrice) || unitPrice < 0) {
+      showModal(`Invalid price for item "${itemName}". Enter a non-negative number.`);
       return;
     }
-    if (isNaN(qty) || qty <= 0) {
-      showModal(`Invalid quantity for item "${itemName}". Please enter a positive integer.`);
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+      showModal(`Invalid quantity for item "${itemName}". Enter a positive integer.`);
       return;
     }
-
-    updatedItems.push({ name: itemName, unitPrice: price, quantity: qty });
+    updatedItems.push({ name: itemName, unitPrice, quantity });
   }
 
   if (updatedItems.length === 0) {
@@ -1421,19 +1602,36 @@ function recalcEditModalTotal() {
     return;
   }
 
-  // 2) Compute a fresh total from items (add shipping/tax here if you have them)
-  let t = 0;
-  updatedItems.forEach(i => { t += Number(i.unitPrice) * Number(i.quantity); });
-  const total = Number.isFinite(t) ? Number(t.toFixed(2)) : 0;
+  // 2) Compute pre-discount items subtotal
+  let preSubtotal = 0;
+  for (const i of updatedItems) preSubtotal += Number(i.unitPrice) * Number(i.quantity);
+  preSubtotal = Number(preSubtotal.toFixed(2));
 
-  // 3) Persist
+  // 3) Reapply existing promo to get discounted subtotal
+  const discountedSubtotal = applyPromoSubtotal(preSubtotal, promo);
+
+  // 4) Compute shipping to apply (free shipping promo zeroes it)
+  const shippingApplied = (promo?.type === 'free_shipping') ? 0 : existingShipping;
+
+  // 5) Final total
+  const total = Number((discountedSubtotal + shippingApplied).toFixed(2));
+
+  // 6) Persist (also keep tracking edits if you added those earlier)
   try {
     const orderRef = doc(db, ORDERS_COLLECTION_PATH, orderId);
+    const newTracking = readTrackingFromModal ? readTrackingFromModal() : (existing.tracking || []);
     await updateDoc(orderRef, {
+      // persist calculated fields
+      subtotal: discountedSubtotal,
       total,
+      // preserve shipping cost as-is
+      shippingCost: existingShipping,
+      // update rest
       paymentStatus,
       'contactInfo.fullName': newCustomerName,
-      items: updatedItems
+      items: updatedItems,
+      promo: promo || null,
+      tracking: newTracking
     });
     showModal('Order updated successfully!');
     closeEditModal();
@@ -1444,392 +1642,336 @@ function recalcEditModalTotal() {
 }
 
 
-    /**
-     * @description Deletes an order from the database.
-     * @param {string} orderId The ID of the order to delete.
-     */
-    async function handleDeleteOrder(orderId) {
-        const confirmed = window.confirm(`Are you sure you want to delete order ${orderId}? This cannot be undone.`);
-        if (!confirmed) {
-            return;
-        }
+async function handleDeleteOrder(orderId) {
+  const confirmed = window.confirm(`Are you sure you want to delete order ${orderId}? This cannot be undone.`);
+  if (!confirmed) return;
 
-        try {
-            await deleteDoc(doc(db, ORDERS_COLLECTION_PATH, orderId));
-            showModal(`Order ${orderId} has been deleted.`);
-            closeEditModal();
-        } catch (error) {
-            console.error('Error deleting order:', error);
-            showModal(`Failed to delete order: ${error.message}`);
-        }
-    }
-    
-    /**
-     * @description Handles the form submission to add a new inventory item.
-     * @param {Event} e The form submit event.
-     */
-    async function handleAddItem(e) {
-        e.preventDefault();
-        const name = newItemNameInput.value.trim();
-        const code = newItemCodeInput.value.trim();
-        const blend = newItemBlendInput.checked;
-        const currentInventory = parseInt(newTotalKitsBoughtInput.value, 10) * parseInt(newTotalVialsPerKitInput.value, 10);
-        const sellPricePerVial = parseFloat(newItemPriceInput.value);
-        const totalVialWeight = parseFloat(newItemTotalVialWeightInput.value);
-        const image = newItemImageInput.value.trim();
-        const coa = newItemCoaInput.value.trim();
-        const vialsSold = parseInt(newItemVialsSoldInput.value, 10);
-        
-        const costPerKit = parseFloat(newCostPerKitInput.value);
-        const totalKitsBought = parseInt(newTotalKitsBoughtInput.value, 10);
-        const totalVialsPerKit = parseInt(newTotalVialsPerKitInput.value, 10);
-        const purchaseDate = newPurchaseDateInput.value;
+  try {
+    await deleteDoc(doc(db, ORDERS_COLLECTION_PATH, orderId));
+    showModal(`Order ${orderId} has been deleted.`);
+    closeEditModal();
+  } catch (error) {
+    console.error('Error deleting order:', error);
+    showModal(`Failed to delete order: ${error.message}`);
+  }
+}
 
+/* ============================
+ * Add Inventory Item
+ * ============================ */
+async function handleAddItem(e) {
+  e.preventDefault();
+  const name = newItemNameInput.value.trim();
+  const code = newItemCodeInput.value.trim();
+  const blend = newItemBlendInput.checked;
+  const currentInventory = parseInt(newTotalKitsBoughtInput.value, 10) * parseInt(newTotalVialsPerKitInput.value, 10);
+  const sellPricePerVial = parseFloat(newItemPriceInput.value);
+  const totalVialWeight = parseFloat(newItemTotalVialWeightInput.value);
+  const image = newItemImageInput.value.trim();
+  const coa = newItemCoaInput.value.trim();
+  const vialsSold = parseInt(newItemVialsSoldInput.value, 10);
+  
+  const costPerKit = parseFloat(newCostPerKitInput.value);
+  const totalKitsBought = parseInt(newTotalKitsBoughtInput.value, 10);
+  const totalVialsPerKit = parseInt(newTotalVialsPerKitInput.value, 10);
+  const purchaseDate = newPurchaseDateInput.value;
 
-      if (!name || !code) {
-        showModal('Item Name and Code are required.');
-        return;
-      }
-      if (isNaN(currentInventory) || currentInventory < 0) {
-        showModal('Initial Inventory must be a non-negative number.');
-        return;
-      }
-      if (isNaN(sellPricePerVial) || sellPricePerVial < 0) {
-        showModal('Sell Price must be a non-negative number.');
-        return;
-      }
-      if (isNaN(totalVialWeight) || totalVialWeight < 0) {
-        showModal('Total Vial Weight must be a non-negative number.');
-        return;
-      }
-      if (isNaN(vialsSold) || vialsSold < 0) {
-        showModal('Vials Sold must be a non-negative number.');
-        return;
-      }
-      if (isNaN(costPerKit) || costPerKit < 0) {
-        showModal('Cost Per Kit must be a non-negative number.');
-        return;
-      }
-      if (isNaN(totalKitsBought) || totalKitsBought < 0) {
-        showModal('Total Kits Bought must be a non-negative number.');
-        return;
-      }
-      if (isNaN(totalVialsPerKit) || totalVialsPerKit < 0) {
-        showModal('Total Vials Per Kit must be a non-negative number.');
-        return;
-      }
-      if (!purchaseDate) {
-        showModal('Purchase Date is required.');
-        return;
-      }
+  if (!name || !code) { showModal('Item Name and Code are required.'); return; }
+  if (isNaN(currentInventory) || currentInventory < 0) { showModal('Initial Inventory must be a non-negative number.'); return; }
+  if (isNaN(sellPricePerVial) || sellPricePerVial < 0) { showModal('Sell Price must be a non-negative number.'); return; }
+  if (isNaN(totalVialWeight) || totalVialWeight < 0) { showModal('Total Vial Weight must be a non-negative number.'); return; }
+  if (isNaN(vialsSold) || vialsSold < 0) { showModal('Vials Sold must be a non-negative number.'); return; }
+  if (isNaN(costPerKit) || costPerKit < 0) { showModal('Cost Per Kit must be a non-negative number.'); return; }
+  if (isNaN(totalKitsBought) || totalKitsBought < 0) { showModal('Total Kits Bought must be a non-negative number.'); return; }
+  if (isNaN(totalVialsPerKit) || totalVialsPerKit < 0) { showModal('Total Vials Per Kit must be a non-negative number.'); return; }
+  if (!purchaseDate) { showModal('Purchase Date is required.'); return; }
 
-      const newCostEntry = {
-        costPerKit,
-        purchaseDate,
-        totalKitsBought,
-        totalVialWeightInMg: totalVialWeight,
-        totalVialsPerKit
-      };
-      
-      const newItem = {
-        name,
-        code,
-        blend,
-        currentInventory,
-        sellPricePerVial,
-        totalVialWeight,
-        image: image || 'N/A',
-        coa: coa || 'N/A',
-        vialsSold,
-        costHistory: [newCostEntry]
-      };
-      
-      try {
-        const itemRef = doc(db, INVENTORY_COLLECTION_PATH, code);
-        await setDoc(itemRef, newItem);
-        showModal('New item added to inventory successfully!');
-        addItemForm.reset();
-      } catch (error) {
-        console.error('Error adding new item:', error);
-        showModal(`Failed to add new item: ${error.message}`);
-      }
-    }
-    
-    /**
-     * @description Handles the form submission to add a new cost history entry to an existing item.
-     * @param {Event} e The form submit event.
-     */
-    async function handleNewCostHistory(e) {
-        e.preventDefault();
-        const itemId = existingItemSelect.value;
-        
-        if (!itemId) {
-            showModal('Please select an item from the dropdown.');
-            return;
-        }
-        
-        const costPerKit = parseFloat(costPerKitInput.value);
-        const totalKitsBought = parseInt(totalKitsBoughtInput.value, 10);
-        const totalVialsPerKit = parseInt(totalVialsPerKitInput.value, 10);
-        const purchaseDate = purchaseDateInput.value;
-        const totalVialWeight = inventoryCache[itemId]?.totalVialWeight; // Use existing weight
+  const newCostEntry = {
+    costPerKit,
+    purchaseDate,
+    totalKitsBought,
+    totalVialWeightInMg: totalVialWeight,
+    totalVialsPerKit
+  };
+  
+  const newItem = {
+    name,
+    code,
+    blend,
+    currentInventory,
+    sellPricePerVial,
+    totalVialWeight,
+    image: image || 'N/A',
+    coa: coa || 'N/A',
+    vialsSold,
+    costHistory: [newCostEntry]
+  };
+  
+  try {
+    const itemRef = doc(db, INVENTORY_COLLECTION_PATH, code);
+    await setDoc(itemRef, newItem);
+    showModal('New item added to inventory successfully!');
+    addItemForm.reset();
+  } catch (error) {
+    console.error('Error adding new item:', error);
+    showModal(`Failed to add new item: ${error.message}`);
+  }
+}
 
-        if (isNaN(costPerKit) || costPerKit < 0) {
-            showModal('Cost Per Kit must be a non-negative number.');
-            return;
-        }
-        if (isNaN(totalKitsBought) || totalKitsBought < 0) {
-            showModal('Cost Per Kit must be a non-negative number.');
-            return;
-        }
-        if (isNaN(totalVialsPerKit) || totalVialsPerKit < 0) {
-            showModal('Total Vials Per Kit must be a non-negative number.');
-            return;
-        }
-        if (!purchaseDate) {
-            showModal('Purchase Date is required.');
-            return;
-        }
+/* ============================
+ * Add Cost History
+ * ============================ */
+async function handleNewCostHistory(e) {
+  e.preventDefault();
+  const itemId = existingItemSelect.value;
+  
+  if (!itemId) { showModal('Please select an item from the dropdown.'); return; }
+  
+  const costPerKit = parseFloat(costPerKitInput.value);
+  const totalKitsBought = parseInt(totalKitsBoughtInput.value, 10);
+  const totalVialsPerKit = parseInt(totalVialsPerKitInput.value, 10);
+  const purchaseDate = purchaseDateInput.value;
+  const totalVialWeight = inventoryCache[itemId]?.totalVialWeight;
 
-        const newCostEntry = {
-            costPerKit,
-            purchaseDate,
-            totalKitsBought,
-            totalVialWeightInMg: totalVialWeight,
-            totalVialsPerKit
-        };
-        
-        try {
-            const itemRef = doc(db, INVENTORY_COLLECTION_PATH, itemId);
-            await updateDoc(itemRef, {
-                costHistory: arrayUnion(newCostEntry)
-            });
-            showModal('New cost history added successfully!');
-            addCostForm.reset();
-        } catch (error) {
-            console.error('Error adding new cost history:', error);
-            showModal(`Failed to add new cost history: ${error.message}`);
-        }
-    }
-    
-    // Function to open the Add Cost History modal
-    function openAddCostModal() {
-      addCostModal.classList.add('is-open');
-    }
-    
-    // Function to close the Add Cost History modal
-    function closeAddCostModal() {
-      addCostModal.classList.remove('is-open');
-    }
+  if (isNaN(costPerKit) || costPerKit < 0) { showModal('Cost Per Kit must be a non-negative number.'); return; }
+  if (isNaN(totalKitsBought) || totalKitsBought < 0) { showModal('Cost Per Kit must be a non-negative number.'); return; }
+  if (isNaN(totalVialsPerKit) || totalVialsPerKit < 0) { showModal('Total Vials per Kit must be a non-negative number.'); return; }
+  if (!purchaseDate) { showModal('Purchase Date is required.'); return; }
 
-    // ADDED: Build a clean order payload & call the callable to resend
-    async function resendOrderEmailById(orderId, buttonEl) {
-      const order = allOrdersCache.find(o => o.id === orderId);
-      if (!order) {
-        showModal(`Order not found: ${orderId}`);
-        return;
-      }
-
-      // Build a safe, minimal snapshot (ensures orderId exists)
-      const items = Array.isArray(order.items) ? order.items.map(i => ({
-        id: i?.id ?? "",
-        name: i?.name ?? "",
-        quantity: Number(i?.quantity ?? 0),
-        unitPrice: Number(i?.unitPrice ?? 0)
-      })) : [];
-
-      const computedSubtotal = items.reduce((s, i) => s + (Number(i.unitPrice) * Number(i.quantity)), 0);
-      const shipping = Number(order.shippingCost ?? 0);
-      const total = Number(order.total ?? (computedSubtotal + shipping));
-
-      const payloadOrder = {
-        orderId: order.orderId || order.id,
-        contactInfo: {
-          fullName: order.contactInfo?.fullName ?? "",
-          email: order.contactInfo?.email ?? "",
-          phone: order.contactInfo?.phone ?? "",
-          shippingAddress: order.contactInfo?.shippingAddress ?? ""
-        },
-        items,
-        subtotal: Number(order.subtotal ?? computedSubtotal),
-        shippingCost: shipping,
-        total,
-        paymentStatus: order.paymentStatus ?? "unpaid",
-        timestampISO:
-          (order.timestamp?.toDate?.() && order.timestamp.toDate().toISOString()) ||
-          new Date().toISOString()
-      };
-
-      // UI: disable while sending
-      const originalText = buttonEl?.textContent;
-      if (buttonEl) {
-        buttonEl.disabled = true;
-        buttonEl.textContent = "Resending...";
-        buttonEl.classList.add("opacity-70", "cursor-not-allowed");
-      }
-
-      try {
-        const res = await resendFn({ order: payloadOrder }); // calls Cloud Function
-        showModal(`Resent confirmation to ${payloadOrder.contactInfo.email}`);
-      } catch (err) {
-        console.error("Resend failed:", err);
-        showModal(`Resend failed: ${err.message || "See console"}`);
-      } finally {
-        if (buttonEl) {
-          buttonEl.disabled = false;
-          buttonEl.textContent = originalText || "Resend Email";
-          buttonEl.classList.remove("opacity-70", "cursor-not-allowed");
-        }
-      }
-    }
-    
-    /**
-     * @description Handles the addition of a new item to the order edit modal.
-     */
-    function handleAddItemToOrder() {
-        const select = qs('add-item-select');
-        const quantityInput = qs('add-item-quantity');
-        const selectedId = select.value;
-        const quantity = parseInt(quantityInput.value, 10);
-
-        if (!selectedId) {
-            showModal('Please select an item to add.');
-            return;
-        }
-
-        if (isNaN(quantity) || quantity <= 0) {
-            showModal('Quantity must be a positive number.');
-            return;
-        }
-
-        const selectedItem = inventoryCache[selectedId];
-        if (!selectedItem) {
-            showModal('Selected item not found in inventory.');
-            return;
-        }
-
-        const newItem = {
-            id: selectedItem.id,
-            name: selectedItem.name,
-            unitPrice: selectedItem.sellPricePerVial,
-            quantity: quantity
-        };
-
-        const itemsListContainer = qs('edit-order-items-list');
-        const newItemElement = createOrderItemElement(newItem);
-        itemsListContainer.appendChild(newItemElement);
-
-        recalcEditModalTotal();
-        
-        // Reset the form fields
-        select.value = '';
-        quantityInput.value = '1';
-    }
-
-
-    /**
-     * @description Attaches all event listeners for the application.
-     */
-    function attachEventListeners() {
-      // Event listener for the login form.
-      qs('auth-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const email = qs('email').value;
-        const password = qs('password').value;
-        
-        if (!isValidEmail(email)) {
-          showModal('Please enter a valid email address.');
-          return;
-        }
-
-        try {
-            await signInWithEmailAndPassword(auth, email, password);
-            showModal('Login successful!');
-        } catch (error) {
-            console.error("Login failed:", error);
-            let errorMessage = "Login failed. Check your credentials.";
-            if (error.code === 'auth/wrong-password') {
-                errorMessage = "Incorrect password. Please try again.";
-            } else if (error.code === 'auth/user-not-found') {
-                errorMessage = "Admin user not found.";
-            }
-            showModal(errorMessage);
-        }
-      });
-      
-      qs('signout-btn').addEventListener('click', async () => {
-        try {
-          await signOut(auth);
-          showModal('Signed out successfully.');
-        } catch (error) {
-          console.error("Sign out failed:", error);
-          showModal(`Sign out failed: ${error.message}`);
-        }
-      });
-      
-      qs('close-modal-btn').addEventListener('click', () => qs('alert-modal').classList.add('hidden'));
-
-      // Event delegation for dynamically created Edit + Resend buttons
-      qs('orders-container').addEventListener('click', (e) => {
-          const editButton = e.target.closest('.edit-order-btn');
-          if (editButton) {
-              const orderId = editButton.dataset.orderId;
-              const orderToEdit = allOrdersCache.find(order => order.id === orderId);
-              if (orderToEdit) {
-                  openEditModal(orderToEdit);
-              }
-              return;
-          }
-
-          // ADDED: Handle Resend Email button
-          const resendButton = e.target.closest('.resend-order-btn');
-          if (resendButton) {
-            const orderId = resendButton.dataset.orderId;
-            resendOrderEmailById(orderId, resendButton);
-          }
-      });
-
-      // Event listeners for the new Order Edit Modal
-      editOrderForm.addEventListener('submit', handleEditOrder);
-      closeEditModalBtn.addEventListener('click', closeEditModal);
-      editOrderBackdrop.addEventListener('click', closeEditModal);
-      deleteOrderBtn.addEventListener('click', (e) => {
-          const orderId = qs('edit-order-id').value;
-          if (orderId) {
-              handleDeleteOrder(orderId);
-          } else {
-              showModal('No order selected to delete.');
-          }
-      });
-      
-      // New event listener for the Add Item form
-      addItemForm.addEventListener('submit', handleAddItem);
-      
-      // New event listener for the Add Cost History form
-      addCostForm.addEventListener('submit', handleNewCostHistory);
-      
-      // Event listeners for the new Add Cost History modal
-      addCostBtn.addEventListener('click', openAddCostModal);
-      closeAddCostModalBtn.addEventListener('click', closeAddCostModal);
-      
-      // ADDED: Listener for the "Add" button in the Edit Order modal
-      qs('add-item-to-order-btn').addEventListener('click', handleAddItemToOrder);
-    }
-
-    // Boot
-    window.addEventListener('load', () => {
-      try {
-        onAuthStateChanged(auth, (user) => {
-          console.log('Auth state changed:', user ? user.uid : 'None');
-          updateUI(user);
-        });
-        
-        attachEventListeners();
-      } catch (err) {
-        console.error('Init failed:', err);
-        qs('status').textContent = `Error: ${err.message}`;
-      }
+  const newCostEntry = {
+    costPerKit,
+    purchaseDate,
+    totalKitsBought,
+    totalVialWeightInMg: totalVialWeight,
+    totalVialsPerKit
+  };
+  
+  try {
+    const itemRef = doc(db, INVENTORY_COLLECTION_PATH, itemId);
+    await updateDoc(itemRef, {
+      costHistory: arrayUnion(newCostEntry)
     });
+    showModal('New cost history added successfully!');
+    addCostForm.reset();
+  } catch (error) {
+    console.error('Error adding new cost history:', error);
+    showModal(`Failed to add new cost history: ${error.message}`);
+  }
+}
+
+function openAddCostModal() { addCostModal.classList.add('is-open'); }
+function closeAddCostModal() { addCostModal.classList.remove('is-open'); }
+
+/* ============================
+ * Resend order email (includes tracking)
+ * ============================ */
+async function resendOrderEmailById(orderId, buttonEl) {
+  const order = allOrdersCache.find(o => o.id === orderId);
+  if (!order) {
+    showModal(`Order not found: ${orderId}`);
+    return;
+  }
+
+  // Build a safe, minimal snapshot
+  const items = Array.isArray(order.items) ? order.items.map(i => ({
+    id: i?.id ?? "",
+    name: i?.name ?? "",
+    quantity: Number(i?.quantity ?? 0),
+    unitPrice: Number(i?.unitPrice ?? 0)
+  })) : [];
+
+  const computedSubtotal = items.reduce((s, i) => s + (Number(i.unitPrice) * Number(i.quantity)), 0);
+  const shipping = Number(order.shippingCost ?? 0);
+  const total = Number(order.total ?? (computedSubtotal + shipping));
+
+  const payloadOrder = {
+    orderId: order.orderId || order.id,
+    contactInfo: {
+      fullName: order.contactInfo?.fullName ?? "",
+      email: order.contactInfo?.email ?? "",
+      phone: order.contactInfo?.phone ?? "",
+      shippingAddress: order.contactInfo?.shippingAddress ?? ""
+    },
+    items,
+    subtotal: Number(order.subtotal ?? computedSubtotal),
+    shippingCost: shipping,
+    total,
+    paymentStatus: order.paymentStatus ?? "unpaid",
+    timestampISO:
+      (order.timestamp?.toDate?.() && order.timestamp.toDate().toISOString()) ||
+      new Date().toISOString(),
+    // NEW: tracking for email template
+    tracking: (Array.isArray(order.tracking) ? order.tracking : []).map(t => ({
+      carrier: t.carrier || "",
+      number:  t.number  || "",
+      url:     t.url || buildTrackingUrl(t.carrier, t.number)
+    }))
+  };
+
+  // UI: disable while sending
+  const originalText = buttonEl?.textContent;
+  if (buttonEl) {
+    buttonEl.disabled = true;
+    buttonEl.textContent = "Resending...";
+    buttonEl.classList.add("opacity-70", "cursor-not-allowed");
+  }
+
+  try {
+    await resendFn({ order: payloadOrder }); // calls Cloud Function
+    showModal(`Resent confirmation to ${payloadOrder.contactInfo.email}`);
+  } catch (err) {
+    console.error("Resend failed:", err);
+    showModal(`Resend failed: ${err.message || "See console"}`);
+  } finally {
+    if (buttonEl) {
+      buttonEl.disabled = false;
+      buttonEl.textContent = originalText || "Resend Email";
+      buttonEl.classList.remove("opacity-70", "cursor-not-allowed");
+    }
+  }
+}
+
+/* ============================
+ * Edit modal: add item to order
+ * ============================ */
+function handleAddItemToOrder() {
+  const select = qs('add-item-select');
+  const quantityInput = qs('add-item-quantity');
+  if (!select || !quantityInput) {
+    showModal('Add-item UI is not available in this view.');
+    return;
+  }
+  const selectedId = select.value;
+  const quantity = parseInt(quantityInput.value, 10);
+
+  if (!selectedId) { showModal('Please select an item to add.'); return; }
+  if (isNaN(quantity) || quantity <= 0) { showModal('Quantity must be a positive number.'); return; }
+
+  const selectedItem = inventoryCache[selectedId];
+  if (!selectedItem) { showModal('Selected item not found in inventory.'); return; }
+
+  const newItem = {
+    id: selectedItem.id,
+    name: selectedItem.name,
+    unitPrice: selectedItem.sellPricePerVial,
+    quantity: quantity
+  };
+
+  const itemsListContainer = qs('edit-order-items-list');
+  const newItemElement = createOrderItemElement(newItem);
+  itemsListContainer.appendChild(newItemElement);
+
+  recalcEditModalTotal();
+  
+  // Reset the form fields
+  select.value = '';
+  quantityInput.value = '1';
+}
+
+/* ============================
+ * Event listeners
+ * ============================ */
+function attachEventListeners() {
+  // Login form
+  qs('auth-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = qs('email').value;
+    const password = qs('password').value;
+    
+    if (!isValidEmail(email)) {
+      showModal('Please enter a valid email address.');
+      return;
+    }
+
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      showModal('Login successful!');
+    } catch (error) {
+      console.error("Login failed:", error);
+      let errorMessage = "Login failed. Check your credentials.";
+      if (error.code === 'auth/wrong-password') {
+        errorMessage = "Incorrect password. Please try again.";
+      } else if (error.code === 'auth/user-not-found') {
+        errorMessage = "Admin user not found.";
+      }
+      showModal(errorMessage);
+    }
+  });
+  
+  qs('signout-btn').addEventListener('click', async () => {
+    try {
+      await signOut(auth);
+      showModal('Signed out successfully.');
+    } catch (error) {
+      console.error("Sign out failed:", error);
+      showModal(`Sign out failed: ${error.message}`);
+    }
+  });
+  
+  qs('close-modal-btn').addEventListener('click', () => qs('alert-modal').classList.add('hidden'));
+
+  // Event delegation for Edit + Resend buttons
+  qs('orders-container').addEventListener('click', (e) => {
+    const editButton = e.target.closest('.edit-order-btn');
+    if (editButton) {
+      const orderId = editButton.dataset.orderId;
+      const orderToEdit = allOrdersCache.find(order => order.id === orderId);
+      if (orderToEdit) {
+        openEditModal(orderToEdit);
+      }
+      return;
+    }
+
+    // Handle Resend Email button
+    const resendButton = e.target.closest('.resend-order-btn');
+    if (resendButton) {
+      const orderId = resendButton.dataset.orderId;
+      resendOrderEmailById(orderId, resendButton);
+    }
+  });
+
+  // Edit Order modal actions
+  if (editOrderForm) editOrderForm.addEventListener('submit', handleEditOrder);
+  if (closeEditModalBtn) closeEditModalBtn.addEventListener('click', closeEditModal);
+  if (editOrderBackdrop) editOrderBackdrop.addEventListener('click', closeEditModal);
+  if (deleteOrderBtn) {
+    deleteOrderBtn.addEventListener('click', () => {
+      const orderId = qs('edit-order-id').value;
+      if (orderId) handleDeleteOrder(orderId);
+      else showModal('No order selected to delete.');
+    });
+  }
+  
+  // Add Inventory Item
+  if (addItemForm) addItemForm.addEventListener('submit', handleAddItem);
+  // Add Cost History
+  if (addCostForm) addCostForm.addEventListener('submit', handleNewCostHistory);
+  // Cost modal open/close
+  if (addCostBtn) addCostBtn.addEventListener('click', openAddCostModal);
+  if (closeAddCostModalBtn) closeAddCostModalBtn.addEventListener('click', closeAddCostModal);
+  // Add Item to order
+  const addItemToOrderBtn = qs('add-item-to-order-btn');
+  if (addItemToOrderBtn) addItemToOrderBtn.addEventListener('click', handleAddItemToOrder);
+  // NEW: Add Tracking entry
+  const addTrackBtn = qs('edit-track-add-btn');
+  if (addTrackBtn) addTrackBtn.addEventListener('click', handleAddTrackingEntry);
+}
+
+/* ============================
+ * Boot
+ * ============================ */
+window.addEventListener('load', () => {
+  try {
+    onAuthStateChanged(auth, (user) => {
+      console.log('Auth state changed:', user ? user.uid : 'None');
+      updateUI(user);
+    });
+    attachEventListeners();
+  } catch (err) {
+    console.error('Init failed:', err);
+    qs('status').textContent = `Error: ${err.message}`;
+  }
+});
   </script>
 </body>
 </html>
