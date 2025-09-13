@@ -471,6 +471,9 @@
   /* ============================
  * Inventory listener (RESTORED EDITING)
  * ============================ */
+  /* ============================
+ * Inventory listener (RESTORED EDITING + COST HISTORY SELECT BY ID)
+ * ============================ */
 function listenForInventory() {
   if (!userId) return;
   const ref = collection(db, INVENTORY_COLLECTION_PATH);
@@ -478,6 +481,7 @@ function listenForInventory() {
   onSnapshot(ref, (snap) => {
     const tbody = qs('inventory-list');
     tbody.innerHTML = '';
+    // reset the cost-history select each refresh
     existingItemSelect.innerHTML = '<option value="">-- Select an item --</option>';
 
     if (snap.empty) {
@@ -488,6 +492,7 @@ function listenForInventory() {
       td.textContent = 'No inventory items.';
       tr.appendChild(td);
       tbody.appendChild(tr);
+      // keep the select empty in this case
       return;
     }
 
@@ -514,6 +519,33 @@ function listenForInventory() {
       return null;
     };
 
+    /* NEW: Populate the Cost History tool's dropdown with items by ID */
+    if (existingItemSelect) {
+      const previouslySelected = existingItemSelect.value || '';
+      existingItemSelect.innerHTML = '<option value="">-- Select an item --</option>';
+
+      const ids = Object.keys(inventoryById)
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+
+      const frag = document.createDocumentFragment();
+      ids.forEach((id) => {
+        const inv = inventoryById[id];
+        const opt = document.createElement('option');
+        opt.value = id;
+        // Show ID first, then name; include stock to help pick the right item at a glance
+        const stock = Number.isFinite(inv?.currentInventory) ? inv.currentInventory : 0;
+        opt.textContent = `${id} — ${inv?.name || '(no name)'} (${stock} in stock)`;
+        frag.appendChild(opt);
+      });
+      existingItemSelect.appendChild(frag);
+
+      // restore previous selection if it still exists
+      if (previouslySelected && ids.includes(previouslySelected)) {
+        existingItemSelect.value = previouslySelected;
+      }
+    }
+
+    // ===== Table render (unchanged) =====
     snap.forEach((d) => {
       const item = d.data();
       const tr = document.createElement('tr');
@@ -607,7 +639,6 @@ function listenForInventory() {
           const docId = tr.dataset.id;
           const newName = nameTd.textContent.trim();
           const newQuantity = parseInt(inventoryTd.textContent.trim(), 10);
-          // allow "$12.34" or "12.34"
           let newPrice = priceTd.textContent.trim();
           newPrice = parseFloat(newPrice.replace(/^\$/, ''));
           const newVialsSold = parseInt(vialsSoldTd.textContent.trim(), 10);
@@ -678,6 +709,7 @@ function listenForInventory() {
     tbody.appendChild(tr);
   });
 }
+
 
   
 
@@ -989,29 +1021,38 @@ function listenForInventory() {
   }
 
   /* Add Cost History */
-  async function handleNewCostHistory(e){
-    e.preventDefault();
-    const itemId=existingItemSelect.value;
-    if(!itemId){ showModal('Please select an item from the dropdown.'); return; }
+async function handleNewCostHistory(e){
+  e.preventDefault();
+  const itemId=existingItemSelect.value;
+  if(!itemId){ showModal('Please select an item from the dropdown.'); return; }
 
-    const costPerKit=parseFloat(costPerKitInput.value);
-    const totalKitsBought=parseInt(totalKitsBoughtInput.value,10);
-    const totalVialsPerKit=parseInt(totalVialsPerKitInput.value,10);
-    const purchaseDate=purchaseDateInput.value;
-    const totalVialWeight=inventoryCache[itemId]?.totalVialWeight;
+  const costPerKit=parseFloat(costPerKitInput.value);
+  const totalKitsBought=parseInt(totalKitsBoughtInput.value,10);
+  const totalVialsPerKit=parseInt(totalVialsPerKitInput.value,10);
+  const purchaseDate=purchaseDateInput.value;
+  const totalVialWeight=inventoryCache[itemId]?.totalVialWeight;
 
-    if(isNaN(costPerKit)||costPerKit<0){ showModal('Cost Per Kit must be a non-negative number.'); return; }
-    if(isNaN(totalKitsBought)||totalKitsBought<0){ showModal('Cost Per Kit must be a non-negative number.'); return; }
-    if(isNaN(totalVialsPerKit)||totalVialsPerKit<0){ showModal('Total Vials per Kit must be a non-negative number.'); return; }
-    if(!purchaseDate){ showModal('Purchase Date is required.'); return; }
+  if(isNaN(costPerKit)||costPerKit<0){ showModal('Cost Per Kit must be a non-negative number.'); return; }
+  if(isNaN(totalKitsBought)||totalKitsBought<0){ showModal('Total Kits Bought must be a non-negative number.'); return; }
+  if(isNaN(totalVialsPerKit)||totalVialsPerKit<0){ showModal('Total Vials per Kit must be a non-negative number.'); return; }
+  if(!purchaseDate){ showModal('Purchase Date is required.'); return; }
 
-    const newCostEntry={ costPerKit, purchaseDate, totalKitsBought, totalVialWeightInMg: totalVialWeight, totalVialsPerKit };
-    try{
-      const itemRef=doc(db, INVENTORY_COLLECTION_PATH, itemId);
-      await updateDoc(itemRef,{ costHistory: arrayUnion(newCostEntry) });
-      showModal('New cost history added successfully!'); addCostForm.reset();
-    }catch(err){ console.error('Error adding new cost history:',err); showModal(`Failed to add new cost history: ${err.message}`); }
+  const newCostEntry={ costPerKit, purchaseDate, totalKitsBought, totalVialWeightInMg: totalVialWeight, totalVialsPerKit };
+  const vialsToAdd = totalKitsBought * totalVialsPerKit;
+
+  try{
+    const itemRef=doc(db, INVENTORY_COLLECTION_PATH, itemId);
+    await updateDoc(itemRef,{
+      costHistory: arrayUnion(newCostEntry),
+      currentInventory: increment(vialsToAdd)
+    });
+    showModal('New cost history added and inventory updated!');
+    addCostForm.reset();
+  }catch(err){
+    console.error('Error adding new cost history:',err);
+    showModal(`Failed to add new cost history: ${err.message}`);
   }
+}
 
   /* Resend email (with tracking) */
   async function resendOrderEmailById(orderId,btn){
