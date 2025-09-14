@@ -1139,7 +1139,7 @@ async function deleteOrderAndRollback(orderId, buttonEl) {
   if (!order) { showModal(`Order not found: ${orderId}`); return; }
 
   const prettyId = order.orderId || orderId;
-  const ok = window.confirm(`Delete order ${prettyId}? This will NOT change inventory or vialsSold.`);
+  const ok = window.confirm(`Delete order ${prettyId}? This WILL redistribute inventory and update vialsSold.`);
   if (!ok) return;
 
   // UI: disable while working
@@ -1151,8 +1151,20 @@ async function deleteOrderAndRollback(orderId, buttonEl) {
   }
 
   try {
+    // Redistribute inventory and update vialsSold
+    if (Array.isArray(order.items)) {
+      for (const item of order.items) {
+        const inv = window._getInvFromOrderItem(item);
+        if (!inv) continue;
+        const qty = Number(item.quantity || 0);
+        await updateDoc(doc(db, INVENTORY_COLLECTION_PATH, inv.id), {
+          currentInventory: increment(qty),
+          vialsSold: increment(-qty)
+        });
+      }
+    }
     await deleteDoc(doc(db, ORDERS_COLLECTION_PATH, orderId));
-    showModal(`Order ${prettyId} deleted.`);
+    showModal(`Order ${prettyId} deleted and inventory updated.`);
   } catch (err) {
     console.error("Delete failed:", err);
     showModal(`Failed to delete order: ${err.message || "See console"}`);
