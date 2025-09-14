@@ -751,12 +751,12 @@ function listenForInventory() {
           const wasUnpaid = prev.paymentStatus==='Unpaid';
           const isUnpaid  = currentOrder.paymentStatus==='Unpaid';
 
-          if(wasUnpaid && isPaid)       updateInventorySalesImpact(currentOrder.id,'increment',currentOrder.items);
-          else if(wasPaid && isUnpaid)  updateInventorySalesImpact(currentOrder.id,'decrement',currentOrder.items);
-          else if(wasPaid && isPaid){
-            const p=JSON.stringify(prev.items||[]), c=JSON.stringify(currentOrder.items||[]);
-            if(p!==c) compareOrderItemsAndUpdateVials(prev.items||[], currentOrder.items||[]);
-          }
+          // if(wasUnpaid && isPaid)       updateInventorySalesImpact(currentOrder.id,'increment',currentOrder.items);
+          // else if(wasPaid && isUnpaid)  updateInventorySalesImpact(currentOrder.id,'decrement',currentOrder.items);
+          // else if(wasPaid && isPaid){
+          //   const p=JSON.stringify(prev.items||[]), c=JSON.stringify(currentOrder.items||[]);
+          //   if(p!==c) compareOrderItemsAndUpdateVials(prev.items||[], currentOrder.items||[]);
+          // }
           previousOrdersCache.set(id,currentOrder);
         } else if(change.type==='added'){
           previousOrdersCache.set(id,currentOrder);
