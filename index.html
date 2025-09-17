@@ -189,6 +189,9 @@
             <p class="mt-4 text-gray-500">Loading orders...</p>
           </div>
         </div>
+        <div id="orders-pagination" class="mt-4 flex justify-center hidden">
+          <button id="load-more-orders" class="btn-neon-cyan px-4 py-2 rounded-lg font-semibold text-xs">Load More</button>
+        </div>
       </div>
 
       <!-- Infographics -->
@@ -366,12 +369,19 @@
   const sendShippingFn = httpsCallable(fns, "sendShippingConfirmation");
 
   const qs = (id) => document.getElementById(id);
+  const ORDERS_PAGE_SIZE = 5;
+  let visibleOrdersCount = ORDERS_PAGE_SIZE;
+  let userAdjustedOrderView = false;
+  let sortedOrdersCache = [];
   let userId = null;
   let totalRevenue = 0;
   let totalCost = 0;
   let allOrdersCache = [];
   let previousOrdersCache = new Map();
   let inventoryCache = {};
+
+  const loadMoreOrdersBtn = qs('load-more-orders');
+  const ordersPagination = qs('orders-pagination');
 
   const processedTransitions = new Set();
   function transitionKey(before, after) {
@@ -496,6 +506,10 @@
     }else{
       userId=null; status.textContent='Status: Signed out'; userDisplay.textContent='User ID: N/A';
       mainContent.classList.add('hidden'); loginForm.classList.remove('hidden'); signoutBtn.classList.add('hidden'); addCostBtn.classList.add('hidden');
+      visibleOrdersCount = ORDERS_PAGE_SIZE;
+      userAdjustedOrderView = false;
+      sortedOrdersCache = [];
+      updateLoadMoreVisibility(0);
     }
   }
 
@@ -796,170 +810,48 @@ function listenForInventory() {
       if(processedTransitions.size>1000) processedTransitions.clear();
 
       // Rebuild UI
-      loading.style.display='none'; ordersContainer.innerHTML='';
+      loading.style.display='none';
       if(snap.empty){
         ordersContainer.innerHTML=`<div class="text-center text-gray-500 py-12"><p class="text-lg">No orders found.</p><p class="text-sm mt-2">Your orders will appear here once they've been placed.</p></div>`;
-        allOrdersCache=[]; totalRevenue=0; previousOrdersCache.clear(); updateFinancialUI(); renderInfographics(); return;
+        allOrdersCache=[]; totalRevenue=0; previousOrdersCache.clear();
+        sortedOrdersCache=[];
+        visibleOrdersCount = ORDERS_PAGE_SIZE;
+        userAdjustedOrderView = false;
+        updateFinancialUI(); renderInfographics(); updateLoadMoreVisibility(0); return;
       }
 
-      totalRevenue=0; allOrdersCache=snap.docs.map(d=>({ id:d.id, ...d.data() }));
+      allOrdersCache=snap.docs.map(d=>({ id:d.id, ...d.data() }));
       previousOrdersCache.clear(); snap.docs.forEach(d=>previousOrdersCache.set(d.id,{ id:d.id, ...d.data() }));
 
       const sorted=[...allOrdersCache].sort((a,b)=>{ const A=a.timestamp?.toMillis?.()??0; const B=b.timestamp?.toMillis?.()??0; return B-A; });
 
-      sorted.forEach(order=>{
-        const timestamp=formatTimestamp(order.timestamp);
+      totalRevenue = sorted.reduce((sum, order)=>{
         const items=Array.isArray(order.items)?order.items:[];
-        const itemsList = items.map(item=>{
-          const label = item.id || item.name || 'Item';
-          const price = currency(item?.unitPrice ?? 0);
-          const quantity = item?.quantity ?? 1;
-          return `<li class="flex justify-between items-center mb-1"><span class="text-gray-400">${label} (x${quantity})</span><span class="font-medium text-cyan-300">$${price}</span></li>`;
-        }).join('');
-
         const computed = items.reduce((s,it)=>s + (Number(it?.unitPrice||0)*Number(it?.quantity||1)),0);
-        const totalSafe = (order.total!=null)?currency(order.total):currency(computed);
-        const discountedSubtotal = Number(order.subtotal ?? computed);
-        const shippingCostSafe = Number(order.shippingCost ?? 0);
-        const hasFreeShip = shippingCostSafe===0 && (order.promo?.type==='free_shipping');
-        const paymentDetails = (()=>{
-          const payment = order.payment || {};
-          const meta = payment.meta || {};
-          const methodRaw = payment.method || payment.type || meta.type || order.paymentType || order.paymentMethod || order.payment_method;
-          const venmoUser = payment.venmoUser || meta.venmoUser;
-          const txid = payment.txid || payment.transactionId || payment.txId || meta.txid || meta.transactionId || meta.txId;
-          const method = methodRaw ? String(methodRaw) : '';
-          const methodLower = method.toLowerCase();
-
-          if(methodLower.includes('venmo')){
-            const label = venmoUser ? `${method} (${venmoUser})` : (method || 'Venmo');
-            return { label, txid: '' };
-          }
-
-          if(methodLower.includes('bitcoin') || methodLower==='btc'){
-            const label = method || 'Bitcoin';
-            return { label, txid: txid ? String(txid) : '' };
-          }
-
-          if(venmoUser && method) return { label: `${method} (${venmoUser})`, txid: '' };
-          if(method) return { label: method, txid: '' };
-          if(venmoUser) return { label: venmoUser, txid: '' };
-          return { label: 'Not specified', txid: '' };
-        })();
-        const itemDiscount = Math.max(0, computed - discountedSubtotal);
-        const status=order.paymentStatus||'Unknown';
-        const statusClass = status==='Paid' ? 'bg-lime-900 text-lime-300' : 'bg-rose-900 text-rose-300';
-        const contact=order.contactInfo||{};
-        const contactEntries=[
-          { label:'Name', value: contact.fullName },
-          { label:'Email', value: contact.email },
-          { label:'Phone', value: contact.phone },
-          { label:'Address', value: contact.shippingAddress }
-        ];
-        const contactHtml = contactEntries.map(({label,value})=>{
-          const raw = (value ?? '').toString();
-          const hasValue = raw.trim().length>0;
-          const display = hasValue ? raw : 'Not Provided';
-          const displayHtml = hasValue ? display.replace(/\n/g,'<br>') : display;
-          const copyAttr = hasValue ? ` data-copy="${encodeURIComponent(raw)}"` : '';
-          const copyBtn = hasValue ? `<button type="button" class="copy-contact btn-neon-cyan px-2 py-0.5 rounded text-xs font-semibold shrink-0"${copyAttr}>Copy</button>` : '';
-          const valueMarkup = `<span class="text-gray-300 break-words grow">${displayHtml}</span>`;
-          return `<div class="flex flex-wrap items-start gap-2"><span class="font-medium text-gray-500">${label}:</span><div class="flex items-start gap-2 min-w-0 flex-1">${valueMarkup}${copyBtn}</div></div>`;
-        }).join('');
-        const orderIdText=order.orderId || order.id;
-        const tracking=Array.isArray(order.tracking)?order.tracking:[];
-        const trackingHtml = tracking.length
-          ? tracking.map(t=>{
-              const url=t.url||buildTrackingUrl(t.carrier,t.number);
-              const label=`${t.carrier||"Carrier"}: ${t.number||"—"}`;
-              const numberAttr = t.number||"";
-              return `<div class="flex flex-wrap items-center gap-2 text-xs">
-                <a href="${url}" target="_blank" rel="noopener" class="underline text-cyan-300 hover:text-cyan-200">${label}</a>
-                <button type="button" class="btn-neon-cyan px-2 py-0.5 rounded copy-track" data-track="${numberAttr}">Copy</button>
-                <button type="button" class="btn-neon-lime px-2 py-0.5 rounded send-tracking-email-btn" data-order-id="${order.id}" data-track="${numberAttr}">Send Email</button>
-              </div>`;
-            }).join("")
-          : `<span class="text-gray-500 text-xs italic">No tracking added yet</span>`;
-
-        if(order.paymentStatus==='Paid'){ totalRevenue += Number(order.total || computed); }
-
-        const card=`
-        <div class="order-card rounded-xl p-6 shadow-md border border-gray-700 relative">
-          <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start border-b pb-4 mb-4 border-gray-700">
-            <div>
-              <h3 class="text-lg font-bold text-cyan-500 mb-1">Order ID:
-                <span class="font-normal text-sm sm:text-base break-words text-gray-300">${orderIdText}</span>
-              </h3>
-              <p class="text-sm text-gray-500">Order Placed on ${timestamp}</p>
-            </div>
-            <div class="mt-4 sm:mt-0 text-left sm:text-right">
-              <p class="font-semibold text-lg text-cyan-500">Total: $${totalSafe}</p>
-              <span class="inline-block mt-1 px-3 py-1 text-xs font-semibold rounded-full ${statusClass}">${status}</span>
-              <div class="mt-2 text-xs text-gray-400 space-y-1">
-                <div><span class="text-gray-500">Subtotal:</span> $${currency(discountedSubtotal)}</div>
-                ${itemDiscount>0?`<div><span class="text-gray-500">Items discount:</span> <span class="text-green-300 font-semibold">-$${currency(itemDiscount)}</span></div>`:``}
-                <div><span class="text-gray-500">Shipping:</span> ${hasFreeShip?`<span class="text-green-300 font-semibold">FREE</span>`:`$${currency(shippingCostSafe)}`}</div>
-                <div>
-                  <span class="text-gray-500">Payment Type:</span> <span class="text-gray-300">${paymentDetails.label}</span>
-                  ${paymentDetails.txid ? `<div class="text-gray-500 text-xs mt-1 pl-4">TXID: <span class="text-gray-300">${paymentDetails.txid}</span></div>` : ''}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="mb-4">
-            <p class="font-semibold text-gray-400 mb-2">Order Items:</p>
-            <ul class="list-none space-y-2 text-sm">${itemsList || '<li class="text-gray-500 italic">No items.</li>'}</ul>
-          </div>
-
-          <div>
-            <p class="font-semibold text-gray-400 mb-2">Contact Info:</p>
-            <div class="text-sm text-gray-500 space-y-1">
-              ${contactHtml}
-            </div>
-          </div>
-
-          <div class="mt-4">
-            <p class="font-semibold text-gray-400 mb-2">Tracking:</p>
-            <div class="space-y-1">${trackingHtml}</div>
-          </div>
-
-        <div class="pt-10 bottom-4 right-4 flex space-x-2 items-end space-y-2">
-          <button class="delete-order-card-btn btn-neon-red text-xs px-3 py-1 rounded-lg" data-order-id="${order.id}">
-            Delete
-          </button>
-          <button class="edit-order-btn btn-neon-lime text-xs px-3 py-1 rounded-lg" data-order-id="${order.id}">
-            Edit Order
-          </button>
-          <button class="resend-order-btn btn-neon-cyan text-xs px-3 py-1 rounded-lg" data-order-id="${order.id}">
-            Resend Email
-          </button>
-        </div>
-
-        </div>`;
-        ordersContainer.insertAdjacentHTML('beforeend', card);
-        const last=ordersContainer.lastElementChild;
-        last.querySelectorAll('.copy-track').forEach(btn=>btn.addEventListener('click',()=>{
-          const v=btn.dataset.track||"";
-          if(!v) return;
-          if(copyToClipboard(v)) indicateCopy(btn);
-        }));
-        last.querySelectorAll('.copy-contact').forEach(btn=>{
-          btn.addEventListener('click',()=>{
-            const encoded=btn.dataset.copy||'';
-            if(!encoded) return;
-            const text=decodeURIComponent(encoded);
-            if(text && copyToClipboard(text)) indicateCopy(btn);
-          });
-        });
-      });
+        if(order.paymentStatus==='Paid'){ return sum + Number(order.total || computed); }
+        return sum;
+      },0);
 
       updateFinancialUI(); renderInfographics();
+
+      sortedOrdersCache = sorted;
+      if(!userAdjustedOrderView){
+        visibleOrdersCount = Math.min(sortedOrdersCache.length, ORDERS_PAGE_SIZE);
+      }
+      if(sortedOrdersCache.length === 0){
+        visibleOrdersCount = ORDERS_PAGE_SIZE;
+      } else if(visibleOrdersCount > sortedOrdersCache.length){
+        visibleOrdersCount = sortedOrdersCache.length;
+      }
+
+      renderOrdersList(sortedOrdersCache);
+      updateLoadMoreVisibility(sortedOrdersCache.length);
     },(err)=>{
       console.error('Error listening to orders:',err);
       const ordersContainer=qs('orders-container'); const loading=qs('loading-orders');
       loading.style.display='none';
       ordersContainer.innerHTML = `<div class="text-center text-red-500 py-12"><p class="text-lg">An error occurred.</p><p class="text-sm mt-2">Check the console for more details.</p></div>`;
+      updateLoadMoreVisibility(0);
     });
   }
 
@@ -988,6 +880,184 @@ function listenForInventory() {
     const prodQty={}; allOrdersCache.forEach(o=>{ if(o.items){ o.items.forEach(it=>{ const name=it.id || it.name || 'Unknown Item'; prodQty[name]=(prodQty[name]||0)+(it.quantity||0); }); } });
     Object.entries(prodQty).sort(([,a],[,b])=>b-a).slice(0,5).forEach(([name,q])=>{
       const li=document.createElement('li'); li.innerHTML=`<span>${name}</span><span class="font-bold text-cyan-300">${q} sold</span>`; pq.appendChild(li);
+    });
+  }
+
+  function updateLoadMoreVisibility(total){
+    if(!ordersPagination || !loadMoreOrdersBtn) return;
+    if(total === 0 || visibleOrdersCount >= total){
+      ordersPagination.classList.add('hidden');
+    }else{
+      ordersPagination.classList.remove('hidden');
+    }
+  }
+
+  function renderOrdersList(sortedOrders){
+    const ordersContainer=qs('orders-container');
+    if(!ordersContainer) return;
+    ordersContainer.innerHTML='';
+    const loading=qs('loading-orders');
+    if(loading) loading.style.display='none';
+
+    const subset = sortedOrders.slice(0, Math.max(0, visibleOrdersCount));
+    if(subset.length===0){
+      ordersContainer.innerHTML=`<div class="text-center text-gray-500 py-12"><p class="text-lg">No orders found.</p><p class="text-sm mt-2">Your orders will appear here once they've been placed.</p></div>`;
+      return;
+    }
+
+    subset.forEach(order=>{
+      const timestamp=formatTimestamp(order.timestamp);
+      const items=Array.isArray(order.items)?order.items:[];
+      const itemsList = items.map(item=>{
+        const label = item.id || item.name || 'Item';
+        const price = currency(item?.unitPrice ?? 0);
+        const quantity = item?.quantity ?? 1;
+        return `<li class="flex justify-between items-center mb-1"><span class="text-gray-400">${label} (x${quantity})</span><span class="font-medium text-cyan-300">$${price}</span></li>`;
+      }).join('');
+
+      const computed = items.reduce((s,it)=>s + (Number(it?.unitPrice||0)*Number(it?.quantity||1)),0);
+      const totalSafe = (order.total!=null)?currency(order.total):currency(computed);
+      const discountedSubtotal = Number(order.subtotal ?? computed);
+      const shippingCostSafe = Number(order.shippingCost ?? 0);
+      const hasFreeShip = shippingCostSafe===0 && (order.promo?.type==='free_shipping');
+      const paymentDetails = (()=>{
+        const payment = order.payment || {};
+        const meta = payment.meta || {};
+        const methodRaw = payment.method || payment.type || meta.type || order.paymentType || order.paymentMethod || order.payment_method;
+        const venmoUser = payment.venmoUser || meta.venmoUser;
+        const txid = payment.txid || payment.transactionId || payment.txId || meta.txid || meta.transactionId || meta.txId;
+        const method = methodRaw ? String(methodRaw) : '';
+        const methodLower = method.toLowerCase();
+
+        if(methodLower.includes('venmo')){
+          const label = venmoUser ? `${method} (${venmoUser})` : (method || 'Venmo');
+          return { label, txid: '' };
+        }
+
+        if(methodLower.includes('bitcoin') || methodLower==='btc'){
+          const label = method || 'Bitcoin';
+          return { label, txid: txid ? String(txid) : '' };
+        }
+
+        if(venmoUser && method) return { label: `${method} (${venmoUser})`, txid: '' };
+        if(method) return { label: method, txid: '' };
+        if(venmoUser) return { label: venmoUser, txid: '' };
+        return { label: 'Not specified', txid: '' };
+      })();
+      const itemDiscount = Math.max(0, computed - discountedSubtotal);
+      const status=order.paymentStatus||'Unknown';
+      const statusClass = status==='Paid' ? 'bg-lime-900 text-lime-300' : 'bg-rose-900 text-rose-300';
+      const contact=order.contactInfo||{};
+      const contactEntries=[
+        { label:'Name', value: contact.fullName },
+        { label:'Email', value: contact.email },
+        { label:'Phone', value: contact.phone },
+        { label:'Address', value: contact.shippingAddress }
+      ];
+      const contactHtml = contactEntries.map(({label,value})=>{
+        const raw = (value ?? '').toString();
+        const hasValue = raw.trim().length>0;
+        const display = hasValue ? raw : 'Not Provided';
+        const displayHtml = hasValue ? display.replace(/\n/g,'<br>') : display;
+        const copyAttr = hasValue ? ` data-copy="${encodeURIComponent(raw)}"` : '';
+        const copyBtn = hasValue ? `<button type="button" class="copy-contact btn-neon-cyan px-2 py-0.5 rounded text-xs font-semibold shrink-0"${copyAttr}>Copy</button>` : '';
+        const valueMarkup = `<span class="text-gray-300 break-words grow">${displayHtml}</span>`;
+        return `<div class="flex flex-wrap items-start gap-2"><span class="font-medium text-gray-500">${label}:</span><div class="flex items-start gap-2 min-w-0 flex-1">${valueMarkup}${copyBtn}</div></div>`;
+      }).join('');
+      const orderIdText=order.orderId || order.id;
+      const tracking=Array.isArray(order.tracking)?order.tracking:[];
+      const trackingHtml = tracking.length
+        ? tracking.map(t=>{
+            const url=t.url||buildTrackingUrl(t.carrier,t.number);
+            const label=`${t.carrier||"Carrier"}: ${t.number||"—"}`;
+            const numberAttr = t.number||"";
+            return `<div class="flex flex-wrap items-center gap-2 text-xs">
+              <a href="${url}" target="_blank" rel="noopener" class="underline text-cyan-300 hover:text-cyan-200">${label}</a>
+              <button type="button" class="btn-neon-cyan px-2 py-0.5 rounded copy-track" data-track="${numberAttr}">Copy</button>
+              <button type="button" class="btn-neon-lime px-2 py-0.5 rounded send-tracking-email-btn" data-order-id="${order.id}" data-track="${numberAttr}">Send Email</button>
+            </div>`;
+          }).join("")
+        : `<span class="text-gray-500 text-xs italic">No tracking added yet</span>`;
+
+      const card=`
+      <div class="order-card rounded-xl p-6 shadow-md border border-gray-700 relative">
+        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start border-b pb-4 mb-4 border-gray-700">
+          <div>
+            <h3 class="text-lg font-bold text-cyan-500 mb-1">Order ID:
+              <span class="font-normal text-sm sm:text-base break-words text-gray-300">${orderIdText}</span>
+            </h3>
+            <p class="text-sm text-gray-500">Order Placed on ${timestamp}</p>
+          </div>
+          <div class="mt-4 sm:mt-0 text-left sm:text-right">
+            <p class="font-semibold text-lg text-cyan-500">Total: $${totalSafe}</p>
+            <span class="inline-block mt-1 px-3 py-1 text-xs font-semibold rounded-full ${statusClass}">${status}</span>
+            <div class="mt-2 text-xs text-gray-400 space-y-1">
+              <div><span class="text-gray-500">Subtotal:</span> $${currency(discountedSubtotal)}</div>
+              ${itemDiscount>0?`<div><span class="text-gray-500">Items discount:</span> <span class="text-green-300 font-semibold">-$${currency(itemDiscount)}</span></div>`:``}
+              <div><span class="text-gray-500">Shipping:</span> ${hasFreeShip?`<span class="text-green-300 font-semibold">FREE</span>`:`$${currency(shippingCostSafe)}`}</div>
+              <div>
+                <span class="text-gray-500">Payment Type:</span> <span class="text-gray-300">${paymentDetails.label}</span>
+                ${paymentDetails.txid ? `<div class="text-gray-500 text-xs mt-1 pl-4">TXID: <span class="text-gray-300">${paymentDetails.txid}</span></div>` : ''}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <p class="font-semibold text-gray-400 mb-2">Order Items:</p>
+          <ul class="list-none space-y-2 text-sm">${itemsList || '<li class="text-gray-500 italic">No items.</li>'}</ul>
+        </div>
+
+        <div>
+          <p class="font-semibold text-gray-400 mb-2">Contact Info:</p>
+          <div class="text-sm text-gray-500 space-y-1">
+            ${contactHtml}
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <p class="font-semibold text-gray-400 mb-2">Tracking:</p>
+          <div class="space-y-1">${trackingHtml}</div>
+        </div>
+
+      <div class="pt-10 bottom-4 right-4 flex space-x-2 items-end space-y-2">
+        <button class="delete-order-card-btn btn-neon-red text-xs px-3 py-1 rounded-lg" data-order-id="${order.id}">
+          Delete
+        </button>
+        <button class="edit-order-btn btn-neon-lime text-xs px-3 py-1 rounded-lg" data-order-id="${order.id}">
+          Edit Order
+        </button>
+        <button class="resend-order-btn btn-neon-cyan text-xs px-3 py-1 rounded-lg" data-order-id="${order.id}">
+          Resend Email
+        </button>
+      </div>
+
+      </div>`;
+      ordersContainer.insertAdjacentHTML('beforeend', card);
+      const last=ordersContainer.lastElementChild;
+      last.querySelectorAll('.copy-track').forEach(btn=>btn.addEventListener('click',()=>{
+        const v=btn.dataset.track||"";
+        if(!v) return;
+        if(copyToClipboard(v)) indicateCopy(btn);
+      }));
+      last.querySelectorAll('.copy-contact').forEach(btn=>{
+        btn.addEventListener('click',()=>{
+          const encoded=btn.dataset.copy||'';
+          if(!encoded) return;
+          const text=decodeURIComponent(encoded);
+          if(text && copyToClipboard(text)) indicateCopy(btn);
+        });
+      });
+    });
+  }
+
+  if(loadMoreOrdersBtn){
+    loadMoreOrdersBtn.addEventListener('click',()=>{
+      if(sortedOrdersCache.length===0) return;
+      visibleOrdersCount = Math.min(visibleOrdersCount + ORDERS_PAGE_SIZE, sortedOrdersCache.length);
+      userAdjustedOrderView = true;
+      renderOrdersList(sortedOrdersCache);
+      updateLoadMoreVisibility(sortedOrdersCache.length);
     });
   }
 
