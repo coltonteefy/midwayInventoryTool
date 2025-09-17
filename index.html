@@ -32,6 +32,8 @@
     .modal-main.is-open{ opacity:1; pointer-events:auto; transform:translate(-50%,-50%) scale(1) }
     .full-page-modal{ position:fixed; top:0; left:0; width:100%; height:100%; background:#0d0c1d; z-index:50; display:none; align-items:center; justify-content:center }
     .full-page-modal.is-open{ display:flex }
+    @keyframes copyPulse{ 0%{transform:scale(1);} 40%{transform:scale(1.12);} 80%{transform:scale(0.98);} 100%{transform:scale(1);} }
+    .copy-track.copied,.copy-contact.copied{ background:#22c55e!important; color:#06131a!important; animation:copyPulse .6s ease forwards; box-shadow:0 0 12px rgba(34,197,94,.45); }
   </style>
 </head>
 <body class="flex flex-col items-center min-h-screen p-4">
@@ -361,6 +363,7 @@
   try { getAnalytics(app); } catch (_) {}
   const fns = getFunctions(app);
   const resendFn = httpsCallable(fns, "resendOrderConfirmation");
+  const sendShippingFn = httpsCallable(fns, "sendShippingConfirmation");
 
   const qs = (id) => document.getElementById(id);
   let userId = null;
@@ -416,7 +419,35 @@
 
   function showModal(message){ qs('modal-message').textContent = message; qs('alert-modal').classList.remove('hidden'); }
   function isValidEmail(e){ return /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.test(String(e).toLowerCase()); }
-  function copyToClipboard(text){ const t=document.createElement('textarea'); t.value=text; document.body.appendChild(t); t.select(); try{ document.execCommand('copy'); showModal('Copied to clipboard!'); }catch(e){ showModal('Failed to copy.'); } finally{ document.body.removeChild(t); } }
+  function copyToClipboard(text){
+    const t=document.createElement('textarea');
+    t.value=text;
+    document.body.appendChild(t);
+    t.select();
+    let success=false;
+    try{
+      success=document.execCommand('copy');
+      if(!success) throw new Error('Clipboard command rejected');
+    }catch(e){
+      showModal('Failed to copy.');
+    }finally{
+      document.body.removeChild(t);
+    }
+    return success;
+  }
+  function indicateCopy(btn){
+    if(!btn) return;
+    if(!btn.dataset.originalLabel){ btn.dataset.originalLabel = btn.textContent.trim(); }
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    if(btn._copyTimeout) clearTimeout(btn._copyTimeout);
+    btn._copyTimeout = setTimeout(()=>{
+      const label = btn.dataset.originalLabel || 'Copy';
+      btn.textContent = label;
+      btn.classList.remove('copied');
+      btn._copyTimeout = null;
+    }, 1200);
+  }
   function formatTimestamp(ts){ if(!ts) return 'Unknown date'; try{ if(typeof ts.toDate==='function'){ return ts.toDate().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});} const d=new Date(ts); if(!isNaN(d.getTime())) return d.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});}catch(_){} return 'Unknown date'; }
   function currency(n){ const num=typeof n==='number'?n:Number(n??0); return num.toFixed(2); }
 
@@ -791,17 +822,62 @@ function listenForInventory() {
         const discountedSubtotal = Number(order.subtotal ?? computed);
         const shippingCostSafe = Number(order.shippingCost ?? 0);
         const hasFreeShip = shippingCostSafe===0 && (order.promo?.type==='free_shipping');
+        const paymentDetails = (()=>{
+          const payment = order.payment || {};
+          const meta = payment.meta || {};
+          const methodRaw = payment.method || payment.type || meta.type || order.paymentType || order.paymentMethod || order.payment_method;
+          const venmoUser = payment.venmoUser || meta.venmoUser;
+          const txid = payment.txid || payment.transactionId || payment.txId || meta.txid || meta.transactionId || meta.txId;
+          const method = methodRaw ? String(methodRaw) : '';
+          const methodLower = method.toLowerCase();
+
+          if(methodLower.includes('venmo')){
+            const label = venmoUser ? `${method} (${venmoUser})` : (method || 'Venmo');
+            return { label, txid: '' };
+          }
+
+          if(methodLower.includes('bitcoin') || methodLower==='btc'){
+            const label = method || 'Bitcoin';
+            return { label, txid: txid ? String(txid) : '' };
+          }
+
+          if(venmoUser && method) return { label: `${method} (${venmoUser})`, txid: '' };
+          if(method) return { label: method, txid: '' };
+          if(venmoUser) return { label: venmoUser, txid: '' };
+          return { label: 'Not specified', txid: '' };
+        })();
         const itemDiscount = Math.max(0, computed - discountedSubtotal);
         const status=order.paymentStatus||'Unknown';
         const statusClass = status==='Paid' ? 'bg-lime-900 text-lime-300' : 'bg-rose-900 text-rose-300';
         const contact=order.contactInfo||{};
+        const contactEntries=[
+          { label:'Name', value: contact.fullName },
+          { label:'Email', value: contact.email },
+          { label:'Phone', value: contact.phone },
+          { label:'Address', value: contact.shippingAddress }
+        ];
+        const contactHtml = contactEntries.map(({label,value})=>{
+          const raw = (value ?? '').toString();
+          const hasValue = raw.trim().length>0;
+          const display = hasValue ? raw : 'Not Provided';
+          const displayHtml = hasValue ? display.replace(/\n/g,'<br>') : display;
+          const copyAttr = hasValue ? ` data-copy="${encodeURIComponent(raw)}"` : '';
+          const copyBtn = hasValue ? `<button type="button" class="copy-contact btn-neon-cyan px-2 py-0.5 rounded text-xs font-semibold shrink-0"${copyAttr}>Copy</button>` : '';
+          const valueMarkup = `<span class="text-gray-300 break-words grow">${displayHtml}</span>`;
+          return `<div class="flex flex-wrap items-start gap-2"><span class="font-medium text-gray-500">${label}:</span><div class="flex items-start gap-2 min-w-0 flex-1">${valueMarkup}${copyBtn}</div></div>`;
+        }).join('');
         const orderIdText=order.orderId || order.id;
         const tracking=Array.isArray(order.tracking)?order.tracking:[];
         const trackingHtml = tracking.length
           ? tracking.map(t=>{
               const url=t.url||buildTrackingUrl(t.carrier,t.number);
               const label=`${t.carrier||"Carrier"}: ${t.number||"—"}`;
-              return `<div class="flex items-center gap-2 text-xs"><a href="${url}" target="_blank" rel="noopener" class="underline text-cyan-300 hover:text-cyan-200">${label}</a><button type="button" class="btn-neon-cyan px-2 py-0.5 rounded copy-track" data-track="${t.number||""}">Copy</button></div>`;
+              const numberAttr = t.number||"";
+              return `<div class="flex flex-wrap items-center gap-2 text-xs">
+                <a href="${url}" target="_blank" rel="noopener" class="underline text-cyan-300 hover:text-cyan-200">${label}</a>
+                <button type="button" class="btn-neon-cyan px-2 py-0.5 rounded copy-track" data-track="${numberAttr}">Copy</button>
+                <button type="button" class="btn-neon-lime px-2 py-0.5 rounded send-tracking-email-btn" data-order-id="${order.id}" data-track="${numberAttr}">Send Email</button>
+              </div>`;
             }).join("")
           : `<span class="text-gray-500 text-xs italic">No tracking added yet</span>`;
 
@@ -823,6 +899,10 @@ function listenForInventory() {
                 <div><span class="text-gray-500">Subtotal:</span> $${currency(discountedSubtotal)}</div>
                 ${itemDiscount>0?`<div><span class="text-gray-500">Items discount:</span> <span class="text-green-300 font-semibold">-$${currency(itemDiscount)}</span></div>`:``}
                 <div><span class="text-gray-500">Shipping:</span> ${hasFreeShip?`<span class="text-green-300 font-semibold">FREE</span>`:`$${currency(shippingCostSafe)}`}</div>
+                <div>
+                  <span class="text-gray-500">Payment Type:</span> <span class="text-gray-300">${paymentDetails.label}</span>
+                  ${paymentDetails.txid ? `<div class="text-gray-500 text-xs mt-1 pl-4">TXID: <span class="text-gray-300">${paymentDetails.txid}</span></div>` : ''}
+                </div>
               </div>
             </div>
           </div>
@@ -835,10 +915,7 @@ function listenForInventory() {
           <div>
             <p class="font-semibold text-gray-400 mb-2">Contact Info:</p>
             <div class="text-sm text-gray-500 space-y-1">
-              <p><span class="font-medium">Name:</span> ${contact.fullName || 'Not Provided'}</p>
-              <p><span class="font-medium">Email:</span> ${contact.email || 'Not Provided'}</p>
-              <p><span class="font-medium">Phone:</span> ${contact.phone || 'Not Provided'}</p>
-              <p><span class="font-medium">Address:</span> ${contact.shippingAddress || 'Not Provided'}</p>
+              ${contactHtml}
             </div>
           </div>
 
@@ -862,7 +939,19 @@ function listenForInventory() {
         </div>`;
         ordersContainer.insertAdjacentHTML('beforeend', card);
         const last=ordersContainer.lastElementChild;
-        last.querySelectorAll('.copy-track').forEach(btn=>btn.addEventListener('click',()=>{ const v=btn.dataset.track||""; if(v) copyToClipboard(v); }));
+        last.querySelectorAll('.copy-track').forEach(btn=>btn.addEventListener('click',()=>{
+          const v=btn.dataset.track||"";
+          if(!v) return;
+          if(copyToClipboard(v)) indicateCopy(btn);
+        }));
+        last.querySelectorAll('.copy-contact').forEach(btn=>{
+          btn.addEventListener('click',()=>{
+            const encoded=btn.dataset.copy||'';
+            if(!encoded) return;
+            const text=decodeURIComponent(encoded);
+            if(text && copyToClipboard(text)) indicateCopy(btn);
+          });
+        });
       });
 
       updateFinancialUI(); renderInfographics();
@@ -1054,15 +1143,17 @@ async function handleNewCostHistory(e){
   }
 }
 
-  /* Resend email (with tracking) */
-  async function resendOrderEmailById(orderId,btn){
-    const order=allOrdersCache.find(o=>o.id===orderId);
-    if(!order){ showModal(`Order not found: ${orderId}`); return; }
-    const items = Array.isArray(order.items)? order.items.map(i=>({ id:i?.id??"", name:i?.name??"", quantity:Number(i?.quantity??0), unitPrice:Number(i?.unitPrice??0) })) : [];
+  function buildExternalOrderPayload(order){
+    const items = Array.isArray(order.items)? order.items.map(i=>({
+      id:i?.id??"",
+      name:i?.name??"",
+      quantity:Number(i?.quantity??0),
+      unitPrice:Number(i?.unitPrice??0)
+    })) : [];
     const computedSubtotal = items.reduce((s,i)=>s+(Number(i.unitPrice)*Number(i.quantity)),0);
     const shipping = Number(order.shippingCost ?? 0);
     const total = Number(order.total ?? (computedSubtotal + shipping));
-    const payloadOrder = {
+    return {
       orderId: order.orderId || order.id,
       contactInfo: {
         fullName: order.contactInfo?.fullName ?? "",
@@ -1076,13 +1167,44 @@ async function handleNewCostHistory(e){
       total,
       paymentStatus: order.paymentStatus ?? "unpaid",
       timestampISO: (order.timestamp?.toDate?.() && order.timestamp.toDate().toISOString()) || new Date().toISOString(),
-      tracking: (Array.isArray(order.tracking)?order.tracking:[]).map(t=>({ carrier:t.carrier||"", number:t.number||"", url:t.url||buildTrackingUrl(t.carrier,t.number) }))
+      tracking: (Array.isArray(order.tracking)?order.tracking:[]).map(t=>({
+        carrier:t.carrier||"",
+        number:t.number||"",
+        url:t.url||buildTrackingUrl(t.carrier,t.number)
+      }))
     };
+  }
+
+  /* Resend email (with tracking) */
+  async function resendOrderEmailById(orderId,btn){
+    const order=allOrdersCache.find(o=>o.id===orderId);
+    if(!order){ showModal(`Order not found: ${orderId}`); return; }
+    const payloadOrder = buildExternalOrderPayload(order);
 
     const original=btn?.textContent; if(btn){ btn.disabled=true; btn.textContent="Resending..."; btn.classList.add("opacity-70","cursor-not-allowed"); }
     try{ await resendFn({ order: payloadOrder }); showModal(`Resent confirmation to ${payloadOrder.contactInfo.email}`); }
     catch(err){ console.error("Resend failed:",err); showModal(`Resend failed: ${err.message||"See console"}`); }
     finally{ if(btn){ btn.disabled=false; btn.textContent=original||"Resend Email"; btn.classList.remove("opacity-70","cursor-not-allowed"); } }
+  }
+
+  async function sendTrackingEmail(orderId, trackingNumber, btn){
+    const order = allOrdersCache.find(o=>o.id===orderId);
+    if(!order){ showModal(`Order not found: ${orderId}`); return; }
+    const payloadOrder = buildExternalOrderPayload(order);
+    const targetTracking = trackingNumber || payloadOrder.tracking?.[0]?.number || "";
+    if(!targetTracking){ showModal('No tracking number available for this order.'); return; }
+
+    const original = btn?.textContent;
+    if(btn){ btn.disabled = true; btn.textContent = 'Sending...'; btn.classList.add('opacity-70','cursor-not-allowed'); }
+    try{
+      await sendShippingFn({ order: payloadOrder, trackingNumber: targetTracking });
+      showModal(`Shipping confirmation sent to ${payloadOrder.contactInfo.email || 'customer'}.`);
+    }catch(err){
+      console.error('Shipping confirmation failed:', err);
+      showModal(`Failed to send shipping confirmation: ${err.message || 'See console'}`);
+    }finally{
+      if(btn){ btn.disabled = false; btn.textContent = original || 'Send Email'; btn.classList.remove('opacity-70','cursor-not-allowed'); }
+    }
   }
 
   function openAddCostModal(){ addCostModal.classList.add('is-open'); }
@@ -1115,7 +1237,9 @@ async function handleNewCostHistory(e){
       const editButton=e.target.closest('.edit-order-btn');
       if(editButton){ const orderId=editButton.dataset.orderId; const order=allOrdersCache.find(o=>o.id===orderId); if(order) openEditModal(order); return; }
       const resendButton=e.target.closest('.resend-order-btn');
-      if(resendButton){ const orderId=resendButton.dataset.orderId; resendOrderEmailById(orderId,resendButton); }
+      if(resendButton){ const orderId=resendButton.dataset.orderId; resendOrderEmailById(orderId,resendButton); return; }
+      const sendTrackButton = e.target.closest('.send-tracking-email-btn');
+      if(sendTrackButton){ const orderId=sendTrackButton.dataset.orderId; const track=sendTrackButton.dataset.track||""; if(orderId) sendTrackingEmail(orderId, track, sendTrackButton); return; }
     });
 
     if(editOrderForm) editOrderForm.addEventListener('submit', handleEditOrder);
