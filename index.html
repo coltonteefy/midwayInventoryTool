@@ -34,6 +34,170 @@
     .full-page-modal.is-open{ display:flex }
     @keyframes copyPulse{ 0%{transform:scale(1);} 40%{transform:scale(1.12);} 80%{transform:scale(0.98);} 100%{transform:scale(1);} }
     .copy-track.copied,.copy-contact.copied{ background:#22c55e!important; color:#06131a!important; animation:copyPulse .6s ease forwards; box-shadow:0 0 12px rgba(34,197,94,.45); }
+
+    /* Promo tool styles */
+    #promo-tool {
+      --bg:#0f172a;
+      --card:#111827;
+      --muted:#94a3b8;
+      --fg:#e5e7eb;
+      --accent:#38bdf8;
+      --ok:#10b981;
+      --warn:#f59e0b;
+      --err:#ef4444;
+      margin-top:4rem;
+      padding:3rem 1rem 4rem;
+      font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,Arial;
+      background:linear-gradient(180deg,#0b1220,#0f172a 40%,#0b1220);
+      border-radius:24px;
+    }
+    #promo-tool .promo-wrap {
+      max-width:1050px;
+      margin:0 auto;
+    }
+    #promo-tool .promo-title {
+      margin:0 0 10px;
+      font-size:22px;
+      font-weight:700;
+      letter-spacing:.3px;
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+    #promo-tool .promo-pill {
+      font-size:11px;
+      color:#082f49;
+      background:#67e8f9;
+      padding:4px 8px;
+      border-radius:999px;
+      font-weight:700;
+    }
+    #promo-tool .promo-card {
+      background:var(--card);
+      border:1px solid #1f2937;
+      border-radius:14px;
+      padding:16px;
+      box-shadow:0 10px 25px rgba(0,0,0,.35);
+    }
+    #promo-tool label {
+      font-size:12px;
+      color:var(--muted);
+      display:block;
+      margin:6px 0 6px;
+    }
+    #promo-tool input[type="text"],
+    #promo-tool input[type="password"],
+    #promo-tool input[type="number"],
+    #promo-tool input[type="datetime-local"],
+    #promo-tool select,
+    #promo-tool textarea {
+      width:100%;
+      padding:10px 12px;
+      background:#0b1220;
+      color:var(--fg);
+      border:1px solid #263244;
+      border-radius:10px;
+      outline:none;
+    }
+    #promo-tool input[type="checkbox"] {
+      transform:scale(1.05);
+    }
+    #promo-tool textarea {
+      min-height:120px;
+      font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    }
+    #promo-tool .toolbar {
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:12px;
+    }
+    #promo-tool .btn {
+      appearance:none;
+      border:1px solid #243244;
+      background:#0b1220;
+      color:var(--fg);
+      padding:10px 14px;
+      border-radius:10px;
+      cursor:pointer;
+      font-weight:600;
+    }
+    #promo-tool .btn:hover {
+      border-color:#324459;
+    }
+    #promo-tool .btn.primary {
+      background:linear-gradient(180deg,#1e40af,#1d4ed8);
+      border-color:#1d4ed8;
+    }
+    #promo-tool .btn.ok {
+      background:linear-gradient(180deg,#0f9b6b,#10b981);
+      border:1px solid #10b981;
+    }
+    #promo-tool .btn.warn {
+      background:linear-gradient(180deg,#b45309,#f59e0b);
+      border:1px solid #f59e0b;
+      color:#0b1220;
+    }
+    #promo-tool .btn.ghost {
+      background:transparent;
+    }
+    #promo-tool .codes {
+      margin-top:16px;
+      display:grid;
+      gap:12px;
+    }
+    #promo-tool .code-card {
+      background:#0b1220;
+      border:1px solid #21304a;
+      border-radius:12px;
+      padding:12px;
+    }
+    #promo-tool .code-header {
+      display:flex;
+      align-items:center;
+      gap:10px;
+      justify-content:space-between;
+      margin-bottom:6px;
+    }
+    #promo-tool .row {
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:10px;
+    }
+    #promo-tool .row-3 {
+      display:grid;
+      grid-template-columns:1.2fr .8fr .8fr;
+      gap:10px;
+    }
+    #promo-tool .row-4 {
+      display:grid;
+      grid-template-columns:1fr .7fr .7fr .7fr;
+      gap:10px;
+    }
+    #promo-tool .hint {
+      color:var(--muted);
+      font-size:12px;
+      margin:6px 0 0;
+    }
+    #promo-tool .footnote {
+      font-size:12px;
+      color:var(--muted);
+      margin-top:10px;
+    }
+    #promo-tool .log {
+      white-space:pre-wrap;
+      background:#0b1220;
+      border:1px solid #21304a;
+      border-radius:12px;
+      padding:12px;
+      margin-top:12px;
+    }
+    #promo-tool .log.muted {
+      color:var(--muted);
+    }
+    #promo-tool .muted {
+      color:var(--muted);
+    }
   </style>
 </head>
 <body class="flex flex-col items-center min-h-screen p-4">
@@ -1379,6 +1543,302 @@ async function deleteOrderAndRollback(orderId, buttonEl) {
       attachEventListeners();
     }catch(err){ console.error('Init failed:',err); qs('status').textContent=`Error: ${err.message}`; }
   });
+  </script>
+
+  <section id="promo-tool">
+    <div class="promo-wrap">
+      <h2 class="promo-title">Promo Codes Admin <span class="promo-pill">local tool</span></h2>
+      <div class="promo-card">
+        <div class="row">
+          <div>
+            <label>Function Endpoint (HTTPS)</label>
+            <input id="endpoint" type="text" value="https://us-central1-peptide-inventory.cloudfunctions.net/upsertPromoCodesHttp" />
+            <div class="hint">Change if your project or region differs.</div>
+          </div>
+          <div>
+            <label>Admin Key</label>
+            <div style="display:flex; gap:8px;">
+              <input id="adminKey" type="password" placeholder="Your secret admin key" />
+              <button class="btn" id="toggleKey" title="Show/Hide">Show</button>
+            </div>
+            <div class="hint">Never embed this in public code. Use this page locally.</div>
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <button class="btn" id="addRow">+ Add Code</button>
+          <button class="btn ghost" id="loadSample">Load sample</button>
+          <button class="btn" id="preview">Preview JSON</button>
+          <button class="btn ok" id="push">Push to Firebase</button>
+          <button class="btn ghost" id="exportJson">Export JSON</button>
+          <label class="btn ghost" for="importFile" style="cursor:pointer;">Import JSON</label>
+          <input id="importFile" type="file" accept="application/json" style="display:none;" />
+        </div>
+
+        <div id="codes" class="codes"></div>
+
+        <div class="footnote">
+          Tip: For <span class="muted">expiresAt</span> use your local date/time; it will be sent as ISO (UTC). “free_shipping” ignores value.
+        </div>
+
+        <h3 style="margin:18px 0 6px">Payload Preview / Response</h3>
+        <div id="log" class="log muted">No actions yet.</div>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    (function(){
+      const $ = (id) => document.getElementById(id);
+      const codesEl = $("codes");
+      const logEl = $("log");
+      const endpointEl = $("endpoint");
+      const adminKeyEl = $("adminKey");
+      const toggleKeyBtn = $("toggleKey");
+
+      toggleKeyBtn.addEventListener("click", () => {
+        adminKeyEl.type = adminKeyEl.type === "password" ? "text" : "password";
+        toggleKeyBtn.textContent = adminKeyEl.type === "password" ? "Show" : "Hide";
+      });
+
+      // --- Row template ---
+      function newRow(data = {}) {
+        const div = document.createElement("div");
+        div.className = "code-card";
+        div.innerHTML = `
+      <div class="code-header">
+        <strong>Promo code</strong>
+        <button class="btn warn" type="button" data-action="remove">Remove</button>
+      </div>
+
+      <div class="row-4">
+        <div>
+          <label>Code</label>
+          <input type="text" data-field="code" placeholder="WELCOME10" value="${esc(data.code || "")}" />
+        </div>
+        <div>
+          <label>Type</label>
+          <select data-field="type">
+            <option value="percent">percent</option>
+            <option value="fixed">fixed</option>
+            <option value="free_shipping">free_shipping</option>
+          </select>
+        </div>
+        <div>
+          <label>Value</label>
+          <input type="number" step="0.01" data-field="value" placeholder="10 (for 10%)" />
+        </div>
+        <div>
+          <label>Label (optional)</label>
+          <input type="text" data-field="label" placeholder="10% off" value="${esc(data.label || "")}" />
+        </div>
+      </div>
+
+      <div class="row-4" style="margin-top:8px;">
+        <div>
+          <label>Active</label>
+          <div style="display:flex;align-items:center;height:40px">
+            <input type="checkbox" data-field="active" ${data.active === false ? "" : "checked"} />
+          </div>
+        </div>
+        <div>
+          <label>Global Usage Limit (optional)</label>
+          <input type="number" data-field="usageLimit" placeholder="e.g. 500" value="${numOrEmpty(data.usageLimit)}" />
+        </div>
+        <div>
+          <label>Per-User Limit (optional)</label>
+          <input type="number" data-field="perUserLimit" placeholder="e.g. 1" value="${numOrEmpty(data.perUserLimit)}" />
+        </div>
+        <div>
+          <label>Expires At (optional)</label>
+          <input type="datetime-local" data-field="expiresAt" />
+        </div>
+      </div>
+      `;
+
+        // set selects/values post-DOM insert
+        const typeSel = div.querySelector('[data-field="type"]');
+        typeSel.value = data.type || "percent";
+
+        const valueEl = div.querySelector('[data-field="value"]');
+        if (typeof data.value !== "undefined") valueEl.value = data.value;
+
+        const expiresEl = div.querySelector('[data-field="expiresAt"]');
+        if (data.expiresAt) {
+          const dt = toLocalDatetimeInput(data.expiresAt);
+          if (dt) expiresEl.value = dt;
+        }
+
+        // uppercase CODE on input
+        const codeEl = div.querySelector('[data-field="code"]');
+        codeEl.addEventListener("input", () => { codeEl.value = codeEl.value.toUpperCase().replace(/\s+/g,''); });
+
+        // disable value for free_shipping
+        const onTypeChange = () => {
+          if (typeSel.value === "free_shipping") {
+            valueEl.value = "";
+            valueEl.disabled = true;
+          } else {
+            valueEl.disabled = false;
+          }
+        };
+        typeSel.addEventListener("change", onTypeChange);
+        onTypeChange();
+
+        // remove
+        div.querySelector('[data-action="remove"]').addEventListener("click", () => {
+          div.remove();
+          note(`Removed a code row.`);
+        });
+
+        return div;
+      }
+
+      function esc(s){ return String(s).replace(/[&<>"']/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[c])); }
+      function numOrEmpty(v){ return (v === 0 || (typeof v === "number" && Number.isFinite(v))) ? String(v) : ""; }
+
+      function toLocalDatetimeInput(v){
+        // Accept ISO string, millis, or Date
+        const d = v instanceof Date ? v : (typeof v === "number" ? new Date(v) : new Date(String(v)));
+        if (isNaN(d)) return "";
+        // datetime-local expects "YYYY-MM-DDTHH:mm"
+        const pad = n => String(n).padStart(2,"0");
+        return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      }
+      function fromDatetimeLocalToISO(s){
+        if (!s) return undefined;
+        const d = new Date(s);
+        if (isNaN(d)) return undefined;
+        return d.toISOString(); // server accepts ISO
+      }
+
+      function collectPayload(){
+        const adminKey = adminKeyEl.value.trim();
+        const endpoint = endpointEl.value.trim();
+        if (!endpoint) throw new Error("Endpoint required.");
+        if (!adminKey) throw new Error("Admin key required.");
+
+        const rows = Array.from(codesEl.querySelectorAll(".code-card"));
+        if (rows.length === 0) throw new Error("Add at least one code.");
+
+        const codes = rows.map(card => {
+          const get = sel => card.querySelector(sel);
+          const code = (get('[data-field="code"]').value || "").trim().toUpperCase();
+          const type = (get('[data-field="type"]').value || "").trim();
+          const valueRaw = get('[data-field="value"]').value;
+          const label = (get('[data-field="label"]').value || "").trim();
+          const active = get('[data-field="active"]').checked;
+          const usageLimitRaw = get('[data-field="usageLimit"]').value;
+          const perUserLimitRaw = get('[data-field="perUserLimit"]').value;
+          const expiresAtLocal = get('[data-field="expiresAt"]').value;
+
+          if (!code) throw new Error("Each code row needs a CODE.");
+          if (!type) throw new Error(`Code ${code}: type required.`);
+
+          const toNum = (x) => {
+            if (x === "" || x === null || typeof x === "undefined") return undefined;
+            const n = Number(x);
+            return Number.isFinite(n) ? n : undefined;
+          };
+
+          const doc = { code, type, active };
+          if (label) doc.label = label;
+
+          // only include value for percent/fixed
+          if (type !== "free_shipping") {
+            const v = toNum(valueRaw);
+            if (typeof v === "undefined") throw new Error(`Code ${code}: value required for type "${type}".`);
+            doc.value = v;
+          }
+
+          const usageLimit = toNum(usageLimitRaw);
+          if (typeof usageLimit !== "undefined") doc.usageLimit = usageLimit;
+
+          const perUserLimit = toNum(perUserLimitRaw);
+          if (typeof perUserLimit !== "undefined") doc.perUserLimit = perUserLimit;
+
+          const expiresAtISO = fromDatetimeLocalToISO(expiresAtLocal);
+          if (expiresAtISO) doc.expiresAt = expiresAtISO;
+
+          return doc;
+        });
+
+        return { endpoint, body: { adminKey, codes } };
+      }
+
+      function note(msg){ logEl.textContent = msg; logEl.classList.remove("muted"); }
+      function show(obj, title=""){ logEl.textContent = (title ? title + "\n" : "") + JSON.stringify(obj, null, 2); logEl.classList.remove("muted"); }
+      function warn(msg){ logEl.textContent = "⚠ " + msg; logEl.classList.remove("muted"); }
+      function err(msg){ logEl.textContent = "❌ " + msg; logEl.classList.remove("muted"); }
+
+      // Buttons
+      $("addRow").addEventListener("click", () => {
+        codesEl.appendChild(newRow());
+        note("Added a code row.");
+      });
+
+      $("loadSample").addEventListener("click", () => {
+        codesEl.innerHTML = "";
+        codesEl.appendChild(newRow({ code:"WELCOME10", type:"percent", value:10, label:"10% off", active:true, perUserLimit:1 }));
+        codesEl.appendChild(newRow({ code:"FREESHIP", type:"free_shipping", label:"Free shipping", active:true }));
+        note("Loaded sample codes.");
+      });
+
+      $("preview").addEventListener("click", () => {
+        try {
+          const { body } = collectPayload();
+          show(body, "Preview payload:");
+        } catch (e) { err(e.message); }
+      });
+
+      $("push").addEventListener("click", async () => {
+        try {
+          const { endpoint, body } = collectPayload();
+          show(body, "Sending payload...");
+          const res = await fetch(endpoint, {
+            method: "POST",
+            headers: { "Content-Type":"application/json" },
+            body: JSON.stringify(body)
+          });
+          const text = await res.text();
+          let parsed; try { parsed = JSON.parse(text); } catch { parsed = { raw: text }; }
+          show({ status: res.status, response: parsed }, "Response:");
+        } catch (e) {
+          err(e.message || String(e));
+        }
+      });
+
+      $("exportJson").addEventListener("click", () => {
+        try {
+          const { body } = collectPayload();
+          const blob = new Blob([JSON.stringify(body, null, 2)], { type: "application/json" });
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(blob);
+          a.download = "promos.json";
+          a.click();
+          URL.revokeObjectURL(a.href);
+          note("Exported promos.json");
+        } catch (e) { err(e.message); }
+      });
+
+      $("importFile").addEventListener("change", async (ev) => {
+        const f = ev.target.files[0];
+        if (!f) return;
+        try {
+          const text = await f.text();
+          const obj = JSON.parse(text);
+          if (!obj || !Array.isArray(obj.codes)) throw new Error("JSON must have a 'codes' array.");
+          if (obj.adminKey) adminKeyEl.value = obj.adminKey;
+          codesEl.innerHTML = "";
+          for (const c of obj.codes) codesEl.appendChild(newRow(c));
+          show(obj, "Imported JSON:");
+        } catch (e) { err("Import failed: " + e.message); }
+      });
+
+      // start with one blank row
+      codesEl.appendChild(newRow());
+
+    })();
   </script>
 </body>
 </html>
