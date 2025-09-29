@@ -30,8 +30,6 @@
     .modal-backdrop.is-open{ opacity:1; pointer-events:auto }
     .modal-main{ position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); width:90%; max-width:600px; background:#111827; z-index:50; border-radius:12px; box-shadow:0 10px 25px rgba(0,0,0,.5); padding:2rem; transition:transform .3s,opacity .3s; opacity:0; pointer-events:none; max-height:90%; overflow-y:auto }
     .modal-main.is-open{ opacity:1; pointer-events:auto; transform:translate(-50%,-50%) scale(1) }
-    .full-page-modal{ position:fixed; top:0; left:0; width:100%; height:100%; background:#0d0c1d; z-index:50; display:none; align-items:center; justify-content:center }
-    .full-page-modal.is-open{ display:flex }
     @keyframes copyPulse{ 0%{transform:scale(1);} 40%{transform:scale(1.12);} 80%{transform:scale(0.98);} 100%{transform:scale(1);} }
     .copy-track.copied,.copy-contact.copied{ background:#22c55e!important; color:#06131a!important; animation:copyPulse .6s ease forwards; box-shadow:0 0 12px rgba(34,197,94,.45); }
 
@@ -45,7 +43,7 @@
       --ok:#10b981;
       --warn:#f59e0b;
       --err:#ef4444;
-      margin-top:4rem;
+      margin-top:0;
       padding:3rem 1rem 4rem;
       font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,Arial;
       background:linear-gradient(180deg,#0b1220,#0f172a 40%,#0b1220);
@@ -208,7 +206,6 @@
     </div>
 
     <div id="auth-buttons" class="space-x-4">
-      <button id="add-cost-btn" class="btn-neon-lime px-4 py-2 rounded-lg font-semibold text-xs hidden">Add Cost History</button>
       <button id="signout-btn" class="btn-neon-cyan px-4 py-2 rounded-lg font-semibold text-xs hidden">Sign Out</button>
     </div>
 
@@ -234,6 +231,174 @@
     </div>
 
     <div id="main-content" class="hidden space-y-8">
+      <!-- Production Tools -->
+      <section id="production-tools-section" class="space-y-4 hidden">
+        <h2 class="text-xl font-semibold text-white text-glow-fuchsia">Production Tools</h2>
+        <div class="bg-gray-900 p-4 rounded-lg border border-gray-700">
+          <div class="flex flex-wrap gap-4">
+            <button id="toggle-cost-tool-btn" class="btn-neon-lime px-4 py-2 rounded-lg font-semibold text-xs hidden">Open Cost Tool</button>
+            <button id="toggle-inventory-tool-btn" class="btn-neon-lime px-4 py-2 rounded-lg font-semibold text-xs hidden">Open Inventory Tool</button>
+            <button id="toggle-promo-tool-btn" class="btn-neon-cyan px-4 py-2 rounded-lg font-semibold text-xs hidden">Open Promo Tool</button>
+          </div>
+          <div id="inventory-tool-wrapper" class="mt-4 hidden">
+            <section id="inventory-tool" class="space-y-4">
+              <h2 class="text-xl font-semibold text-white text-glow-fuchsia">Add New Inventory Item</h2>
+              <form id="add-item-form" class="bg-gray-900 p-4 rounded-lg border border-gray-700">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                  <div class="w-full">
+                    <label for="new-item-name" class="block text-sm font-medium text-gray-400">Item Name</label>
+                    <input type="text" id="new-item-name" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="e.g., MIDWAY GRAY 5mg" required>
+                  </div>
+                  <div class="w-full">
+                    <label for="new-item-id" class="block text-sm font-medium text-gray-400">Item ID</label>
+                    <input type="text" id="new-item-id" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="e.g., RT24" required>
+                  </div>
+                  <div class="w-full">
+                    <label for="new-item-vials-sold" class="block text-sm font-medium text-gray-400">Vials Sold (Initial)</label>
+                    <input type="number" id="new-item-vials-sold" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" value="0" min="0" required>
+                  </div>
+                  <div class="w-full">
+                    <label for="new-item-price" class="block text-sm font-medium text-gray-400">Sell Price per Vial ($)</label>
+                    <input type="number" step="0.01" id="new-item-price" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" value="0" min="0" required>
+                  </div>
+                  <div class="w-full">
+                    <label for="new-item-total-vial-weight" class="block text-sm font-medium text-gray-400">Total Vial Weight (mg)</label>
+                    <input type="number" step="0.01" id="new-item-total-vial-weight" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" value="0" min="0" required>
+                  </div>
+                  <div class="w-full">
+                    <div class="flex items-center space-x-2 mt-7">
+                      <input type="checkbox" id="new-item-blend" class="h-4 w-4 text-cyan-500 rounded-md focus:ring-cyan-500 border-gray-600">
+                      <label for="new-item-blend" class="block text-sm font-medium text-gray-400">Is a Blend?</label>
+                    </div>
+                  </div>
+                  <div class="w-full">
+                    <div class="flex items-center space-x-2 mt-7">
+                      <input type="checkbox" id="new-item-is-active" class="h-4 w-4 text-cyan-500 rounded-md focus:ring-cyan-500 border-gray-600" checked>
+                      <label for="new-item-is-active" class="block text-sm font-medium text-gray-400">Product is Active</label>
+                    </div>
+                  </div>
+                  <div class="w-full col-span-1 sm:col-span-2 lg:col-span-3">
+                    <label for="new-item-image" class="block text-sm font-medium text-gray-400">Image URL</label>
+                    <input type="url" id="new-item-image" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="https://example.com/image.jpg">
+                  </div>
+                  <div class="w-full col-span-1 sm:col-span-2 lg:col-span-3">
+                    <label for="new-item-coa" class="block text-sm font-medium text-gray-400">COA URL</label>
+                    <input type="url" id="new-item-coa" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="https://example.com/coa.pdf">
+                  </div>
+                  <div class="w-full col-span-1 sm:col-span-2 lg:col-span-3">
+                    <label for="new-item-description" class="block text-sm font-medium text-gray-400">Product Description</label>
+                    <textarea id="new-item-description" rows="3" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="Short summary shown to customers"></textarea>
+                  </div>
+                </div>
+
+                <div class="space-y-4 mt-6 p-4 rounded-lg border-2 border-dashed border-gray-700">
+                  <h3 class="text-lg font-semibold text-white text-glow-fuchsia">Initial Cost History</h3>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div class="w-full">
+                      <label for="new-cost-per-kit" class="block text-sm font-medium text-gray-400">Cost per Kit</label>
+                      <input type="number" step="0.01" id="new-cost-per-kit" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="$0.00" required>
+                    </div>
+                    <div class="w-full">
+                      <label for="new-total-kits-bought" class="block text-sm font-medium text-gray-400">Total Kits Bought</label>
+                      <input type="number" id="new-total-kits-bought" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="0" required>
+                    </div>
+                    <div class="w-full">
+                      <label for="new-total-vials-per-kit" class="block text-sm font-medium text-gray-400">Total Vials per Kit</label>
+                      <input type="number" id="new-total-vials-per-kit" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="0" required>
+                    </div>
+                    <div class="w-full col-span-1 sm:col-span-2 lg:col-span-3">
+                      <label for="new-purchase-date" class="block text-sm font-medium text-gray-400">Purchase Date</label>
+                      <input type="date" id="new-purchase-date" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" required>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="flex justify-center mt-6">
+                  <button type="submit" class="btn-neon-cyan px-4 py-2 rounded-lg font-semibold w-full sm:w-auto">Add Item</button>
+                </div>
+              </form>
+            </section>
+          </div>
+          <div id="cost-tool-wrapper" class="mt-4 hidden">
+            <section id="cost-tool" class="space-y-4">
+              <h2 class="text-xl font-semibold text-white text-glow-fuchsia">Add Cost History Entry</h2>
+              <form id="add-cost-form" class="bg-gray-900 p-4 rounded-lg border border-gray-700">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div class="w-full md:col-span-2">
+                    <label for="existing-item-select" class="block text-sm font-medium text-gray-400">Select Item</label>
+                    <select id="existing-item-select" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-lime-500 focus:border-lime-500" required>
+                      <option value="">-- Select an item --</option>
+                    </select>
+                  </div>
+                  <div class="w-full">
+                    <label for="cost-per-kit" class="block text-sm font-medium text-gray-400">Cost per Kit</label>
+                    <input type="number" step="0.01" id="cost-per-kit" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-lime-500 focus:border-lime-500" placeholder="$0.00" required>
+                  </div>
+                  <div class="w-full">
+                    <label for="total-kits-bought" class="block text-sm font-medium text-gray-400">Total Kits Bought</label>
+                    <input type="number" id="total-kits-bought" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-lime-500 focus:border-lime-500" placeholder="0" required>
+                  </div>
+                  <div class="w-full">
+                    <label for="total-vials-per-kit" class="block text-sm font-medium text-gray-400">Total Vials per Kit</label>
+                    <input type="number" id="total-vials-per-kit" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-lime-500 focus:border-lime-500" placeholder="0" required>
+                  </div>
+                  <div class="w-full">
+                    <label for="purchase-date" class="block text-sm font-medium text-gray-400">Purchase Date</label>
+                    <input type="date" id="purchase-date" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-lime-500 focus:border-lime-500" required>
+                  </div>
+                </div>
+                <div class="flex justify-center mt-6">
+                  <button type="submit" class="btn-neon-lime px-4 py-2 rounded-lg font-semibold w-full sm:w-auto">Add Cost Entry</button>
+                </div>
+              </form>
+            </section>
+          </div>
+          <div id="promo-tool-wrapper" class="mt-4 hidden">
+            <section id="promo-tool">
+              <div class="promo-wrap">
+                <h2 class="promo-title">Promo Codes Admin <span class="promo-pill">local tool</span></h2>
+                <div class="promo-card">
+                  <div class="row">
+                    <div>
+                      <label>Function Endpoint (HTTPS)</label>
+                      <input id="endpoint" type="text" value="https://us-central1-peptide-inventory.cloudfunctions.net/upsertPromoCodesHttp" />
+                      <div class="hint">Change if your project or region differs.</div>
+                    </div>
+                    <div>
+                      <label>Admin Key</label>
+                      <div style="display:flex; gap:8px;">
+                        <input id="adminKey" type="password" placeholder="Your secret admin key" />
+                        <button class="btn" id="toggleKey" title="Show/Hide">Show</button>
+                      </div>
+                      <div class="hint">Never embed this in public code. Use this page locally.</div>
+                    </div>
+                  </div>
+
+                  <div class="toolbar">
+                    <button class="btn" id="addRow">+ Add Code</button>
+                    <button class="btn ghost" id="loadSample">Load sample</button>
+                    <button class="btn" id="preview">Preview JSON</button>
+                    <button class="btn ok" id="push">Push to Firebase</button>
+                    <button class="btn ghost" id="exportJson">Export JSON</button>
+                    <label class="btn ghost" for="importFile" style="cursor:pointer;">Import JSON</label>
+                    <input id="importFile" type="file" accept="application/json" style="display:none;" />
+                  </div>
+
+                  <div id="codes" class="codes"></div>
+
+                  <div class="footnote">
+                    Tip: For <span class="muted">expiresAt</span> use your local date/time; it will be sent as ISO (UTC). “free_shipping” ignores value.
+                  </div>
+
+                  <h3 style="margin:18px 0 6px">Payload Preview / Response</h3>
+                  <div id="log" class="log muted">No actions yet.</div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </section>
+
       <!-- Inventory Section -->
       <div class="space-y-4">
         <h2 class="text-xl font-semibold text-white text-glow-fuchsia">Inventory Data Stream</h2>
@@ -257,85 +422,6 @@
             <tbody id="inventory-list" class="bg-gray-800 divide-y divide-gray-700"></tbody>
           </table>
         </div>
-      </div>
-
-      <!-- Add Inventory Item -->
-      <div class="space-y-4">
-        <h2 class="text-xl font-semibold text-white text-glow-fuchsia">Add New Inventory Item</h2>
-        <form id="add-item-form" class="bg-gray-900 p-4 rounded-lg border border-gray-700">
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-            <div class="w-full">
-              <label for="new-item-name" class="block text-sm font-medium text-gray-400">Item Name</label>
-              <input type="text" id="new-item-name" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="e.g., MIDWAY GRAY 5mg" required>
-            </div>
-            <div class="w-full">
-              <label for="new-item-id" class="block text-sm font-medium text-gray-400">Item ID</label>
-              <input type="text" id="new-item-id" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="e.g., RT24" required>
-            </div>
-            <div class="w-full">
-              <label for="new-item-vials-sold" class="block text-sm font-medium text-gray-400">Vials Sold (Initial)</label>
-              <input type="number" id="new-item-vials-sold" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" value="0" min="0" required>
-            </div>
-            <div class="w-full">
-              <label for="new-item-price" class="block text-sm font-medium text-gray-400">Sell Price per Vial ($)</label>
-              <input type="number" step="0.01" id="new-item-price" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" value="0" min="0" required>
-            </div>
-            <div class="w-full">
-              <label for="new-item-total-vial-weight" class="block text-sm font-medium text-gray-400">Total Vial Weight (mg)</label>
-              <input type="number" step="0.01" id="new-item-total-vial-weight" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" value="0" min="0" required>
-            </div>
-            <div class="w-full">
-              <div class="flex items-center space-x-2 mt-7">
-                <input type="checkbox" id="new-item-blend" class="h-4 w-4 text-cyan-500 rounded-md focus:ring-cyan-500 border-gray-600">
-                <label for="new-item-blend" class="block text-sm font-medium text-gray-400">Is a Blend?</label>
-              </div>
-            </div>
-            <div class="w-full">
-              <div class="flex items-center space-x-2 mt-7">
-                <input type="checkbox" id="new-item-is-active" class="h-4 w-4 text-cyan-500 rounded-md focus:ring-cyan-500 border-gray-600" checked>
-                <label for="new-item-is-active" class="block text-sm font-medium text-gray-400">Product is Active</label>
-              </div>
-            </div>
-            <div class="w-full col-span-1 sm:col-span-2 lg:col-span-3">
-              <label for="new-item-image" class="block text-sm font-medium text-gray-400">Image URL</label>
-              <input type="url" id="new-item-image" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="https://example.com/image.jpg">
-            </div>
-            <div class="w-full col-span-1 sm:col-span-2 lg:col-span-3">
-              <label for="new-item-coa" class="block text-sm font-medium text-gray-400">COA URL</label>
-              <input type="url" id="new-item-coa" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="https://example.com/coa.pdf">
-            </div>
-            <div class="w-full col-span-1 sm:col-span-2 lg:col-span-3">
-              <label for="new-item-description" class="block text-sm font-medium text-gray-400">Product Description</label>
-              <textarea id="new-item-description" rows="3" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="Short summary shown to customers"></textarea>
-            </div>
-          </div>
-
-          <div class="space-y-4 mt-6 p-4 rounded-lg border-2 border-dashed border-gray-700">
-            <h3 class="text-lg font-semibold text-white text-glow-fuchsia">Initial Cost History</h3>
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div class="w-full">
-                <label for="new-cost-per-kit" class="block text-sm font-medium text-gray-400">Cost per Kit</label>
-                <input type="number" step="0.01" id="new-cost-per-kit" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="$0.00" required>
-              </div>
-              <div class="w-full">
-                <label for="new-total-kits-bought" class="block text-sm font-medium text-gray-400">Total Kits Bought</label>
-                <input type="number" id="new-total-kits-bought" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="0" required>
-              </div>
-              <div class="w-full">
-                <label for="new-total-vials-per-kit" class="block text-sm font-medium text-gray-400">Total Vials per Kit</label>
-                <input type="number" id="new-total-vials-per-kit" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="0" required>
-              </div>
-              <div class="w-full col-span-1 sm:col-span-2 lg:col-span-3">
-                <label for="new-purchase-date" class="block text-sm font-medium text-gray-400">Purchase Date</label>
-                <input type="date" id="new-purchase-date" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" required>
-              </div>
-            </div>
-          </div>
-
-          <div class="flex justify-center mt-6">
-            <button type="submit" class="btn-neon-cyan px-4 py-2 rounded-lg font-semibold w-full sm:w-auto">Add Item</button>
-          </div>
-        </form>
       </div>
 
       <!-- Totals -->
@@ -477,49 +563,6 @@
     </form>
   </div>
 
-  <!-- Add Cost History Full-Page Modal -->
-  <div id="add-cost-modal" class="full-page-modal">
-    <div class="bg-gray-900 p-8 rounded-xl shadow-2xl w-full max-w-2xl">
-      <div class="flex justify-between items-center text-lime-300 border-b pb-4 mb-4 border-gray-700">
-        <h2 class="text-2xl font-bold">Add Cost History to Existing Item</h2>
-        <button id="close-add-cost-modal-btn" class="p-2 rounded-full text-gray-400 hover:text-white transition-colors">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-      <form id="add-cost-form" class="space-y-4">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          <div class="w-full col-span-1 md:col-span-2">
-            <label for="existing-item-select" class="block text-sm font-medium text-gray-400">Select Item</label>
-            <select id="existing-item-select" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-lime-500 focus:border-lime-500" required>
-              <option value="">-- Select an item --</option>
-            </select>
-          </div>
-          <div class="w-full">
-            <label for="cost-per-kit" class="block text-sm font-medium text-gray-400">Cost per Kit</label>
-            <input type="number" step="0.01" id="cost-per-kit" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-lime-500 focus:border-lime-500" placeholder="$0.00" required>
-          </div>
-          <div class="w-full">
-            <label for="total-kits-bought" class="block text-sm font-medium text-gray-400">Total Kits Bought</label>
-            <input type="number" id="total-kits-bought" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-lime-500 focus:border-lime-500" placeholder="0" required>
-          </div>
-          <div class="w-full">
-            <label for="total-vials-per-kit" class="block text-sm font-medium text-gray-400">Total Vials per Kit</label>
-            <input type="number" id="total-vials-per-kit" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-lime-500 focus:border-lime-500" placeholder="0" required>
-          </div>
-          <div class="w-full">
-            <label for="purchase-date" class="block text-sm font-medium text-gray-400">Purchase Date</label>
-            <input type="date" id="purchase-date" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-lime-500 focus:border-lime-500" required>
-          </div>
-        </div>
-        <div class="flex justify-center mt-6">
-          <button type="submit" class="btn-neon-lime px-4 py-2 rounded-lg font-semibold w-full sm:w-auto">Add Cost Entry</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
   <!-- Firebase -->
   <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
@@ -605,9 +648,37 @@
   const totalVialsPerKitInput = qs('total-vials-per-kit');
   const purchaseDateInput = qs('purchase-date');
 
-  const addCostModal = qs('add-cost-modal');
-  const addCostBtn = qs('add-cost-btn');
-  const closeAddCostModalBtn = qs('close-add-cost-modal-btn');
+  const costToolWrapper = qs('cost-tool-wrapper');
+  const toggleCostToolBtn = qs('toggle-cost-tool-btn');
+  const inventoryToolWrapper = qs('inventory-tool-wrapper');
+  const toggleInventoryToolBtn = qs('toggle-inventory-tool-btn');
+  const promoToolWrapper = qs('promo-tool-wrapper');
+  const togglePromoToolBtn = qs('toggle-promo-tool-btn');
+  const productionToolsSection = qs('production-tools-section');
+
+  const TOOL_CONFIG = [
+    { wrapper: costToolWrapper, button: toggleCostToolBtn, openLabel: 'Open Cost Tool', closeLabel: 'Close Cost Tool' },
+    { wrapper: inventoryToolWrapper, button: toggleInventoryToolBtn, openLabel: 'Open Inventory Tool', closeLabel: 'Close Inventory Tool' },
+    { wrapper: promoToolWrapper, button: togglePromoToolBtn, openLabel: 'Open Promo Tool', closeLabel: 'Close Promo Tool' }
+  ];
+
+  function setToolOpen(tool, open){
+    if(!tool || !tool.wrapper || !tool.button) return;
+    if(open){
+      tool.wrapper.classList.remove('hidden');
+      tool.button.textContent = tool.closeLabel;
+    }else{
+      tool.wrapper.classList.add('hidden');
+      tool.button.textContent = tool.openLabel;
+    }
+  }
+
+  function closeAllTools(except){
+    TOOL_CONFIG.forEach((tool)=>{
+      if(tool === except) return;
+      setToolOpen(tool,false);
+    });
+  }
 
   function showModal(message){ qs('modal-message').textContent = message; qs('alert-modal').classList.remove('hidden'); }
   function isValidEmail(e){ return /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.test(String(e).toLowerCase()); }
@@ -692,14 +763,37 @@
   }
 
   function updateUI(user){
-    const status=qs('status'), userDisplay=qs('user-id-display'), mainContent=qs('main-content'), loginForm=qs('login-form'), signoutBtn=qs('signout-btn'), addCostBtn=qs('add-cost-btn');
+    const status=qs('status');
+    const userDisplay=qs('user-id-display');
+    const mainContent=qs('main-content');
+    const loginForm=qs('login-form');
+    const signoutBtn=qs('signout-btn');
+
     if(user){
-      userId=user.uid; status.textContent='Status: Signed in'; userDisplay.textContent='User ID: '+userId;
-      mainContent.classList.remove('hidden'); loginForm.classList.add('hidden'); signoutBtn.classList.remove('hidden'); addCostBtn.classList.remove('hidden');
+      userId=user.uid;
+      if(status) status.textContent='Status: Signed in';
+      if(userDisplay) userDisplay.textContent='User ID: '+userId;
+      if(mainContent) mainContent.classList.remove('hidden');
+      if(loginForm) loginForm.classList.add('hidden');
+      if(signoutBtn) signoutBtn.classList.remove('hidden');
+      TOOL_CONFIG.forEach((tool)=>{
+        if(tool.button) tool.button.classList.remove('hidden');
+        setToolOpen(tool,false);
+      });
+      if(productionToolsSection) productionToolsSection.classList.remove('hidden');
       listenForInventory(); listenForOrders();
     }else{
-      userId=null; status.textContent='Status: Signed out'; userDisplay.textContent='User ID: N/A';
-      mainContent.classList.add('hidden'); loginForm.classList.remove('hidden'); signoutBtn.classList.add('hidden'); addCostBtn.classList.add('hidden');
+      userId=null;
+      if(status) status.textContent='Status: Signed out';
+      if(userDisplay) userDisplay.textContent='User ID: N/A';
+      if(mainContent) mainContent.classList.add('hidden');
+      if(loginForm) loginForm.classList.remove('hidden');
+      if(signoutBtn) signoutBtn.classList.add('hidden');
+      TOOL_CONFIG.forEach((tool)=>{
+        setToolOpen(tool,false);
+        if(tool.button) tool.button.classList.add('hidden');
+      });
+      if(productionToolsSection) productionToolsSection.classList.add('hidden');
       visibleOrdersCount = ORDERS_PAGE_SIZE;
       userAdjustedOrderView = false;
       orderSearchTerm = '';
@@ -1557,9 +1651,6 @@ async function handleNewCostHistory(e){
     }
   }
 
-  function openAddCostModal(){ addCostModal.classList.add('is-open'); }
-  function closeAddCostModal(){ addCostModal.classList.remove('is-open'); }
-
   /* Events */
   function attachEventListeners(){
     qs('auth-form').addEventListener('submit', async (e)=>{
@@ -1598,8 +1689,19 @@ async function handleNewCostHistory(e){
 
     if(addItemForm) addItemForm.addEventListener('submit', handleAddItem);
     if(addCostForm) addCostForm.addEventListener('submit', handleNewCostHistory);
-    if(addCostBtn) addCostBtn.addEventListener('click', openAddCostModal);
-    if(closeAddCostModalBtn) closeAddCostModalBtn.addEventListener('click', closeAddCostModal);
+
+    TOOL_CONFIG.forEach((tool)=>{
+      if(!tool.button || !tool.wrapper) return;
+      tool.button.addEventListener('click', ()=>{
+        const isHidden = tool.wrapper.classList.contains('hidden');
+        if(isHidden){
+          closeAllTools(tool);
+          setToolOpen(tool,true);
+        }else{
+          setToolOpen(tool,false);
+        }
+      });
+    });
 
     const addTrackBtn=qs('edit-track-add-btn'); if(addTrackBtn) addTrackBtn.addEventListener('click', handleAddTrackingEntry);
   }
@@ -1660,49 +1762,6 @@ async function deleteOrderAndRollback(orderId, buttonEl) {
     }catch(err){ console.error('Init failed:',err); qs('status').textContent=`Error: ${err.message}`; }
   });
   </script>
-
-  <section id="promo-tool">
-    <div class="promo-wrap">
-      <h2 class="promo-title">Promo Codes Admin <span class="promo-pill">local tool</span></h2>
-      <div class="promo-card">
-        <div class="row">
-          <div>
-            <label>Function Endpoint (HTTPS)</label>
-            <input id="endpoint" type="text" value="https://us-central1-peptide-inventory.cloudfunctions.net/upsertPromoCodesHttp" />
-            <div class="hint">Change if your project or region differs.</div>
-          </div>
-          <div>
-            <label>Admin Key</label>
-            <div style="display:flex; gap:8px;">
-              <input id="adminKey" type="password" placeholder="Your secret admin key" />
-              <button class="btn" id="toggleKey" title="Show/Hide">Show</button>
-            </div>
-            <div class="hint">Never embed this in public code. Use this page locally.</div>
-          </div>
-        </div>
-
-        <div class="toolbar">
-          <button class="btn" id="addRow">+ Add Code</button>
-          <button class="btn ghost" id="loadSample">Load sample</button>
-          <button class="btn" id="preview">Preview JSON</button>
-          <button class="btn ok" id="push">Push to Firebase</button>
-          <button class="btn ghost" id="exportJson">Export JSON</button>
-          <label class="btn ghost" for="importFile" style="cursor:pointer;">Import JSON</label>
-          <input id="importFile" type="file" accept="application/json" style="display:none;" />
-        </div>
-
-        <div id="codes" class="codes"></div>
-
-        <div class="footnote">
-          Tip: For <span class="muted">expiresAt</span> use your local date/time; it will be sent as ISO (UTC). “free_shipping” ignores value.
-        </div>
-
-        <h3 style="margin:18px 0 6px">Payload Preview / Response</h3>
-        <div id="log" class="log muted">No actions yet.</div>
-      </div>
-    </div>
-  </section>
-
   <script>
     (function(){
       const $ = (id) => document.getElementById(id);
