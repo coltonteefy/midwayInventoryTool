@@ -236,9 +236,10 @@
         <h2 class="text-xl font-semibold text-white text-glow-fuchsia">Production Tools</h2>
         <div class="bg-gray-900 p-4 rounded-lg border border-gray-700">
           <div class="flex flex-wrap gap-4">
-            <button id="toggle-cost-tool-btn" class="btn-neon-lime px-4 py-2 rounded-lg font-semibold text-xs hidden">Open Cost Tool</button>
-            <button id="toggle-inventory-tool-btn" class="btn-neon-lime px-4 py-2 rounded-lg font-semibold text-xs hidden">Open Inventory Tool</button>
-            <button id="toggle-promo-tool-btn" class="btn-neon-cyan px-4 py-2 rounded-lg font-semibold text-xs hidden">Open Promo Tool</button>
+            <button id="toggle-cost-tool-btn" class="btn-neon-lime px-4 py-2 rounded-lg font-semibold text-xs hidden">Add Cost History</button>
+            <button id="toggle-inventory-tool-btn" class="btn-neon-lime px-4 py-2 rounded-lg font-semibold text-xs hidden">Add Inventory</button>
+            <button id="toggle-edit-item-tool-btn" class="btn-neon-lime px-4 py-2 rounded-lg font-semibold text-xs hidden">Edit Inventory</button>
+            <button id="toggle-promo-tool-btn" class="btn-neon-cyan px-4 py-2 rounded-lg font-semibold text-xs hidden">Promo Tool</button>
           </div>
           <div id="inventory-tool-wrapper" class="mt-4 hidden">
             <section id="inventory-tool" class="space-y-4">
@@ -315,6 +316,69 @@
 
                 <div class="flex justify-center mt-6">
                   <button type="submit" class="btn-neon-cyan px-4 py-2 rounded-lg font-semibold w-full sm:w-auto">Add Item</button>
+                </div>
+              </form>
+            </section>
+          </div>
+          <div id="inventory-editor-wrapper" class="mt-4 hidden">
+            <section id="inventory-editor" class="space-y-4">
+              <h2 class="text-xl font-semibold text-white text-glow-fuchsia">Edit Inventory Item</h2>
+              <form id="edit-item-form" class="bg-gray-900 p-4 rounded-lg border border-gray-700 space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div class="w-full md:col-span-2">
+                    <label for="edit-item-select" class="block text-sm font-medium text-gray-400">Select Item</label>
+                    <select id="edit-item-select" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" required>
+                      <option value="">-- Select an item --</option>
+                    </select>
+                  </div>
+                  <div class="w-full">
+                    <label for="edit-item-name" class="block text-sm font-medium text-gray-400">Item Name</label>
+                    <input type="text" id="edit-item-name" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="e.g., MIDWAY GRAY 5mg" disabled>
+                  </div>
+                  <div class="w-full">
+                    <label for="edit-item-current-inventory" class="block text-sm font-medium text-gray-400">Current Inventory</label>
+                    <input type="number" id="edit-item-current-inventory" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" min="0" disabled>
+                  </div>
+                  <div class="w-full">
+                    <label for="edit-item-vials-sold" class="block text-sm font-medium text-gray-400">Vials Sold</label>
+                    <input type="number" id="edit-item-vials-sold" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" min="0" disabled>
+                  </div>
+                  <div class="w-full">
+                    <label for="edit-item-price" class="block text-sm font-medium text-gray-400">Sell Price per Vial ($)</label>
+                    <input type="number" step="0.01" id="edit-item-price" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" min="0" disabled>
+                  </div>
+                  <div class="w-full">
+                    <label for="edit-item-total-vial-weight" class="block text-sm font-medium text-gray-400">Total Vial Weight (mg)</label>
+                    <input type="number" step="0.01" id="edit-item-total-vial-weight" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" min="0" disabled>
+                  </div>
+                  <div class="w-full">
+                    <label for="edit-item-image" class="block text-sm font-medium text-gray-400">Image URL</label>
+                    <input type="text" id="edit-item-image" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="https://..." disabled>
+                  </div>
+                  <div class="w-full">
+                    <label for="edit-item-coa" class="block text-sm font-medium text-gray-400">COA URL</label>
+                    <div class="mt-1 flex flex-col sm:flex-row gap-2">
+                      <input type="text" id="edit-item-coa" class="flex-1 bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="https://..." disabled>
+                      <button type="button" id="edit-item-deprecate-btn" class="btn-neon-red px-4 py-2 rounded-lg font-semibold text-xs sm:text-sm opacity-60 cursor-not-allowed" disabled>Deprecate</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div class="flex items-center space-x-2">
+                    <input type="checkbox" id="edit-item-is-active" class="h-4 w-4 text-cyan-600 border-gray-600 rounded focus:ring-cyan-500" disabled>
+                    <label for="edit-item-is-active" class="text-sm font-medium text-gray-400">Active</label>
+                  </div>
+                  <div class="flex items-center space-x-2">
+                    <input type="checkbox" id="edit-item-blend" class="h-4 w-4 text-cyan-600 border-gray-600 rounded focus:ring-cyan-500" disabled>
+                    <label for="edit-item-blend" class="text-sm font-medium text-gray-400">Blend</label>
+                  </div>
+                </div>
+                <div>
+                  <label for="edit-item-description" class="block text-sm font-medium text-gray-400">Product Description</label>
+                  <textarea id="edit-item-description" rows="3" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="Short description of the product" disabled></textarea>
+                </div>
+                <div class="flex justify-center">
+                  <button type="submit" id="edit-item-save-btn" class="btn-neon-cyan px-4 py-2 rounded-lg font-semibold w-full sm:w-auto opacity-60 cursor-not-allowed" disabled>Save Changes</button>
                 </div>
               </form>
             </section>
@@ -413,10 +477,6 @@
                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Sell Price</th>
                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Total Vial Weight (mg)</th>
                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Active</th>
-                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider w-20">Image</th>
-                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Blend</th>
-                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider w-20">COA</th>
-                <th class="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody id="inventory-list" class="bg-gray-800 divide-y divide-gray-700"></tbody>
@@ -640,6 +700,24 @@
   const newTotalVialsPerKitInput = qs('new-total-vials-per-kit');
   const newPurchaseDateInput = qs('new-purchase-date');
 
+  const inventoryEditorWrapper = qs('inventory-editor-wrapper');
+  const toggleEditItemToolBtn = qs('toggle-edit-item-tool-btn');
+
+  const editItemForm = qs('edit-item-form');
+  const editItemSelect = qs('edit-item-select');
+  const editItemNameInput = qs('edit-item-name');
+  const editItemCurrentInventoryInput = qs('edit-item-current-inventory');
+  const editItemVialsSoldInput = qs('edit-item-vials-sold');
+  const editItemPriceInput = qs('edit-item-price');
+  const editItemTotalVialWeightInput = qs('edit-item-total-vial-weight');
+  const editItemImageInput = qs('edit-item-image');
+  const editItemCoaInput = qs('edit-item-coa');
+  const editItemIsActiveInput = qs('edit-item-is-active');
+  const editItemBlendInput = qs('edit-item-blend');
+  const editItemDescriptionInput = qs('edit-item-description');
+  const editItemDeprecateBtn = qs('edit-item-deprecate-btn');
+  const editItemSaveBtn = qs('edit-item-save-btn');
+
   // Add Cost
   const addCostForm = qs('add-cost-form');
   const existingItemSelect = qs('existing-item-select');
@@ -657,9 +735,10 @@
   const productionToolsSection = qs('production-tools-section');
 
   const TOOL_CONFIG = [
-    { wrapper: costToolWrapper, button: toggleCostToolBtn, openLabel: 'Open Cost Tool', closeLabel: 'Close Cost Tool' },
-    { wrapper: inventoryToolWrapper, button: toggleInventoryToolBtn, openLabel: 'Open Inventory Tool', closeLabel: 'Close Inventory Tool' },
-    { wrapper: promoToolWrapper, button: togglePromoToolBtn, openLabel: 'Open Promo Tool', closeLabel: 'Close Promo Tool' }
+    { wrapper: costToolWrapper, button: toggleCostToolBtn, openLabel: 'Add Cost History', closeLabel: 'Add Cost History' },
+    { wrapper: inventoryToolWrapper, button: toggleInventoryToolBtn, openLabel: 'Add Inventory', closeLabel: 'Add Inventory' },
+    { wrapper: inventoryEditorWrapper, button: toggleEditItemToolBtn, openLabel: 'Edit Inventory', closeLabel: 'Edit Inventory' },
+    { wrapper: promoToolWrapper, button: togglePromoToolBtn, openLabel: 'Promo Tool', closeLabel: 'Promo Tool' }
   ];
 
   function setToolOpen(tool, open){
@@ -678,6 +757,136 @@
       if(tool === except) return;
       setToolOpen(tool,false);
     });
+  }
+
+  function normalizeLotTimestamp(entry){
+    if(!entry) return new Date().toISOString().replace(/[^0-9]/g,'');
+    const candidate = entry.timestamp ?? entry.purchaseDate ?? entry.date ?? entry.createdAt ?? entry.addedAt ?? entry.purchasedAt;
+    if(!candidate) return new Date().toISOString().replace(/[^0-9]/g,'');
+    if(typeof candidate === 'string'){
+      const cleaned = candidate.replace(/[^0-9]/g,'');
+      return cleaned || candidate;
+    }
+    if(typeof candidate === 'number') return String(Math.trunc(candidate));
+    if(typeof candidate === 'object'){
+      if(typeof candidate.toMillis === 'function') return String(candidate.toMillis());
+      if(typeof candidate.seconds === 'number'){
+        const millis = (candidate.seconds*1000) + (candidate.nanoseconds?candidate.nanoseconds/1e6:0);
+        return String(Math.trunc(millis));
+      }
+    }
+    return new Date().toISOString().replace(/[^0-9]/g,'');
+  }
+
+  function buildLotId(itemId, costHistory){
+    const baseId = (itemId || '').toUpperCase();
+    if(!Array.isArray(costHistory) || costHistory.length === 0){
+      return `MG-${baseId}-${Date.now()}-1`;
+    }
+    const lastIndex = costHistory.length - 1;
+    const lastEntry = costHistory[lastIndex] || {};
+    const tsPart = normalizeLotTimestamp(lastEntry);
+    const lotPosition = lastIndex + 1;
+    return `MG-${baseId}-${tsPart}-${lotPosition}`;
+  }
+
+  function extractCoaUrl(raw){
+    if(!raw) return '';
+    if(typeof raw === 'string') return raw;
+    if(typeof raw === 'object') return raw.url || '';
+    return '';
+  }
+
+  function ensureCoaStructure(itemId, item){
+    const url = extractCoaUrl(item?.coa) || 'N/A';
+    const lotExisting = (item?.coa && typeof item.coa === 'object') ? item.coa.lot : null;
+    const lot = lotExisting || buildLotId(itemId, item?.costHistory);
+    return { url, lot };
+  }
+
+  function updateDeprecateButton(item, forceDisabled = false){
+    if(!editItemDeprecateBtn) return;
+    const coaUrl = extractCoaUrl(item?.coa);
+    const hasActiveCoa = Boolean(coaUrl && coaUrl !== 'N/A');
+    const shouldDisable = forceDisabled || !hasActiveCoa;
+    editItemDeprecateBtn.disabled = shouldDisable;
+    editItemDeprecateBtn.classList.toggle('opacity-60', shouldDisable);
+    editItemDeprecateBtn.classList.toggle('cursor-not-allowed', shouldDisable);
+  }
+
+  function setEditFormDisabled(disabled){
+    const inputs = [
+      editItemNameInput,
+      editItemCurrentInventoryInput,
+      editItemVialsSoldInput,
+      editItemPriceInput,
+      editItemTotalVialWeightInput,
+      editItemImageInput,
+      editItemCoaInput,
+      editItemDescriptionInput,
+      editItemIsActiveInput,
+      editItemBlendInput
+    ];
+    inputs.forEach((input)=>{
+      if(!input) return;
+      input.disabled = disabled;
+    });
+    if(editItemSaveBtn){
+      editItemSaveBtn.disabled = disabled;
+      editItemSaveBtn.classList.toggle('opacity-60', disabled);
+      editItemSaveBtn.classList.toggle('cursor-not-allowed', disabled);
+    }
+    const currentItem = (!disabled && editItemSelect) ? inventoryCache[editItemSelect.value] : null;
+    updateDeprecateButton(currentItem, disabled);
+  }
+
+  function resetEditItemForm(){
+    if(editItemNameInput) editItemNameInput.value='';
+    if(editItemCurrentInventoryInput) editItemCurrentInventoryInput.value='';
+    if(editItemVialsSoldInput) editItemVialsSoldInput.value='';
+    if(editItemPriceInput) editItemPriceInput.value='';
+    if(editItemTotalVialWeightInput) editItemTotalVialWeightInput.value='';
+    if(editItemImageInput) editItemImageInput.value='';
+    if(editItemCoaInput) editItemCoaInput.value='';
+    if(editItemDescriptionInput) editItemDescriptionInput.value='';
+    if(editItemIsActiveInput) editItemIsActiveInput.checked=false;
+    if(editItemBlendInput) editItemBlendInput.checked=false;
+    if(editItemDeprecateBtn){
+      editItemDeprecateBtn.textContent = 'Deprecate';
+    }
+    setEditFormDisabled(true);
+  }
+
+  function loadSelectedInventoryForEdit(itemId){
+    if(!itemId || !inventoryCache[itemId]){
+      resetEditItemForm();
+      return;
+    }
+
+    const inv = inventoryCache[itemId];
+    setEditFormDisabled(false);
+
+    const asNumber = (val, fallback = '') => {
+      const num = Number(val);
+      if(Number.isFinite(num)) return num;
+      return fallback;
+    };
+    const cleanField = (val) => {
+      if(typeof val === 'string' && val.trim().toUpperCase() === 'N/A') return '';
+      return val ?? '';
+    };
+
+    if(editItemNameInput) editItemNameInput.value = inv.name ?? '';
+    if(editItemCurrentInventoryInput) editItemCurrentInventoryInput.value = asNumber(inv.currentInventory, '');
+    if(editItemVialsSoldInput) editItemVialsSoldInput.value = asNumber(inv.vialsSold, '');
+    if(editItemPriceInput) editItemPriceInput.value = asNumber(inv.sellPricePerVial, '');
+    if(editItemTotalVialWeightInput) editItemTotalVialWeightInput.value = asNumber(inv.totalVialWeight, '');
+    if(editItemImageInput) editItemImageInput.value = cleanField(inv.image);
+    if(editItemCoaInput) editItemCoaInput.value = cleanField(extractCoaUrl(inv.coa));
+    if(editItemDescriptionInput) editItemDescriptionInput.value = cleanField(inv.productDescription);
+    if(editItemIsActiveInput) editItemIsActiveInput.checked = Boolean(inv.productIsActive);
+    if(editItemBlendInput) editItemBlendInput.checked = Boolean(inv.blend);
+    updateDeprecateButton(inv);
   }
 
   function showModal(message){ qs('modal-message').textContent = message; qs('alert-modal').classList.remove('hidden'); }
@@ -815,9 +1024,13 @@ function listenForInventory() {
 
   onSnapshot(ref, (snap) => {
     const tbody = qs('inventory-list');
-    tbody.innerHTML = '';
-    // reset the cost-history select each refresh
-    existingItemSelect.innerHTML = '<option value="">-- Select an item --</option>';
+    if(tbody) tbody.innerHTML = '';
+
+    const previousCostSelection = existingItemSelect ? (existingItemSelect.value || '') : '';
+    const previousEditSelection = editItemSelect ? (editItemSelect.value || '') : '';
+
+    if(existingItemSelect) existingItemSelect.innerHTML = '<option value="">-- Select an item --</option>';
+    if(editItemSelect) editItemSelect.innerHTML = '<option value="">-- Select an item --</option>';
 
     if (snap.empty) {
       const tr = document.createElement('tr');
@@ -826,8 +1039,8 @@ function listenForInventory() {
       td.className = 'text-gray-500 italic px-6 py-4 whitespace-nowrap';
       td.textContent = 'No inventory items.';
       tr.appendChild(td);
-      tbody.appendChild(tr);
-      // keep the select empty in this case
+      if(tbody) tbody.appendChild(tr);
+      resetEditItemForm();
       return;
     }
 
@@ -839,12 +1052,18 @@ function listenForInventory() {
     const inventoryByNameLower = {};
 
     const docsMissingActiveFlag = [];
+    const docsNeedingCoaUpgrade = [];
 
     snap.forEach((d) => {
       const item = d.data();
       const hasActiveFlag = typeof item.productIsActive === 'boolean';
       if (!hasActiveFlag) docsMissingActiveFlag.push(d.ref);
       const inv = { id: d.id, ...item, productIsActive: hasActiveFlag ? item.productIsActive : true };
+      if (!item.coa || typeof item.coa !== 'object' || !('url' in item.coa)) {
+        const newCoa = ensureCoaStructure(d.id, inv);
+        inv.coa = newCoa;
+        docsNeedingCoaUpgrade.push({ ref: d.ref, coa: newCoa });
+      }
       inventoryCache[d.id] = inv;
       inventoryById[d.id] = inv;
       if (item.name) inventoryByNameLower[item.name.toLowerCase()] = inv;
@@ -858,6 +1077,14 @@ function listenForInventory() {
       });
     }
 
+    if (docsNeedingCoaUpgrade.length) {
+      docsNeedingCoaUpgrade.forEach(({ ref, coa }) => {
+        updateDoc(ref, { coa }).catch((err) => {
+          console.error('Failed to upgrade COA structure:', err);
+        });
+      });
+    }
+
     // helper available to the rest of the file:
     window._getInvFromOrderItem = function (it) {
       if (!it) return null;
@@ -866,29 +1093,40 @@ function listenForInventory() {
       return null;
     };
 
-    /* NEW: Populate the Cost History tool's dropdown with items by ID */
-    if (existingItemSelect) {
-      const previouslySelected = existingItemSelect.value || '';
-      existingItemSelect.innerHTML = '<option value="">-- Select an item --</option>';
+    /* NEW: Populate the Cost History and Item Editor dropdowns with items by ID */
+    const ids = Object.keys(inventoryById)
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
 
-      const ids = Object.keys(inventoryById)
-        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+    ids.forEach((id) => {
+      const inv = inventoryById[id];
+      const stock = Number.isFinite(inv?.currentInventory) ? inv.currentInventory : 0;
 
-      const frag = document.createDocumentFragment();
-      ids.forEach((id) => {
-        const inv = inventoryById[id];
+      if (existingItemSelect) {
         const opt = document.createElement('option');
         opt.value = id;
-        // Show ID first, then name; include stock to help pick the right item at a glance
-        const stock = Number.isFinite(inv?.currentInventory) ? inv.currentInventory : 0;
         opt.textContent = `${id} — ${inv?.name || '(no name)'} (${stock} in stock)`;
-        frag.appendChild(opt);
-      });
-      existingItemSelect.appendChild(frag);
+        existingItemSelect.appendChild(opt);
+      }
 
-      // restore previous selection if it still exists
-      if (previouslySelected && ids.includes(previouslySelected)) {
-        existingItemSelect.value = previouslySelected;
+      if (editItemSelect) {
+        const opt = document.createElement('option');
+        opt.value = id;
+        opt.textContent = `${id} — ${inv?.name || '(no name)'}`;
+        editItemSelect.appendChild(opt);
+      }
+    });
+
+    if (existingItemSelect && previousCostSelection && ids.includes(previousCostSelection)) {
+      existingItemSelect.value = previousCostSelection;
+    }
+
+    if (editItemSelect) {
+      if (previousEditSelection && ids.includes(previousEditSelection)) {
+        editItemSelect.value = previousEditSelection;
+        loadSelectedInventoryForEdit(previousEditSelection);
+      } else {
+        editItemSelect.value = '';
+        resetEditItemForm();
       }
     }
 
@@ -908,10 +1146,6 @@ function listenForInventory() {
       const idTd = document.createElement('td');
       idTd.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-400';
       idTd.textContent = d.id; // show the Firestore doc id
-
-      const blendTd = document.createElement('td');
-      blendTd.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-400';
-      blendTd.textContent = item.blend ? 'Yes' : 'No';
 
       const activeTd = document.createElement('td');
       activeTd.className = 'px-6 py-4 whitespace-nowrap text-sm';
@@ -968,83 +1202,6 @@ function listenForInventory() {
       totalVialWeightTd.setAttribute('contenteditable', 'false');
       totalVialWeightTd.dataset.field = 'totalVialWeight';
 
-      const imageTd = document.createElement('td');
-      imageTd.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-400 max-w-24 overflow-hidden text-ellipsis cursor-pointer';
-      imageTd.textContent = item.image ?? 'N/A';
-      imageTd.dataset.field = 'image';
-      imageTd.setAttribute('contenteditable', 'false');
-      imageTd.addEventListener('click', () => {
-        if (imageTd.textContent && imageTd.textContent !== 'N/A') copyToClipboard(imageTd.textContent);
-      });
-
-      const coaTd = document.createElement('td');
-      coaTd.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-400 max-w-24 overflow-hidden text-ellipsis cursor-pointer';
-      coaTd.textContent = item.coa ?? 'N/A';
-      coaTd.dataset.field = 'coa';
-      coaTd.setAttribute('contenteditable', 'false');
-      coaTd.addEventListener('click', () => {
-        if (coaTd.textContent && coaTd.textContent !== 'N/A') copyToClipboard(coaTd.textContent);
-      });
-
-      const actionTd = document.createElement('td');
-      actionTd.className = 'px-6 py-4 whitespace-nowrap text-center text-sm font-medium';
-      const editSaveBtn = document.createElement('button');
-      editSaveBtn.textContent = 'Edit';
-      editSaveBtn.className = 'btn-neon-cyan px-3 py-1 rounded-lg font-semibold text-xs';
-
-      editSaveBtn.addEventListener('click', async () => {
-        const isEditing = editSaveBtn.textContent === 'Edit';
-          const editableTds = [nameTd, inventoryTd, vialsSoldTd, priceTd, totalVialWeightTd, imageTd, coaTd];
-
-        if (isEditing) {
-          editSaveBtn.textContent = 'Save';
-          editSaveBtn.className = 'btn-neon-lime px-3 py-1 rounded-lg font-semibold text-xs';
-          editableTds.forEach(td => {
-            td.setAttribute('contenteditable', 'true');
-            td.classList.add('is-editing');
-          });
-        } else {
-          const docId = tr.dataset.id;
-          const newName = nameTd.textContent.trim();
-          const newQuantity = parseInt(inventoryTd.textContent.trim(), 10);
-          let newPrice = priceTd.textContent.trim();
-          newPrice = parseFloat(newPrice.replace(/^\$/, ''));
-          const newVialsSold = parseInt(vialsSoldTd.textContent.trim(), 10);
-          const newTotalVialWeight = parseFloat(totalVialWeightTd.textContent.trim());
-          const newImage = imageTd.textContent.trim();
-          const newCoa = coaTd.textContent.trim();
-
-          const updateData = {};
-          if (newName !== (item.name ?? '')) updateData.name = newName;
-          if (!isNaN(newQuantity) && newQuantity !== item.currentInventory) updateData.currentInventory = newQuantity;
-          if (!isNaN(newPrice) && newPrice !== item.sellPricePerVial) updateData.sellPricePerVial = newPrice;
-          if (!isNaN(newVialsSold) && newVialsSold !== item.vialsSold) updateData.vialsSold = newVialsSold;
-          if (!isNaN(newTotalVialWeight) && newTotalVialWeight !== item.totalVialWeight) updateData.totalVialWeight = newTotalVialWeight;
-          if (newImage !== (item.image ?? '')) updateData.image = newImage;
-          if (newCoa !== (item.coa ?? '')) updateData.coa = newCoa;
-
-          try {
-            if (Object.keys(updateData).length > 0) {
-              await updateDoc(doc(db, INVENTORY_COLLECTION_PATH, docId), updateData);
-              showModal(`Data updated for ${newName || docId}.`);
-            } else {
-              showModal('No changes to save.');
-            }
-          } catch (e) {
-            console.error('Error updating document:', e);
-            showModal('Error updating data. Check console for details.');
-          } finally {
-            editSaveBtn.textContent = 'Edit';
-            editSaveBtn.className = 'btn-neon-cyan px-3 py-1 rounded-lg font-semibold text-xs';
-            editableTds.forEach(td => {
-              td.setAttribute('contenteditable', 'false');
-              td.classList.remove('is-editing');
-            });
-          }
-        }
-      });
-      actionTd.appendChild(editSaveBtn);
-
       tr.appendChild(nameTd);
       tr.appendChild(idTd);
       tr.appendChild(inventoryTd);
@@ -1052,10 +1209,6 @@ function listenForInventory() {
       tr.appendChild(priceTd);
       tr.appendChild(totalVialWeightTd);
       tr.appendChild(activeTd);
-      tr.appendChild(imageTd);
-      tr.appendChild(blendTd);
-      tr.appendChild(coaTd);
-      tr.appendChild(actionTd);
       tbody.appendChild(tr);
 
       if (Array.isArray(item.costHistory)) {
@@ -1540,7 +1693,8 @@ function listenForInventory() {
     if(!purchaseDate){ showModal('Purchase Date is required.'); return; }
 
     const newCostEntry = { costPerKit, purchaseDate, totalKitsBought, totalVialWeightInMg: totalVialWeight, totalVialsPerKit };
-    const newItem = { name, blend, productIsActive, productDescription: description || 'N/A', currentInventory, sellPricePerVial, totalVialWeight, image: image||'N/A', coa: coa||'N/A', vialsSold, costHistory:[newCostEntry] };
+    const newItemCoa = { url: coa || 'N/A', lot: buildLotId(id, [newCostEntry]) };
+    const newItem = { name, blend, productIsActive, productDescription: description || 'N/A', currentInventory, sellPricePerVial, totalVialWeight, image: image||'N/A', coa: newItemCoa, vialsSold, costHistory:[newCostEntry] };
 
     try{
       const itemRef = doc(db, INVENTORY_COLLECTION_PATH, id); // write at ID; no code field
@@ -1550,6 +1704,177 @@ function listenForInventory() {
     }catch(err){
       console.error('Error adding new item:',err);
       showModal(`Failed to add new item: ${err.message}`);
+    }
+  }
+
+  async function handleEditInventoryItem(e){
+    e.preventDefault();
+    if(!editItemSelect){ showModal('Item selector not available.'); return; }
+
+    const itemId = editItemSelect.value;
+    if(!itemId){ showModal('Select an item to edit.'); return; }
+
+    const original = inventoryCache[itemId];
+    if(!original){
+      showModal('Selected item is no longer available.');
+      resetEditItemForm();
+      return;
+    }
+
+    const name = (editItemNameInput?.value || '').trim();
+    const currentInventoryVal = editItemCurrentInventoryInput?.value ?? '';
+    const vialsSoldVal = editItemVialsSoldInput?.value ?? '';
+    const priceVal = editItemPriceInput?.value ?? '';
+    const totalWeightVal = editItemTotalVialWeightInput?.value ?? '';
+    const image = (editItemImageInput?.value || '').trim();
+    const coaInputValue = (editItemCoaInput?.value || '').trim();
+    const description = (editItemDescriptionInput?.value || '').trim();
+    const productIsActive = Boolean(editItemIsActiveInput?.checked);
+    const blend = Boolean(editItemBlendInput?.checked);
+
+    if(!name){ showModal('Item name cannot be empty.'); return; }
+
+    const toNumber = (val) => {
+      const num = Number(val);
+      return Number.isFinite(num) ? num : NaN;
+    };
+
+    const currentInventory = toNumber(currentInventoryVal);
+    const vialsSold = toNumber(vialsSoldVal);
+    const sellPricePerVial = toNumber(priceVal);
+    const totalVialWeight = toNumber(totalWeightVal);
+
+    if(Number.isNaN(currentInventory) || currentInventory < 0){ showModal('Current inventory must be a non-negative number.'); return; }
+    if(Number.isNaN(vialsSold) || vialsSold < 0){ showModal('Vials sold must be a non-negative number.'); return; }
+    if(Number.isNaN(sellPricePerVial) || sellPricePerVial < 0){ showModal('Sell price must be a non-negative number.'); return; }
+    if(Number.isNaN(totalVialWeight) || totalVialWeight < 0){ showModal('Total vial weight must be a non-negative number.'); return; }
+
+    const normalized = {
+      image: image || 'N/A',
+      description: description || 'N/A'
+    };
+    const normalizedCoaUrl = coaInputValue || 'N/A';
+
+    const numOrZero = (val) => {
+      const num = Number(val);
+      return Number.isFinite(num) ? num : 0;
+    };
+
+    const updateData = {};
+    if(name !== (original.name ?? '')) updateData.name = name;
+    if(currentInventory !== numOrZero(original.currentInventory)) updateData.currentInventory = currentInventory;
+    if(vialsSold !== numOrZero(original.vialsSold)) updateData.vialsSold = vialsSold;
+    if(sellPricePerVial !== numOrZero(original.sellPricePerVial)) updateData.sellPricePerVial = sellPricePerVial;
+    if(totalVialWeight !== numOrZero(original.totalVialWeight)) updateData.totalVialWeight = totalVialWeight;
+    if(productIsActive !== Boolean(original.productIsActive)) updateData.productIsActive = productIsActive;
+    if(blend !== Boolean(original.blend)) updateData.blend = blend;
+
+    const existingImage = (original.image && original.image !== 'N/A') ? original.image : 'N/A';
+    if(normalized.image !== existingImage) updateData.image = normalized.image;
+
+    const existingCoaUrl = extractCoaUrl(original.coa) || 'N/A';
+    if(normalizedCoaUrl !== existingCoaUrl){
+      updateData.coa = { url: normalizedCoaUrl, lot: buildLotId(itemId, inventoryCache[itemId]?.costHistory || []) };
+    }
+
+    const existingDescription = (original.productDescription && original.productDescription !== 'N/A') ? original.productDescription : 'N/A';
+    if(normalized.description !== existingDescription) updateData.productDescription = normalized.description;
+
+    if(Object.keys(updateData).length === 0){
+      showModal('No changes to save.');
+      return;
+    }
+
+    const docRef = doc(db, INVENTORY_COLLECTION_PATH, itemId);
+    const originalLabel = editItemSaveBtn?.textContent;
+    if(editItemSaveBtn){
+      editItemSaveBtn.disabled = true;
+      editItemSaveBtn.textContent = 'Saving...';
+      editItemSaveBtn.classList.add('opacity-60','cursor-not-allowed');
+    }
+
+    try{
+      await updateDoc(docRef, updateData);
+      if(inventoryCache[itemId]) Object.assign(inventoryCache[itemId], updateData);
+      showModal('Item updated successfully.');
+      loadSelectedInventoryForEdit(itemId);
+    }catch(err){
+      console.error('Error updating inventory item:', err);
+      showModal(`Failed to update item: ${err.message || 'Check console for details.'}`);
+    }finally{
+      if(editItemSaveBtn){
+        editItemSaveBtn.disabled = false;
+        editItemSaveBtn.textContent = originalLabel || 'Save Changes';
+        editItemSaveBtn.classList.remove('cursor-not-allowed');
+        editItemSaveBtn.classList.toggle('opacity-60', !editItemSelect.value);
+      }
+    }
+  }
+
+  async function handleDeprecateCurrentCoa(){
+    if(!editItemSelect){ showModal('Item selector not available.'); return; }
+    const itemId = editItemSelect.value;
+    if(!itemId){ showModal('Select an item to edit before deprecating its COA.'); return; }
+
+    const original = inventoryCache[itemId];
+    if(!original){
+      showModal('Selected item is no longer available.');
+      resetEditItemForm();
+      return;
+    }
+
+    const currentUrl = extractCoaUrl(original.coa);
+    if(!currentUrl || currentUrl === 'N/A'){
+      showModal('No COA URL to deprecate for this item.');
+      updateDeprecateButton(original);
+      return;
+    }
+
+    const lotInput = window.prompt('Enter the lot identifier for this archived COA:', '');
+    if(lotInput === null) return;
+    const lot = lotInput.trim();
+    if(!lot){ showModal('Lot identifier is required to deprecate the COA.'); return; }
+
+    const entry = { lot, url: currentUrl };
+    const docRef = doc(db, INVENTORY_COLLECTION_PATH, itemId);
+
+    const restoreLabel = editItemDeprecateBtn?.textContent;
+    if(editItemDeprecateBtn){
+      editItemDeprecateBtn.disabled = true;
+      editItemDeprecateBtn.textContent = 'Deprecating...';
+      editItemDeprecateBtn.classList.add('opacity-60','cursor-not-allowed');
+    }
+
+    try{
+      const clearedCoa = { url: 'N/A', lot: buildLotId(itemId, inventoryCache[itemId]?.costHistory || []) };
+
+      await updateDoc(docRef, {
+        pastCoas: arrayUnion(entry),
+        coa: clearedCoa
+      });
+
+      if(inventoryCache[itemId]){
+        inventoryCache[itemId].coa = clearedCoa;
+        const past = Array.isArray(inventoryCache[itemId].pastCoas) ? inventoryCache[itemId].pastCoas.slice() : [];
+        past.push(entry);
+        inventoryCache[itemId].pastCoas = past;
+      }
+
+      if(editItemCoaInput) editItemCoaInput.value = '';
+      loadSelectedInventoryForEdit(itemId);
+      showModal('Current COA archived under pastCoas.');
+    }catch(err){
+      console.error('Failed to archive COA:', err);
+      showModal(`Failed to archive COA: ${err.message || 'Check console for details.'}`);
+      if(editItemDeprecateBtn){
+        editItemDeprecateBtn.disabled = false;
+      }
+    }finally{
+      if(editItemDeprecateBtn){
+        editItemDeprecateBtn.textContent = restoreLabel || 'Deprecate';
+        const itemForButton = inventoryCache[itemId];
+        updateDeprecateButton(itemForButton);
+      }
     }
   }
 
@@ -1689,6 +2014,11 @@ async function handleNewCostHistory(e){
 
     if(addItemForm) addItemForm.addEventListener('submit', handleAddItem);
     if(addCostForm) addCostForm.addEventListener('submit', handleNewCostHistory);
+    if(editItemSelect) editItemSelect.addEventListener('change', ()=>{
+      loadSelectedInventoryForEdit(editItemSelect.value);
+    });
+    if(editItemDeprecateBtn) editItemDeprecateBtn.addEventListener('click', handleDeprecateCurrentCoa);
+    if(editItemForm) editItemForm.addEventListener('submit', handleEditInventoryItem);
 
     TOOL_CONFIG.forEach((tool)=>{
       if(!tool.button || !tool.wrapper) return;
