@@ -1496,6 +1496,19 @@ function listenForInventory() {
         if(venmoUser) return { label: venmoUser, txid: '' };
         return { label: 'Not specified', txid: '' };
       })();
+      const promoCodeRaw = (() => {
+        const promo = order.promo;
+        if(typeof promo === 'string') return promo;
+        if(promo && typeof promo === 'object'){
+          if(promo.code) return promo.code;
+          if(promo.id) return promo.id;
+          if(promo.key) return promo.key;
+          if(promo.label) return promo.label;
+          if(promo.name) return promo.name;
+        }
+        return order.promoCode || order.promo_code || order.discountCode || order.discount_code || '';
+      })();
+      const promoCodeDisplay = promoCodeRaw ? String(promoCodeRaw).trim() : '';
       const itemDiscount = Math.max(0, computed - discountedSubtotal);
       const status=order.paymentStatus||'Unknown';
       const statusClass = status==='Paid' ? 'bg-lime-900 text-lime-300' : 'bg-rose-900 text-rose-300';
@@ -1550,6 +1563,7 @@ function listenForInventory() {
               <div>
                 <span class="text-gray-500">Payment Type:</span> <span class="text-gray-300">${paymentDetails.label}</span>
                 ${paymentDetails.txid ? `<div class="text-gray-500 text-xs mt-1 pl-4">TXID: <span class="text-gray-300">${paymentDetails.txid}</span></div>` : ''}
+                ${promoCodeDisplay ? `<div class="text-gray-500 text-xs mt-1 pl-4">Promo Code: <span class="text-gray-300">${escapeHtml(promoCodeDisplay)}</span></div>` : ''}
               </div>
             </div>
           </div>
