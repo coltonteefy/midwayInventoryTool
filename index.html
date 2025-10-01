@@ -283,12 +283,16 @@
                     <input type="url" id="new-item-image" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="https://example.com/image.jpg">
                   </div>
                   <div class="w-full col-span-1 sm:col-span-2 lg:col-span-3">
-                    <label for="new-item-coa" class="block text-sm font-medium text-gray-400">COA URL</label>
-                    <input type="url" id="new-item-coa" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="https://example.com/coa.pdf">
-                  </div>
-                  <div class="w-full col-span-1 sm:col-span-2 lg:col-span-3">
                     <label for="new-item-description" class="block text-sm font-medium text-gray-400">Product Description</label>
                     <textarea id="new-item-description" rows="3" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="Short summary shown to customers"></textarea>
+                  </div>
+                </div>
+
+                <div class="space-y-3 mt-6 p-4 rounded-lg border border-gray-700">
+                  <h3 class="text-lg font-semibold text-white text-glow-cyan">Certificate of Analysis</h3>
+                  <div>
+                    <label for="new-item-coa" class="block text-sm font-medium text-gray-400">COA URL</label>
+                    <input type="url" id="new-item-coa" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="https://example.com/coa.pdf">
                   </div>
                 </div>
 
@@ -355,12 +359,19 @@
                     <label for="edit-item-image" class="block text-sm font-medium text-gray-400">Image URL</label>
                     <input type="text" id="edit-item-image" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="https://..." disabled>
                   </div>
-                  <div class="w-full">
+                </div>
+                <div class="space-y-3 p-4 rounded-lg border border-gray-700">
+                  <h3 class="text-lg font-semibold text-white text-glow-cyan">Certificate of Analysis</h3>
+                  <div>
                     <label for="edit-item-coa" class="block text-sm font-medium text-gray-400">COA URL</label>
                     <div class="mt-1 flex flex-col sm:flex-row gap-2">
                       <input type="text" id="edit-item-coa" class="flex-1 bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="https://..." disabled>
                       <button type="button" id="edit-item-deprecate-btn" class="btn-neon-red px-4 py-2 rounded-lg font-semibold text-xs sm:text-sm opacity-60 cursor-not-allowed" disabled>Deprecate</button>
                     </div>
+                  </div>
+                  <div>
+                    <label for="edit-item-coa-lot" class="block text-sm font-medium text-gray-400">COA Lot</label>
+                    <input type="text" id="edit-item-coa-lot" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="MG-..." disabled>
                   </div>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -712,6 +723,7 @@
   const editItemTotalVialWeightInput = qs('edit-item-total-vial-weight');
   const editItemImageInput = qs('edit-item-image');
   const editItemCoaInput = qs('edit-item-coa');
+  const editItemCoaLotInput = qs('edit-item-coa-lot');
   const editItemIsActiveInput = qs('edit-item-is-active');
   const editItemBlendInput = qs('edit-item-blend');
   const editItemDescriptionInput = qs('edit-item-description');
@@ -797,6 +809,30 @@
     return '';
   }
 
+  function extractCoaLot(raw){
+    if(!raw) return '';
+    if(typeof raw === 'string') return '';
+    if(typeof raw === 'object'){
+      const lot = raw.lot;
+      if(typeof lot === 'string') return lot;
+    }
+    return '';
+  }
+
+  function computeNextCoaLot(itemId){
+    const costHistory = Array.isArray(inventoryCache[itemId]?.costHistory) ? inventoryCache[itemId].costHistory : [];
+    const upperId = (itemId || '').toUpperCase();
+
+    if(!costHistory.length){
+      return buildLotId(itemId, costHistory);
+    }
+
+    const lastIndex = costHistory.length - 1;
+    const timestamp = normalizeLotTimestamp(costHistory[lastIndex]);
+    const lotPosition = lastIndex + 1;
+    return `MG-${upperId}-${timestamp}-${lotPosition}`;
+  }
+
   function ensureCoaStructure(itemId, item){
     const url = extractCoaUrl(item?.coa) || 'N/A';
     const lotExisting = (item?.coa && typeof item.coa === 'object') ? item.coa.lot : null;
@@ -823,6 +859,7 @@
       editItemTotalVialWeightInput,
       editItemImageInput,
       editItemCoaInput,
+      editItemCoaLotInput,
       editItemDescriptionInput,
       editItemIsActiveInput,
       editItemBlendInput
@@ -848,6 +885,7 @@
     if(editItemTotalVialWeightInput) editItemTotalVialWeightInput.value='';
     if(editItemImageInput) editItemImageInput.value='';
     if(editItemCoaInput) editItemCoaInput.value='';
+    if(editItemCoaLotInput) editItemCoaLotInput.value='';
     if(editItemDescriptionInput) editItemDescriptionInput.value='';
     if(editItemIsActiveInput) editItemIsActiveInput.checked=false;
     if(editItemBlendInput) editItemBlendInput.checked=false;
@@ -883,6 +921,7 @@
     if(editItemTotalVialWeightInput) editItemTotalVialWeightInput.value = asNumber(inv.totalVialWeight, '');
     if(editItemImageInput) editItemImageInput.value = cleanField(inv.image);
     if(editItemCoaInput) editItemCoaInput.value = cleanField(extractCoaUrl(inv.coa));
+    if(editItemCoaLotInput) editItemCoaLotInput.value = cleanField(extractCoaLot(inv.coa));
     if(editItemDescriptionInput) editItemDescriptionInput.value = cleanField(inv.productDescription);
     if(editItemIsActiveInput) editItemIsActiveInput.checked = Boolean(inv.productIsActive);
     if(editItemBlendInput) editItemBlendInput.checked = Boolean(inv.blend);
@@ -1728,6 +1767,7 @@ function listenForInventory() {
     const totalWeightVal = editItemTotalVialWeightInput?.value ?? '';
     const image = (editItemImageInput?.value || '').trim();
     const coaInputValue = (editItemCoaInput?.value || '').trim();
+    const coaLotInputValue = (editItemCoaLotInput?.value || '').trim();
     const description = (editItemDescriptionInput?.value || '').trim();
     const productIsActive = Boolean(editItemIsActiveInput?.checked);
     const blend = Boolean(editItemBlendInput?.checked);
@@ -1754,6 +1794,23 @@ function listenForInventory() {
       description: description || 'N/A'
     };
     const normalizedCoaUrl = coaInputValue || 'N/A';
+    const sanitizeNa = (val) => {
+      const str = (val ?? '').trim();
+      if(!str) return 'N/A';
+      return str.toUpperCase() === 'N/A' ? 'N/A' : str;
+    };
+
+    const existingCoaUrl = extractCoaUrl(original.coa) || 'N/A';
+    const existingCoaLot = sanitizeNa(extractCoaLot(original.coa));
+
+    let normalizedCoaLot = coaLotInputValue;
+    if(!normalizedCoaLot){
+      normalizedCoaLot = existingCoaLot !== 'N/A' ? existingCoaLot : '';
+    }
+    if(!normalizedCoaLot && normalizedCoaUrl !== existingCoaUrl && normalizedCoaUrl !== 'N/A'){
+      normalizedCoaLot = buildLotId(itemId, inventoryCache[itemId]?.costHistory || []);
+    }
+    normalizedCoaLot = sanitizeNa(normalizedCoaLot);
 
     const numOrZero = (val) => {
       const num = Number(val);
@@ -1772,9 +1829,9 @@ function listenForInventory() {
     const existingImage = (original.image && original.image !== 'N/A') ? original.image : 'N/A';
     if(normalized.image !== existingImage) updateData.image = normalized.image;
 
-    const existingCoaUrl = extractCoaUrl(original.coa) || 'N/A';
-    if(normalizedCoaUrl !== existingCoaUrl){
-      updateData.coa = { url: normalizedCoaUrl, lot: buildLotId(itemId, inventoryCache[itemId]?.costHistory || []) };
+    const lotChanged = normalizedCoaLot !== existingCoaLot;
+    if(normalizedCoaUrl !== existingCoaUrl || lotChanged){
+      updateData.coa = { url: normalizedCoaUrl, lot: normalizedCoaLot };
     }
 
     const existingDescription = (original.productDescription && original.productDescription !== 'N/A') ? original.productDescription : 'N/A';
@@ -1829,13 +1886,10 @@ function listenForInventory() {
       updateDeprecateButton(original);
       return;
     }
-
-    const lotInput = window.prompt('Enter the lot identifier for this archived COA:', '');
-    if(lotInput === null) return;
-    const lot = lotInput.trim();
-    if(!lot){ showModal('Lot identifier is required to deprecate the COA.'); return; }
-
-    const entry = { lot, url: currentUrl };
+    const currentLot = (typeof original.coa === 'object' && typeof original.coa.lot === 'string') ? original.coa.lot : '';
+    const costHistoryForLot = Array.isArray(original.costHistory) ? original.costHistory : [];
+    const archivedLot = currentLot || buildLotId(itemId, costHistoryForLot);
+    const entry = { lot: archivedLot, url: currentUrl };
     const docRef = doc(db, INVENTORY_COLLECTION_PATH, itemId);
 
     const restoreLabel = editItemDeprecateBtn?.textContent;
@@ -1846,7 +1900,8 @@ function listenForInventory() {
     }
 
     try{
-      const clearedCoa = { url: 'N/A', lot: buildLotId(itemId, inventoryCache[itemId]?.costHistory || []) };
+      const nextLot = computeNextCoaLot(itemId);
+      const clearedCoa = { url: '', lot: nextLot };
 
       await updateDoc(docRef, {
         pastCoas: arrayUnion(entry),
@@ -1861,8 +1916,9 @@ function listenForInventory() {
       }
 
       if(editItemCoaInput) editItemCoaInput.value = '';
+      if(editItemCoaLotInput) editItemCoaLotInput.value = clearedCoa.lot;
       loadSelectedInventoryForEdit(itemId);
-      showModal('Current COA archived under pastCoas.');
+      showModal('Current COA archived and awaiting new documentation.');
     }catch(err){
       console.error('Failed to archive COA:', err);
       showModal(`Failed to archive COA: ${err.message || 'Check console for details.'}`);
