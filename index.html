@@ -984,14 +984,36 @@
     return `https://www.google.com/search?q=${encodeURIComponent((carrier||"tracking")+" "+n)}`;
   }
 
+  function extractTrackingEntries(raw){
+    if(Array.isArray(raw)) return raw.map(entry => ({ ...entry }));
+    if(raw && typeof raw === 'object' && Array.isArray(raw.entries)){
+      return raw.entries.map(entry => ({ ...entry }));
+    }
+    return [];
+  }
+
+  function extractTrackingHasShipped(raw){
+    if(raw && typeof raw === 'object'){
+      if(typeof raw.hasShipped === 'boolean') return raw.hasShipped;
+      if(Array.isArray(raw.entries)) return raw.entries.some(entry => Boolean(entry?.hasShipped));
+    }
+    if(Array.isArray(raw)) return raw.some(entry => Boolean(entry?.hasShipped));
+    return false;
+  }
+
   let _trackingMemoryCache = [];
   function readTrackingFromModal(){ const hidden=qs('edit-order-tracking-hidden'); if(!hidden) return _trackingMemoryCache.slice(); try{ return JSON.parse(hidden.value||"[]"); }catch{ return []; } }
   function setTrackingHidden(arr){ const hidden=qs('edit-order-tracking-hidden'); _trackingMemoryCache=Array.isArray(arr)?arr.slice():[]; if(hidden) hidden.value=JSON.stringify(_trackingMemoryCache); }
   function renderTrackingList(arr){
     const list=qs('edit-order-tracking-list'); if(!list) return; list.innerHTML='';
     (arr||[]).forEach((t,idx)=>{ const url=t.url||buildTrackingUrl(t.carrier,t.number);
-      const row=document.createElement('div'); row.className='flex items-center gap-2 p-2 border border-gray-700 rounded-md';
+      const row=document.createElement('div');
+      const borderClass = t.hasShipped ? 'border-emerald-500' : 'border-gray-700';
+      row.className=`flex items-center gap-2 p-2 border ${borderClass} rounded-md`;
+      const shippedLabel = t.hasShipped ? 'Shipped' : 'Pending';
+      const shippedClass = t.hasShipped ? 'text-emerald-300' : 'text-gray-500';
       row.innerHTML=`<span class="flex-1 text-gray-300 text-sm truncate"><span class="font-semibold">${t.carrier||'Carrier'}</span> — ${t.number||'—'}</span>
+      <span class="text-xs font-semibold ${shippedClass}">${shippedLabel}</span>
       <a href="${url}" target="_blank" rel="noopener" class="underline text-cyan-300 text-xs">Open</a>
       <button type="button" class="btn-neon-red px-2 py-1 rounded-lg font-semibold text-xs" data-remove="${idx}">Remove</button>`;
       list.appendChild(row);
@@ -1530,22 +1552,35 @@ function listenForInventory() {
         return `<div class="flex flex-wrap items-start gap-2"><span class="font-medium text-gray-500">${label}:</span><div class="flex items-start gap-2 min-w-0 flex-1">${valueMarkup}${copyBtn}</div></div>`;
       }).join('');
       const orderIdText=order.orderId || order.id;
-      const tracking=Array.isArray(order.tracking)?order.tracking:[];
-      const trackingHtml = tracking.length
-        ? tracking.map(t=>{
+      const trackingEntries = extractTrackingEntries(order.tracking);
+      const anyShipped = trackingEntries.some(t=>t?.hasShipped===true);
+      const orderCardBorderClass = anyShipped ? 'border-emerald-500' : 'border-gray-700';
+      const trackingHtml = trackingEntries.length
+        ? trackingEntries.map((t,idx)=>{
             const url=t.url||buildTrackingUrl(t.carrier,t.number);
             const label=`${t.carrier||"Carrier"}: ${t.number||"—"}`;
             const numberAttr = t.number||"";
-            return `<div class="flex flex-wrap items-center gap-2 text-xs">
-              <a href="${url}" target="_blank" rel="noopener" class="underline text-cyan-300 hover:text-cyan-200">${label}</a>
-              <button type="button" class="btn-neon-cyan px-2 py-0.5 rounded copy-track" data-track="${numberAttr}">Copy</button>
-              <button type="button" class="btn-neon-lime px-2 py-0.5 rounded send-tracking-email-btn" data-order-id="${order.id}" data-track="${numberAttr}">Send Email</button>
+            const shipped = t.hasShipped === true;
+            const shippedLabel = shipped ? 'Shipped' : 'Pending';
+            const shippedClass = shipped ? 'text-emerald-300' : 'text-gray-500';
+            const checkedAttr = shipped ? 'checked' : '';
+            return `<div class="space-y-1 text-xs">
+              <div class="flex flex-wrap items-center gap-2">
+                <a href="${url}" target="_blank" rel="noopener" class="underline text-cyan-300 hover:text-cyan-200">${label}</a>
+                <span class="font-semibold ${shippedClass}">${shippedLabel}</span>
+                <button type="button" class="btn-neon-cyan px-2 py-0.5 rounded copy-track" data-track="${numberAttr}">Copy</button>
+                <button type="button" class="btn-neon-lime px-2 py-0.5 rounded send-tracking-email-btn" data-order-id="${order.id}" data-track="${numberAttr}">Send Email</button>
+              </div>
+              <label class="inline-flex items-center gap-2 text-xs text-gray-400">
+                <input type="checkbox" class="tracking-ship-toggle h-4 w-4 text-lime-500 focus:ring-cyan-500 border-gray-600 rounded" data-order-id="${order.id}" data-track-index="${idx}" ${checkedAttr}>
+                Item has shipped
+              </label>
             </div>`;
           }).join("")
         : `<span class="text-gray-500 text-xs italic">No tracking added yet</span>`;
 
       const card=`
-      <div class="order-card rounded-xl p-6 shadow-md border border-gray-700 relative">
+      <div class="order-card rounded-xl p-6 shadow-md border ${orderCardBorderClass} relative">
         <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start border-b pb-4 mb-4 border-gray-700">
           <div>
             <h3 class="text-lg font-bold text-cyan-500 mb-1">Order ID:
@@ -1614,6 +1649,9 @@ function listenForInventory() {
           if(text && copyToClipboard(text)) indicateCopy(btn);
         });
       });
+      last.querySelectorAll('.tracking-ship-toggle').forEach(input=>{
+        input.addEventListener('change', handleTrackingShippedToggle);
+      });
     });
 
     updateLoadMoreVisibility(filteredOrders.length);
@@ -1666,8 +1704,14 @@ function listenForInventory() {
     const cont=qs('edit-order-items-list'); cont.innerHTML='';
     (orderData.items||[]).forEach(item=>cont.appendChild(createOrderItemElement(item)));
 
-    const trackingArr = Array.isArray(orderData.tracking) ? orderData.tracking : [];
-    setTrackingHidden(trackingArr); renderTrackingList(trackingArr);
+    const trackingEntries = extractTrackingEntries(orderData.tracking);
+    const defaultHasShipped = extractTrackingHasShipped(orderData.tracking);
+    const normalizedEntries = trackingEntries.map(entry => ({
+      ...entry,
+      hasShipped: typeof entry?.hasShipped === 'boolean' ? entry.hasShipped : defaultHasShipped
+    }));
+    setTrackingHidden(normalizedEntries);
+    renderTrackingList(normalizedEntries);
 
     editOrderModal.classList.remove('hidden'); editOrderBackdrop.classList.remove('hidden');
     editOrderModal.classList.add('is-open'); editOrderBackdrop.classList.add('is-open');
@@ -1679,7 +1723,7 @@ function listenForInventory() {
     if(!carrierSel||!numberInp){ showModal('Tracking UI is not available in this view.'); return; }
     const carrier=carrierSel.value.trim(); const number=numberInp.value.trim();
     if(!carrier||!number){ showModal('Please select a carrier and enter a tracking number.'); return; }
-    const t={ carrier, number, url:buildTrackingUrl(carrier,number), addedAt:new Date().toISOString() };
+    const t={ carrier, number, url:buildTrackingUrl(carrier,number), addedAt:new Date().toISOString(), hasShipped:false };
     const cur=readTrackingFromModal(); cur.push(t); setTrackingHidden(cur); renderTrackingList(cur); numberInp.value='';
   }
 
@@ -1695,7 +1739,13 @@ function listenForInventory() {
 
     const existing = allOrdersCache.find(o=>o.id===orderId) || {};
     const existingShipping = Number(existing.shippingCost ?? 0);
-    const newTracking = readTrackingFromModal ? readTrackingFromModal() : (existing.tracking || []);
+    const newTrackingRaw = readTrackingFromModal ? readTrackingFromModal() : extractTrackingEntries(existing.tracking);
+    const newTracking = Array.isArray(newTrackingRaw)
+      ? newTrackingRaw.map(entry => ({
+          ...entry,
+          hasShipped: entry?.hasShipped === true
+        }))
+      : [];
 
     try{
       const orderRef = doc(db, ORDERS_COLLECTION_PATH, orderId);
@@ -1992,6 +2042,9 @@ async function handleNewCostHistory(e){
     const computedSubtotal = items.reduce((s,i)=>s+(Number(i.unitPrice)*Number(i.quantity)),0);
     const shipping = Number(order.shippingCost ?? 0);
     const total = Number(order.total ?? (computedSubtotal + shipping));
+    const trackingEntries = extractTrackingEntries(order.tracking);
+    const defaultHasShipped = extractTrackingHasShipped(order.tracking);
+
     return {
       orderId: order.orderId || order.id,
       contactInfo: {
@@ -2006,10 +2059,11 @@ async function handleNewCostHistory(e){
       total,
       paymentStatus: order.paymentStatus ?? "unpaid",
       timestampISO: (order.timestamp?.toDate?.() && order.timestamp.toDate().toISOString()) || new Date().toISOString(),
-      tracking: (Array.isArray(order.tracking)?order.tracking:[]).map(t=>({
+      tracking: trackingEntries.map(t=>({
         carrier:t.carrier||"",
         number:t.number||"",
-        url:t.url||buildTrackingUrl(t.carrier,t.number)
+        url:t.url||buildTrackingUrl(t.carrier,t.number),
+        hasShipped: typeof t.hasShipped === 'boolean' ? t.hasShipped : defaultHasShipped
       }))
     };
   }
@@ -2024,6 +2078,42 @@ async function handleNewCostHistory(e){
     try{ await resendFn({ order: payloadOrder }); showModal(`Resent confirmation to ${payloadOrder.contactInfo.email}`); }
     catch(err){ console.error("Resend failed:",err); showModal(`Resend failed: ${err.message||"See console"}`); }
     finally{ if(btn){ btn.disabled=false; btn.textContent=original||"Resend Email"; btn.classList.remove("opacity-70","cursor-not-allowed"); } }
+  }
+
+  async function handleTrackingShippedToggle(ev){
+    const checkbox = ev.currentTarget;
+    const orderId = checkbox?.dataset?.orderId || '';
+    const index = Number(checkbox?.dataset?.trackIndex);
+    const desiredState = checkbox?.checked === true;
+    if(!orderId || Number.isNaN(index)) return;
+
+    const order = allOrdersCache.find(o=>o.id===orderId);
+    if(!order){
+      checkbox.checked = !desiredState;
+      showModal(`Order not found: ${orderId}`);
+      return;
+    }
+
+    const trackingEntries = extractTrackingEntries(order.tracking);
+    if(index < 0 || index >= trackingEntries.length){
+      checkbox.checked = !desiredState;
+      showModal('Tracking entry not found.');
+      return;
+    }
+
+    trackingEntries[index] = { ...trackingEntries[index], hasShipped: desiredState };
+
+    const orderRef = doc(db, ORDERS_COLLECTION_PATH, orderId);
+    checkbox.disabled = true;
+    try{
+      await updateDoc(orderRef, { tracking: trackingEntries });
+    }catch(err){
+      console.error('Failed to update shipped status:', err);
+      checkbox.checked = !desiredState;
+      showModal(`Failed to update shipped status: ${err.message}`);
+    }finally{
+      checkbox.disabled = false;
+    }
   }
 
   async function sendTrackingEmail(orderId, trackingNumber, btn){
@@ -2103,7 +2193,9 @@ async function handleNewCostHistory(e){
       });
     });
 
-    const addTrackBtn=qs('edit-track-add-btn'); if(addTrackBtn) addTrackBtn.addEventListener('click', handleAddTrackingEntry);
+    const addTrackBtn=qs('edit-track-add-btn');
+    if(addTrackBtn) addTrackBtn.addEventListener('click', handleAddTrackingEntry);
+
   }
 
   /* ============================
