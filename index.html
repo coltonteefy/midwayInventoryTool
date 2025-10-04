@@ -634,6 +634,46 @@
     </form>
   </div>
 
+  <!-- Prepare Order Modal -->
+  <div id="prepare-order-backdrop" class="modal-backdrop hidden"></div>
+  <div id="prepare-order-modal" class="modal-main hidden">
+    <div class="flex justify-between items-center text-cyan-300 border-b pb-4 mb-4 border-gray-700">
+      <h2 class="text-2xl font-bold">Prepare Order</h2>
+      <button id="prepare-order-close-icon" class="p-2 rounded-full text-gray-400 hover:text-white transition-colors" aria-label="Close prepare order modal">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+    <div class="space-y-6 text-gray-300">
+      <div>
+        <p class="text-sm text-gray-400 uppercase tracking-wide">Order ID</p>
+        <p id="prepare-order-id" class="mt-1 text-lg font-semibold text-cyan-200">—</p>
+      </div>
+      <div>
+        <p class="text-sm text-gray-400 uppercase tracking-wide">Customer</p>
+        <div id="prepare-order-customer" class="mt-1 text-sm text-gray-200">—</div>
+      </div>
+      <div>
+        <div class="flex items-center justify-between">
+          <p class="text-sm text-gray-400 uppercase tracking-wide">Items</p>
+          <p id="prepare-order-total-items" class="text-sm text-gray-300">Total Items: 0</p>
+        </div>
+        <ul id="prepare-order-items" class="mt-2 space-y-2 text-sm text-gray-200">
+          <li class="text-gray-500 italic">No items found for this order.</li>
+        </ul>
+      </div>
+      <div>
+        <p class="text-sm text-gray-400 uppercase tracking-wide">Notes</p>
+        <textarea id="prepare-order-notes" class="mt-1 w-full bg-gray-900 border border-gray-700 rounded-md p-3 text-sm text-gray-200 focus:ring-cyan-500 focus:border-cyan-500" rows="3" placeholder="Packing notes or reminders"></textarea>
+      </div>
+    </div>
+    <div class="flex justify-end gap-3 mt-8">
+      <button id="prepare-order-cancel-btn" class="btn-neon-red px-4 py-2 rounded-lg font-semibold">Cancel</button>
+      <button id="prepare-order-start-btn" class="btn-neon-lime px-4 py-2 rounded-lg font-semibold">Mark As In Progress</button>
+    </div>
+  </div>
+
   <!-- Firebase -->
   <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
@@ -672,6 +712,7 @@
   let allOrdersCache = [];
   let previousOrdersCache = new Map();
   let inventoryCache = {};
+  let activePrepareOrderId = null;
 
   const loadMoreOrdersBtn = qs('load-more-orders');
   const ordersPagination = qs('orders-pagination');
@@ -693,6 +734,17 @@
   const editOrderModal = qs('edit-order-modal');
   const closeEditModalBtn = qs('close-edit-modal-btn');
   const editOrderForm = qs('edit-order-form');
+
+  const prepareOrderBackdrop = qs('prepare-order-backdrop');
+  const prepareOrderModal = qs('prepare-order-modal');
+  const prepareOrderCloseIcon = qs('prepare-order-close-icon');
+  const prepareOrderCancelBtn = qs('prepare-order-cancel-btn');
+  const prepareOrderStartBtn = qs('prepare-order-start-btn');
+  const prepareOrderIdEl = qs('prepare-order-id');
+  const prepareOrderCustomerEl = qs('prepare-order-customer');
+  const prepareOrderItemsEl = qs('prepare-order-items');
+  const prepareOrderTotalItemsEl = qs('prepare-order-total-items');
+  const prepareOrderNotesInput = qs('prepare-order-notes');
 
   // Add Item form inputs
   const addItemForm = qs('add-item-form');
@@ -1587,6 +1639,9 @@ function listenForInventory() {
               <span class="font-normal text-sm sm:text-base break-words text-gray-300">${orderIdText}</span>
             </h3>
             <p class="text-sm text-gray-500">Order Placed on ${timestamp}</p>
+            <button class="prepare-order-btn btn-neon-cyan text-xs px-3 py-1 rounded-lg mt-3" data-order-id="${order.id}">
+              Prepare Order
+            </button>
           </div>
           <div class="mt-4 sm:mt-0 text-left sm:text-right">
             <p class="font-semibold text-lg text-cyan-500">Total: $${totalSafe}</p>
@@ -1690,6 +1745,180 @@ function listenForInventory() {
     wrap.dataset.itemName = item.name || '';
     wrap.dataset.itemId   = item.id   || '';
     return wrap;
+  }
+
+  /* Prepare order modal helpers */
+  function populatePrepareOrderCustomer(order){
+    if(!prepareOrderCustomerEl) return;
+    const container = prepareOrderCustomerEl;
+    container.innerHTML='';
+    container.classList.remove('italic','text-gray-500');
+    container.classList.add('space-y-1');
+
+    const contact = order?.contactInfo || {};
+    const fragments = [];
+    const name = contact.fullName || contact.name;
+    if(name){ const div=document.createElement('div'); div.className='font-semibold text-gray-100'; div.textContent=name; fragments.push(div); }
+    if(contact.email){ const div=document.createElement('div'); div.className='text-gray-300'; div.textContent=contact.email; fragments.push(div); }
+    if(contact.phone){ const div=document.createElement('div'); div.className='text-gray-300'; div.textContent=contact.phone; fragments.push(div); }
+    const shipping = contact.shippingAddress || order?.shippingAddress;
+    if(shipping){ const div=document.createElement('div'); div.className='text-gray-300 whitespace-pre-line'; div.textContent=shipping; fragments.push(div); }
+
+    if(!fragments.length){
+      const fallback=document.createElement('div');
+      fallback.className='text-gray-500 italic';
+      fallback.textContent='No customer info on record.';
+      fragments.push(fallback);
+    }
+
+    fragments.forEach(node=>container.appendChild(node));
+  }
+
+  function populatePrepareOrderItems(order){
+    if(!prepareOrderItemsEl) return;
+    prepareOrderItemsEl.innerHTML='';
+    const items = Array.isArray(order?.items) ? order.items : [];
+    let totalQuantity = 0;
+    if(!items.length){
+      const empty=document.createElement('li');
+      empty.className='text-gray-500 italic';
+      empty.textContent='No items found for this order.';
+      prepareOrderItemsEl.appendChild(empty);
+      prepareOrderItemsEl.dataset.totalQuantity = '0';
+      updatePrepareOrderSummary(0,0);
+      return;
+    }
+
+    items.forEach(item=>{
+      const li=document.createElement('li');
+      li.className='flex items-center justify-between gap-3 rounded border border-gray-700 p-3 bg-gray-900/40';
+      const quantity=Number(item?.quantity ?? 1);
+      const name=item?.id || item?.name || 'Item';
+      totalQuantity += Number.isFinite(quantity) ? quantity : 0;
+
+      const checkbox=document.createElement('input');
+      checkbox.type='checkbox';
+      checkbox.className='prepare-item-checkbox h-4 w-4 text-lime-400 focus:ring-cyan-500 border-gray-600 rounded';
+      checkbox.dataset.quantity = String(Number.isFinite(quantity) ? quantity : 1);
+
+      const detailsWrap=document.createElement('div');
+      detailsWrap.className='flex-1 min-w-0';
+
+      const labelSpan=document.createElement('span');
+      labelSpan.className='block text-gray-100 font-semibold truncate';
+      labelSpan.dataset.role = 'prepare-item-name';
+      labelSpan.textContent=name;
+
+      const metaSpan=document.createElement('span');
+      metaSpan.className='block text-xs text-gray-400 mt-1';
+      metaSpan.dataset.role = 'prepare-item-meta';
+      metaSpan.textContent=`Qty: ${quantity}`;
+
+      const totalSpan=document.createElement('span');
+      const unitPrice=Number(item?.unitPrice ?? 0);
+      const lineTotal=currency(unitPrice * quantity);
+      totalSpan.className='font-semibold text-cyan-300';
+      totalSpan.dataset.role = 'prepare-item-price';
+      totalSpan.textContent=`$${lineTotal}`;
+      totalSpan.dataset.lineTotal = lineTotal;
+
+      detailsWrap.appendChild(labelSpan);
+      detailsWrap.appendChild(metaSpan);
+
+      li.appendChild(checkbox);
+      li.appendChild(detailsWrap);
+      li.appendChild(totalSpan);
+      prepareOrderItemsEl.appendChild(li);
+
+      applyPrepareOrderStyles(li, checkbox);
+
+      checkbox.addEventListener('change', ()=>{
+        applyPrepareOrderStyles(li, checkbox);
+        refreshPrepareOrderPreparedCount();
+      });
+    });
+
+    prepareOrderItemsEl.dataset.totalQuantity = String(totalQuantity);
+    refreshPrepareOrderPreparedCount();
+  }
+
+  function applyPrepareOrderStyles(rowEl, checkbox){
+    if(!rowEl) return;
+    rowEl.classList.toggle('border-emerald-500', checkbox.checked);
+    rowEl.classList.toggle('bg-emerald-900/30', checkbox.checked);
+    const details = rowEl.querySelector('[data-role="prepare-item-name"]');
+    const meta = rowEl.querySelector('[data-role="prepare-item-meta"]');
+    const price = rowEl.querySelector('[data-role="prepare-item-price"]');
+    if(details) details.classList.toggle('line-through', checkbox.checked);
+    if(meta){
+      meta.classList.toggle('text-emerald-300', checkbox.checked);
+      meta.classList.toggle('text-gray-400', !checkbox.checked);
+    }
+    if(price){
+      price.classList.toggle('text-emerald-300', checkbox.checked);
+      price.classList.toggle('text-cyan-300', !checkbox.checked);
+    }
+  }
+
+  function updatePrepareOrderSummary(totalItems, preparedItems){
+    if(!prepareOrderTotalItemsEl) return;
+    const preparedText = totalItems > 0 ? ` • Prepared: ${preparedItems}` : '';
+    prepareOrderTotalItemsEl.textContent = `Total Items: ${totalItems}${preparedText}`;
+  }
+
+  function refreshPrepareOrderPreparedCount(){
+    const totalItems = Number(prepareOrderItemsEl?.dataset.totalQuantity || 0);
+    let prepared = 0;
+    prepareOrderItemsEl?.querySelectorAll('.prepare-item-checkbox')?.forEach(cb=>{
+      if(cb.checked){ prepared += Number(cb.dataset.quantity || 1); }
+    });
+    updatePrepareOrderSummary(totalItems, prepared);
+  }
+
+  function openPrepareOrderModal(order){
+    if(!prepareOrderModal || !prepareOrderBackdrop){ console.warn('Prepare order modal elements not found.'); return; }
+    if(!order){ showModal('Unable to load order details for preparation.'); return; }
+
+    activePrepareOrderId = order.id || null;
+    if(prepareOrderIdEl) prepareOrderIdEl.textContent = order.orderId || order.id || 'Unknown Order';
+    populatePrepareOrderCustomer(order);
+    populatePrepareOrderItems(order);
+    if(prepareOrderNotesInput) prepareOrderNotesInput.value='';
+
+    prepareOrderModal.classList.remove('hidden');
+    prepareOrderBackdrop.classList.remove('hidden');
+    prepareOrderModal.classList.add('is-open');
+    prepareOrderBackdrop.classList.add('is-open');
+  }
+
+  function closePrepareOrderModal(){
+    if(!prepareOrderModal || !prepareOrderBackdrop) return;
+    prepareOrderModal.classList.remove('is-open');
+    prepareOrderBackdrop.classList.remove('is-open');
+    activePrepareOrderId=null;
+    if(prepareOrderNotesInput) prepareOrderNotesInput.value='';
+    setTimeout(()=>{
+      prepareOrderModal.classList.add('hidden');
+      prepareOrderBackdrop.classList.add('hidden');
+      if(prepareOrderItemsEl){
+        prepareOrderItemsEl.dataset.totalQuantity = '0';
+        prepareOrderItemsEl.innerHTML='';
+      }
+      updatePrepareOrderSummary(0,0);
+    },300);
+  }
+
+  function handlePrepareOrderStart(){
+    if(!activePrepareOrderId){ closePrepareOrderModal(); return; }
+    const order = allOrdersCache.find(o=>o.id===activePrepareOrderId);
+    const displayId = order?.orderId || activePrepareOrderId;
+    const notes = (prepareOrderNotesInput?.value || '').trim();
+    closePrepareOrderModal();
+    if(notes){
+      showModal(`Prep started for ${displayId}.\nNotes:\n${notes}`);
+    }else{
+      showModal(`Prep started for ${displayId}.`);
+    }
   }
 
   function openEditModal(orderData){
@@ -2153,6 +2382,17 @@ async function handleNewCostHistory(e){
     qs('close-modal-btn').addEventListener('click',()=>qs('alert-modal').classList.add('hidden'));
 
     qs('orders-container').addEventListener('click', (e)=>{
+      const prepareBtn = e.target.closest('.prepare-order-btn');
+      if(prepareBtn){
+        const orderId = prepareBtn.dataset.orderId;
+        const order = allOrdersCache.find(o=>o.id===orderId);
+        if(order){
+          openPrepareOrderModal(order);
+        }else{
+          showModal(`Order not found: ${orderId}`);
+        }
+        return;
+      }
         // NEW: Delete button on card
       const delBtn = e.target.closest('.delete-order-card-btn');
       if (delBtn) {
@@ -2171,6 +2411,24 @@ async function handleNewCostHistory(e){
     if(editOrderForm) editOrderForm.addEventListener('submit', handleEditOrder);
     if(closeEditModalBtn) closeEditModalBtn.addEventListener('click', closeEditModal);
     if(editOrderBackdrop) editOrderBackdrop.addEventListener('click', closeEditModal);
+
+    if(prepareOrderCloseIcon) prepareOrderCloseIcon.addEventListener('click', closePrepareOrderModal);
+    if(prepareOrderCancelBtn) prepareOrderCancelBtn.addEventListener('click', closePrepareOrderModal);
+    if(prepareOrderBackdrop) prepareOrderBackdrop.addEventListener('click', closePrepareOrderModal);
+    if(prepareOrderStartBtn) prepareOrderStartBtn.addEventListener('click', handlePrepareOrderStart);
+
+    document.addEventListener('keydown', (evt)=>{
+      if(evt.key !== 'Escape') return;
+      if(prepareOrderModal && prepareOrderModal.classList.contains('is-open')){
+        closePrepareOrderModal();
+        evt.preventDefault();
+        return;
+      }
+      if(editOrderModal && editOrderModal.classList.contains('is-open')){
+        closeEditModal();
+        evt.preventDefault();
+      }
+    });
 
     if(addItemForm) addItemForm.addEventListener('submit', handleAddItem);
     if(addCostForm) addCostForm.addEventListener('submit', handleNewCostHistory);
