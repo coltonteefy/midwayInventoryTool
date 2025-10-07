@@ -533,6 +533,22 @@
       <div class="space-y-4 mt-8">
         <h2 class="text-xl font-semibold text-white text-glow-fuchsia">Sales Infographics</h2>
         <div class="infographic-grid">
+          <div class="infographic-card rounded-lg p-4 flex flex-col justify-center">
+            <h3 class="text-md font-semibold text-center text-cyan-300 mb-2">Average Order Total</h3>
+            <p id="average-order-total" class="text-3xl font-bold text-center text-cyan-200">$0.00</p>
+            <p class="text-xs text-center text-slate-400 mt-2">Paid orders only</p>
+          </div>
+          <div class="infographic-card rounded-lg p-4 flex flex-col justify-center">
+            <h3 class="text-md font-semibold text-center text-cyan-300 mb-2">Utah Taxes</h3>
+            <p id="utah-tax-total" class="text-3xl font-bold text-center text-cyan-200">$0.00</p>
+            <p id="utah-order-count" class="text-sm text-center text-cyan-100">0 paid orders</p>
+            <p class="text-xs text-center text-slate-400 mt-2">Aggregated paid orders</p>
+          </div>
+          <div class="infographic-card rounded-lg p-4 flex flex-col justify-center">
+            <h3 class="text-md font-semibold text-center text-cyan-300 mb-2">Largest Order</h3>
+            <p id="largest-order-amount" class="text-3xl font-bold text-center text-cyan-200">$0.00</p>
+            <p id="largest-order-meta" class="text-sm text-center text-cyan-100">No paid orders yet</p>
+          </div>
           <div class="infographic-card rounded-lg p-4">
             <h3 class="text-md font-semibold text-center text-cyan-300 mb-4">Monthly Revenue</h3>
             <ul id="list-monthly-revenue" class="infographic-list"></ul>
@@ -702,6 +718,7 @@
 
   const qs = (id) => document.getElementById(id);
   const ORDERS_PAGE_SIZE = 5;
+  const UTAH_SALES_TAX_RATE = 0.065; // fallback rate if no explicit tax is stored
   let visibleOrdersCount = ORDERS_PAGE_SIZE;
   let orderSearchTerm = '';
   let userAdjustedOrderView = false;
@@ -1443,12 +1460,177 @@ function listenForInventory() {
     });
   }
 
+  function toFiniteNumber(value){
+    if(typeof value === 'number') return Number.isFinite(value) ? value : null;
+    if(typeof value === 'string'){
+      const trimmed = value.trim();
+      if(!trimmed) return null;
+      const num = Number(trimmed.replace(/[^0-9.+-]/g,''));
+      return Number.isFinite(num) ? num : null;
+    }
+    return null;
+  }
+
+  function resolveOrderTotal(order){
+    const items = Array.isArray(order?.items) ? order.items : [];
+    const computed = items.reduce((sum,it)=> sum + (Number(it?.unitPrice||0)*Number(it?.quantity||1)),0);
+    const total = toFiniteNumber(order?.total);
+    if(total !== null) return total;
+    return Number.isFinite(computed) ? computed : 0;
+  }
+
+  function isUtahState(value){
+    if(typeof value !== 'string') return false;
+    const normalized = value.trim().toLowerCase();
+    if(!normalized) return false;
+    return normalized === 'ut' || normalized === 'utah' || normalized === 'utah, usa' || normalized === 'ut, usa';
+  }
+
+  function containsUtah(value){
+    if(typeof value !== 'string') return false;
+    const upper = value.toUpperCase();
+    if(upper.includes('UTAH')) return true;
+    return /\bUT\b/.test(upper);
+  }
+
+  function isUtahOrder(order){
+    const stateFields = [
+      order?.shipping?.state,
+      order?.shippingState,
+      order?.shippingDetails?.state,
+      order?.shipping_address?.state,
+      order?.shippingAddress?.state,
+      order?.contactInfo?.state,
+      order?.contactInfo?.shippingState,
+      order?.contactInfo?.shipping?.state
+    ];
+    if(stateFields.some(value => isUtahState(value))) return true;
+
+    const addressCandidates = [
+      order?.contactInfo?.shippingAddress,
+      order?.shippingAddress,
+      order?.shipping?.address,
+      order?.shipping?.fullAddress,
+      order?.shipping?.line1,
+      order?.shipping?.line2
+    ];
+    return addressCandidates.some(str => containsUtah(str));
+  }
+
+  function extractUtahTax(order){
+    const potentialTaxFields = [
+      order?.tax,
+      order?.taxes,
+      order?.taxAmount,
+      order?.tax_amount,
+      order?.taxTotal,
+      order?.totalTax,
+      order?.salesTax,
+      order?.sales_tax,
+      order?.orderTax,
+      order?.totals?.tax,
+      order?.totals?.salesTax,
+      order?.summary?.tax,
+      order?.summary?.taxTotal
+    ];
+
+    for(const value of potentialTaxFields){
+      const numeric = toFiniteNumber(value);
+      if(numeric !== null) return numeric;
+    }
+
+    if(Array.isArray(order?.items)){
+      const perItemTax = order.items.reduce((sum,item)=>{
+        const candidates = [
+          item?.tax,
+          item?.taxAmount,
+          item?.tax_amount,
+          item?.salesTax,
+          item?.sales_tax
+        ];
+        const numeric = candidates.map(toFiniteNumber).find(v => v !== null);
+        return sum + (numeric ?? 0);
+      },0);
+      if(perItemTax > 0) return perItemTax;
+    }
+
+    const total = resolveOrderTotal(order);
+    if(total > 0) return total * UTAH_SALES_TAX_RATE;
+    return 0;
+  }
+
   function renderInfographics(){
     const placeholder=qs('infographic-placeholder');
-    const m=qs('list-monthly-revenue'), c=qs('list-top-customers'), pr=qs('list-top-products-revenue'), pq=qs('list-top-products-quantity');
+    const avg=qs('average-order-total');
+    const utahTax=qs('utah-tax-total');
+    const utahCount=qs('utah-order-count');
+    const largestAmount=qs('largest-order-amount');
+    const largestMeta=qs('largest-order-meta');
+    const m=qs('list-monthly-revenue');
+    const c=qs('list-top-customers');
+    const pr=qs('list-top-products-revenue');
+    const pq=qs('list-top-products-quantity');
+    if(avg) avg.textContent='N/A';
+    if(utahTax) utahTax.textContent='$0.00';
+    if(utahCount) utahCount.textContent='0 paid orders';
+    if(largestAmount) largestAmount.textContent='$0.00';
+    if(largestMeta) largestMeta.textContent='No paid orders yet';
     m.innerHTML=''; c.innerHTML=''; pr.innerHTML=''; pq.innerHTML='';
     if(allOrdersCache.length===0){ placeholder.classList.remove('hidden'); return; }
     placeholder.classList.add('hidden');
+
+    const paidOrders = allOrdersCache.filter(o=>o.paymentStatus==='Paid');
+    if(avg){
+      if(paidOrders.length===0){
+        avg.textContent='N/A';
+      }else{
+        const totalPaid = paidOrders.reduce((sum, order)=> sum + resolveOrderTotal(order),0);
+        const average = totalPaid / paidOrders.length;
+        avg.textContent = `$${currency(average)}`;
+      }
+    }
+
+    if((largestAmount || largestMeta) && paidOrders.length>0){
+      let bestOrder=null;
+      let bestTotal=-Infinity;
+      paidOrders.forEach(order=>{
+        const total = resolveOrderTotal(order);
+        if(total > bestTotal){
+          bestTotal = total;
+          bestOrder = order;
+        }
+      });
+      if(bestOrder){
+        if(largestAmount){
+          largestAmount.textContent = `$${currency(bestTotal)}`;
+        }
+        if(largestMeta){
+          const customer = (bestOrder.contactInfo?.fullName || '').trim();
+          const orderId = bestOrder.orderId || bestOrder.id || '';
+          const timestamp = bestOrder.timestamp?.toDate?.();
+          const parts = [];
+          if(customer) parts.push(customer);
+          if(orderId) parts.push(`#${orderId}`);
+          if(timestamp instanceof Date && !Number.isNaN(timestamp.valueOf())){
+            parts.push(timestamp.toLocaleDateString('en-US'));
+          }
+          const meta = parts.length ? parts.join(' • ') : 'Paid order';
+          largestMeta.textContent = meta;
+        }
+      }
+    }
+
+    if(utahTax || utahCount){
+      const utahOrders = paidOrders.filter(isUtahOrder);
+      if(utahCount){
+        const countLabel = utahOrders.length === 1 ? '1 paid order' : `${utahOrders.length} paid orders`;
+        utahCount.textContent = countLabel;
+      }
+      if(utahTax && utahOrders.length>0){
+        const totalTax = utahOrders.reduce((sum, order)=> sum + extractUtahTax(order),0);
+        utahTax.textContent = `$${currency(totalTax)}`;
+      }
+    }
 
     const monthly={}; allOrdersCache.forEach(o=>{ if(o.paymentStatus==='Paid' && o.timestamp){ const mo=o.timestamp.toDate().toLocaleString('en-US',{month:'short',year:'2-digit'}); monthly[mo]=(monthly[mo]||0)+(o.total||0);} });
     Object.keys(monthly).sort((a,b)=>{ const [ma,ya]=a.split(' '), [mb,yb]=b.split(' '); return new Date(`01 ${ma} 20${ya}`)-new Date(`01 ${mb} 20${yb}`); }).forEach(month=>{
