@@ -1479,6 +1479,62 @@ function listenForInventory() {
     return Number.isFinite(computed) ? computed : 0;
   }
 
+  function extractOrderSalesTax(order){
+    if(!order || typeof order !== 'object') return 0;
+
+    const candidateFields = [
+      order?.salesTax,
+      order?.sales_tax,
+      order?.tax,
+      order?.taxAmount,
+      order?.tax_amount,
+      order?.taxTotal,
+      order?.totalTax,
+      order?.taxes,
+      order?.orderTax,
+      order?.totals?.tax,
+      order?.totals?.salesTax,
+      order?.totals?.taxAmount,
+      order?.summary?.tax,
+      order?.summary?.salesTax,
+      order?.summary?.taxTotal,
+      order?.charges?.tax,
+      order?.charges?.salesTax,
+      order?.charges?.taxAmount
+    ];
+
+    for(const value of candidateFields){
+      const numeric = toFiniteNumber(value);
+      if(numeric !== null && numeric > 0) return numeric;
+    }
+
+    const collectionCandidates = [
+      order?.fees,
+      order?.fee,
+      order?.charges,
+      order?.surcharges,
+      order?.additionalFees
+    ];
+
+    for(const collection of collectionCandidates){
+      if(!Array.isArray(collection)) continue;
+      for(const entry of collection){
+        const label = String(entry?.label || entry?.name || entry?.type || '').toLowerCase();
+        if(label.includes('tax')){
+          const amount = toFiniteNumber(entry?.amount ?? entry?.value ?? entry?.total ?? entry?.price);
+          if(amount !== null && amount > 0) return amount;
+        }
+      }
+    }
+
+    if(order?.charges && typeof order.charges === 'object' && !Array.isArray(order.charges)){
+      const nestedTax = toFiniteNumber(order.charges.tax ?? order.charges.salesTax ?? order.charges.taxAmount);
+      if(nestedTax !== null && nestedTax > 0) return nestedTax;
+    }
+
+    return 0;
+  }
+
   function isUtahState(value){
     if(typeof value !== 'string') return false;
     const normalized = value.trim().toLowerCase();
@@ -1728,6 +1784,7 @@ function listenForInventory() {
       const discountedSubtotal = Number(order.subtotal ?? computed);
       const shippingCostSafe = Number(order.shippingCost ?? 0);
       const hasFreeShip = shippingCostSafe===0 && (order.promo?.type==='free_shipping');
+      const salesTaxValue = extractOrderSalesTax(order);
       const paymentDetails = (()=>{
         const payment = order.payment || {};
         const meta = payment.meta || {};
@@ -1830,6 +1887,7 @@ function listenForInventory() {
             <span class="inline-block mt-1 px-3 py-1 text-xs font-semibold rounded-full ${statusClass}">${status}</span>
             <div class="mt-2 text-xs text-gray-400 space-y-1">
               <div><span class="text-gray-500">Subtotal:</span> $${currency(discountedSubtotal)}</div>
+              ${salesTaxValue>0?`<div><span class="text-gray-500">Sales Tax:</span> $${currency(salesTaxValue)}</div>`:``}
               ${itemDiscount>0?`<div><span class="text-gray-500">Items discount:</span> <span class="text-green-300 font-semibold">-$${currency(itemDiscount)}</span></div>`:``}
               <div><span class="text-gray-500">Shipping:</span> ${hasFreeShip?`<span class="text-green-300 font-semibold">FREE</span>`:`$${currency(shippingCostSafe)}`}</div>
               <div>
