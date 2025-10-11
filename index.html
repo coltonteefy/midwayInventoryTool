@@ -1960,7 +1960,17 @@ function listenForInventory() {
       const orderIdText=order.orderId || order.id;
       const trackingEntries = extractTrackingEntries(order.tracking);
       const anyShipped = trackingEntries.some(t=>t?.hasShipped===true);
-      const orderCardBorderClass = anyShipped ? 'border-emerald-500' : 'border-gray-700';
+      const isDelivered = order.orderDelivered === true;
+      const deliveredWithoutTracking = trackingEntries.length === 0 && isDelivered;
+      const orderCardBorderClass = (anyShipped || deliveredWithoutTracking) ? 'border-emerald-500' : 'border-gray-700';
+      const deliveredStatusText = isDelivered ? 'Delivered' : 'Not delivered';
+      const deliveredToggleHtml = `
+        <div class="flex flex-wrap items-center gap-2 text-xs text-gray-400 mt-1">
+          <span class="font-semibold ${isDelivered ? 'text-emerald-300' : 'text-gray-500'}">${deliveredStatusText}</span>
+          <label class="inline-flex items-center gap-2">
+            <input type="checkbox" class="order-delivered-toggle h-4 w-4 text-lime-500 focus:ring-cyan-500 border-gray-600 rounded" data-order-id="${order.id}" aria-label="${isDelivered ? 'Unmark delivered' : 'Mark delivered'}" ${isDelivered ? 'checked' : ''}>
+          </label>
+        </div>`;
       const trackingHtml = trackingEntries.length
         ? trackingEntries.map((t,idx)=>{
             const url=t.url||buildTrackingUrl(t.carrier,t.number);
@@ -1983,7 +1993,10 @@ function listenForInventory() {
               </label>
             </div>`;
           }).join("")
-        : `<span class="text-gray-500 text-xs italic">No tracking added yet</span>`;
+        : `<div class="space-y-1 text-xs">
+            <span class="text-gray-500 italic">No tracking added yet</span>
+            ${deliveredToggleHtml}
+          </div>`;
 
       const card=`
       <div class="order-card rounded-xl p-6 shadow-md border ${orderCardBorderClass} relative">
@@ -2061,6 +2074,9 @@ function listenForInventory() {
       });
       last.querySelectorAll('.tracking-ship-toggle').forEach(input=>{
         input.addEventListener('change', handleTrackingShippedToggle);
+      });
+      last.querySelectorAll('.order-delivered-toggle').forEach(input=>{
+        input.addEventListener('change', handleOrderDeliveredToggle);
       });
     });
 
@@ -2662,6 +2678,32 @@ async function handleNewCostHistory(e){
     try{ await resendFn({ order: payloadOrder }); showModal(`Resent confirmation to ${payloadOrder.contactInfo.email}`); }
     catch(err){ console.error("Resend failed:",err); showModal(`Resend failed: ${err.message||"See console"}`); }
     finally{ if(btn){ btn.disabled=false; btn.textContent=original||"Resend Email"; btn.classList.remove("opacity-70","cursor-not-allowed"); } }
+  }
+
+  async function handleOrderDeliveredToggle(ev){
+    const checkbox = ev.currentTarget;
+    const orderId = checkbox?.dataset?.orderId || '';
+    const desiredState = checkbox?.checked === true;
+    if(!orderId) return;
+
+    const order = allOrdersCache.find(o=>o.id===orderId);
+    if(!order){
+      checkbox.checked = !desiredState;
+      showModal(`Order not found: ${orderId}`);
+      return;
+    }
+
+    const orderRef = doc(db, ORDERS_COLLECTION_PATH, orderId);
+    checkbox.disabled = true;
+    try{
+      await updateDoc(orderRef, { orderDelivered: desiredState });
+    }catch(err){
+      console.error('Failed to update delivered status:', err);
+      checkbox.checked = !desiredState;
+      showModal(`Failed to update delivered status: ${err.message}`);
+    }finally{
+      checkbox.disabled = false;
+    }
   }
 
   async function handleTrackingShippedToggle(ev){
