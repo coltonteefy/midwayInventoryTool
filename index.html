@@ -539,6 +539,16 @@
             <p class="text-xs text-center text-slate-400 mt-2">Paid orders only</p>
           </div>
           <div class="infographic-card rounded-lg p-4 flex flex-col justify-center">
+            <h3 class="text-md font-semibold text-center text-cyan-300 mb-2">Daily Total Sales</h3>
+            <p id="daily-total-sales" class="text-3xl font-bold text-center text-cyan-200">$0.00</p>
+            <p class="text-xs text-center text-slate-400 mt-2">Paid orders today</p>
+          </div>
+          <div class="infographic-card rounded-lg p-4 flex flex-col justify-center">
+            <h3 class="text-md font-semibold text-center text-cyan-300 mb-2">Daily Average Order Total</h3>
+            <p id="daily-average-order" class="text-3xl font-bold text-center text-cyan-200">N/A</p>
+            <p class="text-xs text-center text-slate-400 mt-2">Paid orders today</p>
+          </div>
+          <div class="infographic-card rounded-lg p-4 flex flex-col justify-center">
             <h3 class="text-md font-semibold text-center text-cyan-300 mb-2">Utah Taxes</h3>
             <p id="utah-tax-total" class="text-3xl font-bold text-center text-cyan-200">$0.00</p>
             <p id="utah-order-count" class="text-sm text-center text-cyan-100">0 paid orders</p>
@@ -1030,6 +1040,64 @@
   }
   function formatTimestamp(ts){ if(!ts) return 'Unknown date'; try{ if(typeof ts.toDate==='function'){ return ts.toDate().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});} const d=new Date(ts); if(!isNaN(d.getTime())) return d.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});}catch(_){} return 'Unknown date'; }
   function currency(n){ const num=typeof n==='number'?n:Number(n??0); return num.toFixed(2); }
+  function toDateOrNull(raw){
+    if(!raw) return null;
+    if(raw instanceof Date){
+      return Number.isNaN(raw.valueOf())?null:raw;
+    }
+    if(typeof raw==='object'){
+      if(typeof raw.toDate==='function'){
+        try{
+          const d=raw.toDate();
+          if(d instanceof Date && !Number.isNaN(d.valueOf())) return d;
+        }catch(_){}
+      }
+      if(typeof raw.toMillis==='function'){
+        try{
+          const d=new Date(raw.toMillis());
+          if(!Number.isNaN(d.valueOf())) return d;
+        }catch(_){}
+      }
+      if(typeof raw.seconds==='number'){
+        const millis=(raw.seconds*1000)+(raw.nanoseconds?raw.nanoseconds/1e6:0);
+        const d=new Date(millis);
+        if(!Number.isNaN(d.valueOf())) return d;
+      }
+    }
+    if(typeof raw==='number'){
+      const d=new Date(raw);
+      return Number.isNaN(d.valueOf())?null:d;
+    }
+    if(typeof raw==='string'){
+      const trimmed=raw.trim();
+      if(!trimmed) return null;
+      const direct=new Date(trimmed);
+      if(!Number.isNaN(direct.valueOf())) return direct;
+      const numeric=Number(trimmed);
+      if(Number.isFinite(numeric)){
+        const d=new Date(numeric);
+        if(!Number.isNaN(d.valueOf())) return d;
+      }
+    }
+    return null;
+  }
+  function extractOrderDate(order){
+    if(!order || typeof order!=='object') return null;
+    const candidates=[
+      order.timestamp,
+      order.createdAt,
+      order.created_at,
+      order.orderedAt,
+      order.orderDate,
+      order.date,
+      order.updatedAt
+    ];
+    for(const candidate of candidates){
+      const date=toDateOrNull(candidate);
+      if(date) return date;
+    }
+    return null;
+  }
   function escapeHtml(str){
     return String(str).replace(/[&<>"']/g, (ch) => {
       switch (ch) {
@@ -1618,6 +1686,8 @@ function listenForInventory() {
   function renderInfographics(){
     const placeholder=qs('infographic-placeholder');
     const avg=qs('average-order-total');
+    const dailyTotal=qs('daily-total-sales');
+    const dailyAverage=qs('daily-average-order');
     const utahTax=qs('utah-tax-total');
     const utahCount=qs('utah-order-count');
     const largestAmount=qs('largest-order-amount');
@@ -1627,6 +1697,8 @@ function listenForInventory() {
     const pr=qs('list-top-products-revenue');
     const pq=qs('list-top-products-quantity');
     if(avg) avg.textContent='N/A';
+    if(dailyTotal) dailyTotal.textContent='$0.00';
+    if(dailyAverage) dailyAverage.textContent='N/A';
     if(utahTax) utahTax.textContent='$0.00';
     if(utahCount) utahCount.textContent='0 paid orders';
     if(largestAmount) largestAmount.textContent='$0.00';
@@ -1644,6 +1716,24 @@ function listenForInventory() {
         const average = totalPaid / paidOrders.length;
         avg.textContent = `$${currency(average)}`;
       }
+    }
+
+    if((dailyTotal || dailyAverage) && paidOrders.length>0){
+      const startOfToday=new Date();
+      startOfToday.setHours(0,0,0,0);
+      const endOfToday=new Date(startOfToday);
+      endOfToday.setDate(endOfToday.getDate()+1);
+      let todayCount=0;
+      let todayTotal=0;
+      paidOrders.forEach(order=>{
+        const orderDate=extractOrderDate(order);
+        if(orderDate && orderDate>=startOfToday && orderDate<endOfToday){
+          todayCount++;
+          todayTotal+=resolveOrderTotal(order);
+        }
+      });
+      if(dailyTotal) dailyTotal.textContent=`$${currency(todayTotal)}`;
+      if(dailyAverage) dailyAverage.textContent=todayCount>0?`$${currency(todayTotal/todayCount)}`:'N/A';
     }
 
     if((largestAmount || largestMeta) && paidOrders.length>0){
