@@ -32,6 +32,7 @@
     .modal-main.is-open{ opacity:1; pointer-events:auto; transform:translate(-50%,-50%) scale(1) }
     @keyframes copyPulse{ 0%{transform:scale(1);} 40%{transform:scale(1.12);} 80%{transform:scale(0.98);} 100%{transform:scale(1);} }
     .copy-track.copied,.copy-contact.copied{ background:#22c55e!important; color:#06131a!important; animation:copyPulse .6s ease forwards; box-shadow:0 0 12px rgba(34,197,94,.45); }
+    .txid-value{ word-break:break-all; overflow-wrap:anywhere; }
 
     /* Promo tool styles */
     #promo-tool {
@@ -2020,7 +2021,7 @@ function listenForInventory() {
               <div><span class="text-gray-500">Shipping:</span> ${hasFreeShip?`<span class="text-green-300 font-semibold">FREE</span>`:`$${currency(shippingCostSafe)}`}</div>
               <div>
                 <span class="text-gray-500">Payment Type:</span> <span class="text-gray-300">${paymentDetails.label}</span>
-                ${paymentDetails.txid ? `<div class="text-gray-500 text-xs mt-1 pl-4">TXID: <span class="text-gray-300">${paymentDetails.txid}</span></div>` : ''}
+                ${paymentDetails.txid ? `<div class="text-gray-500 text-xs mt-1 pl-4">TXID: <span class="text-gray-300 txid-value">${paymentDetails.txid}</span></div>` : ''}
                 ${promoCodeDisplay ? `<div class="text-gray-500 text-xs mt-1 pl-4">Promo Code: <span class="text-gray-300">${escapeHtml(promoCodeDisplay)}</span></div>` : ''}
               </div>
             </div>
