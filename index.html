@@ -26,6 +26,25 @@
     .infographic-list li{ display:flex; justify-content:space-between; align-items:center; padding:.5rem 0; border-bottom:1px dashed #374151 }
     .infographic-list li:last-child{ border-bottom:none }
     .infographic-list .rank{ font-weight:bold; color:#06b6d4 }
+    #trend-tool-section .trend-shell{ background:#10172b; border:1px solid #1f2937; border-radius:18px; padding:24px; box-shadow:0 18px 40px rgba(8,145,178,.12); }
+    #trend-tool-section .trend-card{ background:#111827; border:1px solid #1f2937; border-radius:14px; padding:18px; box-shadow:0 12px 28px rgba(15,118,110,.15); display:flex; flex-direction:column; gap:1rem; }
+    #trend-tool-section .trend-card p{ margin:0; }
+    #trend-tool-section .trend-label{ font-size:.7rem; letter-spacing:.12em; text-transform:uppercase; color:#94a3b8; }
+    #trend-tool-section .trend-value{ font-size:1.75rem; font-weight:700; color:#38bdf8; }
+    #trend-tool-section .trend-subtext{ font-size:.85rem; color:#cbd5f5; }
+    #trend-tool-section .trend-grid{ display:grid; gap:1rem; grid-template-columns:repeat(1,minmax(0,1fr)); }
+    @media (min-width:640px){ #trend-tool-section .trend-grid{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
+    @media (min-width:1024px){ #trend-tool-section .trend-grid{ grid-template-columns:repeat(4,minmax(0,1fr)); } }
+    #trend-tool-section .trend-subgrid{ display:grid; gap:1rem; grid-template-columns:repeat(1,minmax(0,1fr)); }
+    @media (min-width:768px){ #trend-tool-section .trend-subgrid{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
+    #trend-tool-section .trend-list{ list-style:none; margin:0; padding:0; }
+    #trend-tool-section .trend-list li{ display:flex; align-items:center; justify-content:space-between; gap:.75rem; padding:.55rem 0; border-bottom:1px dashed #374151; }
+    #trend-tool-section .trend-list li:last-child{ border-bottom:none; }
+    #trend-tool-section .trend-list .rank{ font-weight:700; color:#38bdf8; font-size:.75rem; text-transform:uppercase; }
+    #trend-tool-section .trend-list .name{ flex:1 1 auto; color:#e2e8f0; font-size:.9rem; }
+    #trend-tool-section .trend-list .value{ font-weight:600; color:#cbd5f5; font-size:.85rem; text-align:right; white-space:nowrap; }
+    #trend-tool-section label{ font-size:.7rem; letter-spacing:.12em; text-transform:uppercase; color:#94a3b8; margin:0; display:block; }
+    #trend-tool-section select{ margin:0; }
     .modal-backdrop{ position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:40; opacity:0; transition:opacity .3s; pointer-events:none }
     .modal-backdrop.is-open{ opacity:1; pointer-events:auto }
     .modal-main{ position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); width:90%; max-width:600px; background:#111827; z-index:50; border-radius:12px; box-shadow:0 10px 25px rgba(0,0,0,.5); padding:2rem; transition:transform .3s,opacity .3s; opacity:0; pointer-events:none; max-height:90%; overflow-y:auto }
@@ -530,6 +549,84 @@
         </div>
       </div>
 
+      <!-- Trend Tool -->
+      <div id="trend-tool-section" class="space-y-4 mt-8">
+        <h2 class="text-xl font-semibold text-white text-glow-fuchsia">Product Trend Tool</h2>
+        <div class="trend-shell">
+          <div class="grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] mb-4">
+            <div class="trend-card">
+              <label for="trend-product-select">Focus Product</label>
+              <select id="trend-product-select" class="w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-3 text-gray-200 focus:ring-cyan-500 focus:border-cyan-500">
+                <option value="">Loading...</option>
+              </select>
+              <p class="trend-subtext">Pick a product to see velocity, bundle trends, and restock guidance.</p>
+            </div>
+            <div class="trend-card">
+              <p class="trend-label">Top Performer (30d)</p>
+              <p id="trend-top-performer" class="trend-value">—</p>
+              <p id="trend-top-performer-meta" class="trend-subtext">Waiting on paid orders to surface a leader.</p>
+            </div>
+          </div>
+          <div id="trend-no-data" class="text-center text-gray-500 py-8">
+            Waiting on paid orders to compute trend insights.
+          </div>
+          <div id="trend-content" class="space-y-4 hidden">
+            <div class="trend-grid">
+              <div class="trend-card">
+                <p class="trend-label">Units Sold (30d)</p>
+                <p id="trend-metric-units-30" class="trend-value">0</p>
+              </div>
+              <div class="trend-card">
+                <p class="trend-label">Orders (30d)</p>
+                <p id="trend-metric-orders-30" class="trend-value">0</p>
+                <p id="trend-metric-orders-detail" class="trend-subtext">—</p>
+              </div>
+              <div class="trend-card">
+                <p class="trend-label">Sales Velocity</p>
+                <p id="trend-metric-velocity" class="trend-value">0.00 units/day</p>
+                <p id="trend-metric-velocity-subtext" class="trend-subtext">—</p>
+              </div>
+              <div class="trend-card">
+                <p class="trend-label">Restock Suggestion</p>
+                <p id="trend-metric-restock" class="trend-value">—</p>
+                <p id="trend-restock-note" class="trend-subtext">Select a product to calculate restock guidance.</p>
+              </div>
+            </div>
+            <div class="trend-subgrid">
+              <div class="trend-card">
+                <p class="trend-label">Frequently Bought With</p>
+                <ul id="trend-co-purchase-list" class="trend-list"></ul>
+              </div>
+              <div class="trend-card">
+                <p class="trend-label">Sales Snapshot</p>
+                <div class="space-y-2 text-sm text-gray-300">
+                  <div class="flex justify-between">
+                    <span class="text-gray-400">Revenue (30d)</span>
+                    <span id="trend-revenue-30" class="font-semibold text-cyan-300">$0.00</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-400">Revenue (all)</span>
+                    <span id="trend-revenue-all" class="font-semibold text-cyan-300">$0.00</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-400">Units sold (all)</span>
+                    <span id="trend-units-all" class="font-semibold text-cyan-300">0</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-400">Avg per order</span>
+                    <span id="trend-avg-per-order" class="font-semibold text-cyan-300">—</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-400">Last sold</span>
+                    <span id="trend-last-sold" class="font-semibold text-cyan-300">—</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Infographics -->
       <div class="space-y-4 mt-8">
         <h2 class="text-xl font-semibold text-white text-glow-fuchsia">Sales Infographics</h2>
@@ -735,6 +832,11 @@
   const qs = (id) => document.getElementById(id);
   const ORDERS_PAGE_SIZE = 5;
   const UTAH_SALES_TAX_RATE = 0.065; // fallback rate if no explicit tax is stored
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const TREND_WINDOW_DAYS = 30;
+  const TREND_PAIR_WINDOW_DAYS = 90;
+  const RESTOCK_WINDOW_DAYS = 14;
+  const TREND_MINIMUM_BUFFER = 2;
   let visibleOrdersCount = ORDERS_PAGE_SIZE;
   let orderSearchTerm = '';
   let userAdjustedOrderView = false;
@@ -746,6 +848,8 @@
   let previousOrdersCache = new Map();
   let inventoryCache = {};
   let activePrepareOrderId = null;
+  let trendAnalyticsCache = null;
+  let trendSelectedKey = null;
 
   const loadMoreOrdersBtn = qs('load-more-orders');
   const ordersPagination = qs('orders-pagination');
@@ -778,6 +882,33 @@
   const prepareOrderItemsEl = qs('prepare-order-items');
   const prepareOrderTotalItemsEl = qs('prepare-order-total-items');
   const prepareOrderNotesInput = qs('prepare-order-notes');
+
+  // Trend tool DOM
+  const trendProductSelect = qs('trend-product-select');
+  const trendTopPerformerEl = qs('trend-top-performer');
+  const trendTopPerformerMetaEl = qs('trend-top-performer-meta');
+  const trendContentEl = qs('trend-content');
+  const trendNoDataEl = qs('trend-no-data');
+  const trendUnits30El = qs('trend-metric-units-30');
+  const trendOrders30El = qs('trend-metric-orders-30');
+  const trendOrdersDetailEl = qs('trend-metric-orders-detail');
+  const trendVelocityEl = qs('trend-metric-velocity');
+  const trendVelocitySubtextEl = qs('trend-metric-velocity-subtext');
+  const trendRestockValueEl = qs('trend-metric-restock');
+  const trendRestockNoteEl = qs('trend-restock-note');
+  const trendRevenueAllEl = qs('trend-revenue-all');
+  const trendRevenue30El = qs('trend-revenue-30');
+  const trendUnitsAllEl = qs('trend-units-all');
+  const trendAvgPerOrderEl = qs('trend-avg-per-order');
+  const trendLastSoldEl = qs('trend-last-sold');
+  const trendCoPurchaseListEl = qs('trend-co-purchase-list');
+
+  if(trendProductSelect){
+    trendProductSelect.addEventListener('change', () => {
+      trendSelectedKey = trendProductSelect.value;
+      renderTrendDetails();
+    });
+  }
 
   // Add Item form inputs
   const addItemForm = qs('add-item-form');
@@ -1712,10 +1843,10 @@ function listenForInventory() {
     if(largestAmount) largestAmount.textContent='$0.00';
     if(largestMeta) largestMeta.textContent='No paid orders yet';
     m.innerHTML=''; c.innerHTML=''; pr.innerHTML=''; pq.innerHTML='';
+    const paidOrders = allOrdersCache.filter(o=>o.paymentStatus==='Paid');
+    updateTrendUI(buildTrendAnalytics(paidOrders));
     if(allOrdersCache.length===0){ placeholder.classList.remove('hidden'); return; }
     placeholder.classList.add('hidden');
-
-    const paidOrders = allOrdersCache.filter(o=>o.paymentStatus==='Paid');
     if(avg){
       if(paidOrders.length===0){
         avg.textContent='N/A';
@@ -1823,6 +1954,546 @@ function listenForInventory() {
     Object.entries(prodQty).sort(([,a],[,b])=>b-a).slice(0,5).forEach(([name,q])=>{
       const li=document.createElement('li'); li.innerHTML=`<span>${name}</span><span class="font-bold text-cyan-300">${q} sold</span>`; pq.appendChild(li);
     });
+  }
+
+  function resolveOrderKey(order, index){
+    if(order && typeof order === 'object'){
+      if(order.id) return `id:${order.id}`;
+      if(order.orderId) return `orderId:${order.orderId}`;
+      if(order.orderNumber) return `orderNumber:${order.orderNumber}`;
+      if(order.externalId) return `external:${order.externalId}`;
+      const ts = order.timestamp?.toMillis?.();
+      if(Number.isFinite(ts)) return `ts:${ts}`;
+      const created = toDateOrNull(order.createdAt ?? order.created_at ?? order.orderedAt ?? order.orderDate);
+      if(created) return `created:${created.getTime()}`;
+    }
+    return `idx:${index}`;
+  }
+
+  function resolveUnitPrice(item){
+    if(!item || typeof item !== 'object') return 0;
+    const candidates = [
+      item.unitPrice,
+      item.price,
+      item.unit_price,
+      item.amount,
+      item.cost,
+      item.linePrice,
+      item.lineTotal,
+      item.totalPrice,
+      item.subtotal
+    ];
+    for(const candidate of candidates){
+      const parsed = toFiniteNumber(candidate);
+      if(parsed !== null) return parsed;
+    }
+    if(item.unitPriceCents || item.priceCents){
+      const cents = Number(item.unitPriceCents ?? item.priceCents);
+      if(Number.isFinite(cents)) return cents / 100;
+    }
+    return 0;
+  }
+
+  function getProductKey(item){
+    if(!item || typeof item !== 'object') return null;
+    const candidates = [
+      item.id,
+      item.itemId,
+      item.productId,
+      item.sku,
+      item.skuId,
+      item.productCode,
+      item.code,
+      item.name,
+      item.title,
+      item.label
+    ];
+    for(const candidate of candidates){
+      if(typeof candidate === 'string'){
+        const trimmed = candidate.trim();
+        if(trimmed) return trimmed;
+      }else if(typeof candidate === 'number' && Number.isFinite(candidate)){
+        return String(candidate);
+      }
+    }
+    return null;
+  }
+
+  function getProductDisplayName(item, inventory){
+    const candidates = [
+      inventory?.name,
+      item?.name,
+      item?.title,
+      item?.label,
+      item?.productName,
+      item?.sku,
+      item?.id
+    ];
+    for(const value of candidates){
+      if(typeof value === 'string'){
+        const trimmed = value.trim();
+        if(trimmed) return trimmed;
+      }else if(typeof value === 'number' && Number.isFinite(value)){
+        return String(value);
+      }
+    }
+    return 'Unknown Item';
+  }
+
+  function getProductCode(item, inventory, fallback){
+    const candidates = [
+      inventory?.id,
+      inventory?.code,
+      item?.id,
+      item?.itemId,
+      item?.productId,
+      item?.sku,
+      item?.skuId,
+      item?.code,
+      item?.productCode,
+      fallback
+    ];
+    for(const candidate of candidates){
+      if(typeof candidate === 'string'){
+        const trimmed = candidate.trim();
+        if(trimmed) return trimmed;
+      }else if(typeof candidate === 'number' && Number.isFinite(candidate)){
+        return String(candidate);
+      }
+    }
+    return fallback ?? null;
+  }
+
+  function ensureProductStats(map, key, item, inventory){
+    let stats = map.get(key);
+    const displayName = getProductDisplayName(item, inventory);
+    const codeCandidate = getProductCode(item, inventory, key);
+    if(!stats){
+      stats = {
+        key,
+        id: item?.id ?? null,
+        code: codeCandidate || key,
+        name: displayName,
+        inventoryId: inventory?.id ?? null,
+        currentInventory: inventory && Number.isFinite(Number(inventory.currentInventory)) ? Number(inventory.currentInventory) : null,
+        totalQuantity: 0,
+        totalRevenue: 0,
+        quantity30: 0,
+        revenue30: 0,
+        orderIds: new Set(),
+        orderIds30: new Set(),
+        coPurchases: new Map(),
+        lastSoldAt: null,
+        firstSoldAt: null
+      };
+      map.set(key, stats);
+    }
+    if(!stats.code || stats.code === stats.key || stats.code === 'Unknown Item'){
+      if(codeCandidate) stats.code = codeCandidate;
+    }
+    if(displayName && (!stats.name || stats.name === stats.key || stats.name === 'Unknown Item' || stats.name === '(no name)')){
+      stats.name = displayName;
+    }
+    if(item?.id && !stats.id) stats.id = item.id;
+    if(inventory){
+      stats.inventoryId = inventory.id ?? stats.inventoryId;
+      const inventoryName = typeof inventory.name === 'string' ? inventory.name.trim() : '';
+      if(inventoryName && (!stats.name || stats.name === stats.key || stats.name === 'Unknown Item' || stats.name === '(no name)')){
+        stats.name = inventoryName;
+      }
+      const invCode = getProductCode(null, inventory, null);
+      if(invCode && (!stats.code || stats.code === stats.key)) stats.code = invCode;
+      const invQty = Number(inventory.currentInventory);
+      if(Number.isFinite(invQty)) stats.currentInventory = invQty;
+    }
+    if(!stats.code) stats.code = codeCandidate || stats.key;
+    return stats;
+  }
+
+  function finalizeTrendStats(raw, now){
+    const orderCount = raw.orderIds.size;
+    const orderCount30 = raw.orderIds30.size;
+    const totalQuantity = raw.totalQuantity;
+    const totalRevenue = raw.totalRevenue;
+    const quantity30 = raw.quantity30;
+    const revenue30 = raw.revenue30;
+    const daysActive = raw.firstSoldAt ? Math.max(1, Math.round((now.getTime() - raw.firstSoldAt.getTime()) / DAY_MS) + 1) : 0;
+    const avgDailyAll = daysActive > 0 ? totalQuantity / daysActive : 0;
+    const velocityPerDay = quantity30 > 0 ? quantity30 / TREND_WINDOW_DAYS : avgDailyAll;
+    const avgQtyPerOrder = orderCount > 0 ? totalQuantity / orderCount : 0;
+    const frequency = orderCount30 > 0 ? TREND_WINDOW_DAYS / orderCount30 : (orderCount > 0 ? Math.max(1, daysActive / orderCount) : null);
+    const safety = Math.max(TREND_MINIMUM_BUFFER, Math.ceil(avgQtyPerOrder || 0));
+    const recommendedBase = velocityPerDay > 0 ? velocityPerDay : avgDailyAll;
+    const recommendedStock = recommendedBase > 0 ? Math.ceil((recommendedBase * RESTOCK_WINDOW_DAYS) + safety) : safety;
+    const currentInventory = Number.isFinite(raw.currentInventory) ? raw.currentInventory : null;
+    const restockQty = currentInventory === null ? null : Math.max(0, recommendedStock - currentInventory);
+    const coPurchases = Array.from(raw.coPurchases.values()).map(entry => ({
+      key: entry.key,
+      code: entry.code,
+      name: entry.name,
+      count: entry.count,
+      orderShare: orderCount > 0 ? entry.count / orderCount : 0,
+      lastSoldAt: entry.lastSoldAt
+    })).sort((a,b)=> b.count - a.count);
+
+    return {
+      key: raw.key,
+      id: raw.id,
+      code: raw.code,
+      name: raw.name,
+      inventoryId: raw.inventoryId,
+      totalQuantity,
+      totalRevenue,
+      quantity30,
+      revenue30,
+      orderCount,
+      orderCount30,
+      avgQtyPerOrder,
+      velocityPerDay,
+      avgDailyAll,
+      sellFrequencyDays: frequency,
+      lastSoldAt: raw.lastSoldAt,
+      firstSoldAt: raw.firstSoldAt,
+      currentInventory,
+      recommendedStock,
+      restockQty,
+      coPurchases
+    };
+  }
+
+  function buildTrendAnalytics(paidOrders){
+    const list = Array.isArray(paidOrders) ? paidOrders : [];
+    const statsMap = new Map();
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - (TREND_WINDOW_DAYS * DAY_MS));
+    const pairWindowStart = new Date(now.getTime() - (TREND_PAIR_WINDOW_DAYS * DAY_MS));
+    const orderKeysAll = new Set();
+    const orderKeys30 = new Set();
+    let latestSale = null;
+    const inventoryResolver = (typeof window !== 'undefined' && typeof window._getInvFromOrderItem === 'function') ? window._getInvFromOrderItem : null;
+
+    list.forEach((order, index)=>{
+      if(!order || typeof order !== 'object') return;
+      const orderKey = resolveOrderKey(order, index);
+      orderKeysAll.add(orderKey);
+      const orderDate = extractOrderDate(order);
+      const within30 = orderDate ? orderDate >= thirtyDaysAgo : false;
+      if(within30) orderKeys30.add(orderKey);
+      if(orderDate && (!latestSale || orderDate > latestSale)) latestSale = orderDate;
+
+      const items = Array.isArray(order.items) ? order.items : [];
+      if(items.length === 0) return;
+
+      const orderProductKeys = new Set();
+
+      items.forEach((item)=>{
+        if(!item || typeof item !== 'object') return;
+        const key = getProductKey(item);
+        if(!key) return;
+        const inventory = inventoryResolver ? inventoryResolver(item) : null;
+        const stats = ensureProductStats(statsMap, key, item, inventory);
+        const quantityParsed = toFiniteNumber(item.quantity);
+        const qty = quantityParsed === null ? 1 : quantityParsed;
+        const safeQty = Number.isFinite(qty) ? qty : 1;
+        const unitPrice = resolveUnitPrice(item);
+        stats.totalQuantity += safeQty;
+        stats.totalRevenue += unitPrice * safeQty;
+        stats.orderIds.add(orderKey);
+        if(within30){
+          stats.quantity30 += safeQty;
+          stats.revenue30 += unitPrice * safeQty;
+          stats.orderIds30.add(orderKey);
+        }
+        if(orderDate){
+          if(!stats.lastSoldAt || orderDate > stats.lastSoldAt) stats.lastSoldAt = orderDate;
+          if(!stats.firstSoldAt || orderDate < stats.firstSoldAt) stats.firstSoldAt = orderDate;
+        }
+        orderProductKeys.add(key);
+      });
+
+      if(orderProductKeys.size > 1){
+        const combosEligible = !orderDate || orderDate >= pairWindowStart;
+        if(combosEligible){
+          const keys = Array.from(orderProductKeys);
+          keys.forEach((key)=>{
+            const stats = statsMap.get(key);
+            if(!stats) return;
+            keys.forEach((otherKey)=>{
+              if(otherKey === key) return;
+              const otherStats = statsMap.get(otherKey);
+              const coMap = stats.coPurchases;
+              const existing = coMap.get(otherKey) || { key: otherKey, name: otherStats?.name || otherKey, code: otherStats?.code || otherKey, count: 0, lastSoldAt: null };
+              existing.count += 1;
+              if(orderDate && (!existing.lastSoldAt || orderDate > existing.lastSoldAt)) existing.lastSoldAt = orderDate;
+              if(otherStats?.name) existing.name = otherStats.name;
+              if(otherStats?.code) existing.code = otherStats.code;
+              coMap.set(otherKey, existing);
+            });
+          });
+        }
+      }
+    });
+
+    const products = Array.from(statsMap.values()).map(raw => finalizeTrendStats(raw, now));
+    const productMap = new Map();
+    products.forEach(product => productMap.set(product.key, product));
+
+    const productsSorted = [...products].sort((a,b)=>{
+      if(b.quantity30 !== a.quantity30) return b.quantity30 - a.quantity30;
+      if(b.totalQuantity !== a.totalQuantity) return b.totalQuantity - a.totalQuantity;
+      return a.name.localeCompare(b.name);
+    });
+    const top30 = productsSorted.find(p=>p.quantity30>0) || productsSorted[0] || null;
+
+    const totalQuantity30 = products.reduce((sum,p)=> sum + p.quantity30,0);
+    const totalRevenue30 = products.reduce((sum,p)=> sum + p.revenue30,0);
+    const totalRevenueAll = products.reduce((sum,p)=> sum + p.totalRevenue,0);
+    const totalUnitsAll = products.reduce((sum,p)=> sum + p.totalQuantity,0);
+
+    const overall = {
+      quantity30: totalQuantity30,
+      totalRevenue30,
+      totalRevenueAll,
+      totalUnitsAll,
+      orders30: orderKeys30.size,
+      ordersAll: orderKeysAll.size,
+      velocityPerDay: totalQuantity30 / Math.max(1, TREND_WINDOW_DAYS),
+      avgUnitsPerOrderAll: totalUnitsAll / Math.max(1, orderKeysAll.size),
+      avgUnitsPerOrder30: totalQuantity30 / Math.max(1, orderKeys30.size),
+      activeProducts30: products.filter(p=>p.quantity30>0).length,
+      lastSale: latestSale,
+      top30
+    };
+
+    return { products, productMap, overall, top30 };
+  }
+
+  function formatCount(value){
+    const num = Number(value);
+    if(!Number.isFinite(num)) return '0';
+    return num.toLocaleString('en-US');
+  }
+
+  function formatTrendDate(date){
+    if(!(date instanceof Date) || Number.isNaN(date.valueOf())) return '—';
+    const base = date.toLocaleDateString('en-US',{ month:'short', day:'numeric', year:'numeric' });
+    const diffMs = Date.now() - date.getTime();
+    if(!Number.isFinite(diffMs)) return base;
+    const diffDays = Math.round(diffMs / DAY_MS);
+    if(diffDays < 0){
+      const future = Math.abs(diffDays);
+      if(future === 1) return `${base} (tomorrow)`;
+      return `${base} (in ${future} days)`;
+    }
+    if(diffDays === 0) return `${base} (today)`;
+    if(diffDays === 1) return `${base} (yesterday)`;
+    return `${base} (${diffDays} days ago)`;
+  }
+
+  function getProductPrimaryLabel(entity){
+    if(!entity) return 'Unknown Product';
+    if(typeof entity === 'string'){
+      const trimmed = entity.trim();
+      return trimmed || 'Unknown Product';
+    }
+    return entity.code || entity.id || entity.key || entity.name || 'Unknown Product';
+  }
+
+  function updateTrendUI(trendData){
+    trendAnalyticsCache = trendData || { products: [], productMap: new Map(), overall: { quantity30: 0, orders30: 0, velocityPerDay: 0 }, top30: null };
+    const data = trendAnalyticsCache;
+    if(trendTopPerformerEl && trendTopPerformerMetaEl){
+      const top = data.top30;
+      if(top){
+        trendTopPerformerEl.textContent = getProductPrimaryLabel(top);
+        const qtyLabel = formatCount(top.quantity30);
+        const revenueLabel = currency(top.revenue30 || 0);
+        const ordersLabel = formatCount(top.orderCount30 || 0);
+        trendTopPerformerMetaEl.textContent = `${qtyLabel} units • $${revenueLabel} revenue • ${ordersLabel} orders (30d)`;
+      }else{
+        trendTopPerformerEl.textContent = 'No paid orders yet';
+        trendTopPerformerMetaEl.textContent = 'Sales activity will appear here once orders are paid.';
+      }
+    }
+    if(!trendProductSelect){
+      renderTrendDetails();
+      return;
+    }
+
+    const products = Array.isArray(data.products) ? data.products : [];
+    const currentValue = trendSelectedKey ?? trendProductSelect.value ?? '';
+    trendProductSelect.innerHTML = '';
+    const overallOpt = document.createElement('option');
+    overallOpt.value = '__overall';
+    overallOpt.textContent = 'All products (30 days)';
+    trendProductSelect.appendChild(overallOpt);
+    const sortedProducts = [...products].sort((a,b)=>{
+      const labelA = getProductPrimaryLabel(a);
+      const labelB = getProductPrimaryLabel(b);
+      return labelA.localeCompare(labelB, undefined, { sensitivity: 'base', numeric: true });
+    });
+    sortedProducts.forEach(product=>{
+      const opt = document.createElement('option');
+      opt.value = product.key;
+      const primaryLabel = getProductPrimaryLabel(product);
+      const suffix = product.quantity30 > 0
+        ? `${formatCount(product.quantity30)} sold / 30d`
+        : `${formatCount(product.totalQuantity)} total sold`;
+      opt.textContent = `${primaryLabel} (${suffix})`;
+      trendProductSelect.appendChild(opt);
+    });
+    const fallback = currentValue && (currentValue === '__overall' || data.productMap?.has(currentValue))
+      ? currentValue
+      : (sortedProducts[0]?.key ?? '__overall');
+    trendSelectedKey = fallback;
+    trendProductSelect.value = fallback;
+    renderTrendDetails();
+  }
+
+  function renderTrendDetails(){
+    if(!trendAnalyticsCache) return;
+    if(!trendContentEl || !trendNoDataEl) return;
+    const data = trendAnalyticsCache;
+    const products = Array.isArray(data.products) ? data.products : [];
+
+    if(products.length === 0){
+      trendContentEl.classList.add('hidden');
+      trendNoDataEl.classList.remove('hidden');
+      if(trendUnits30El) trendUnits30El.textContent = '0';
+      if(trendOrders30El) trendOrders30El.textContent = '0';
+      if(trendOrdersDetailEl) trendOrdersDetailEl.textContent = 'No paid orders in the last 30 days.';
+      if(trendVelocityEl) trendVelocityEl.textContent = '0.00 units/day';
+      if(trendVelocitySubtextEl) trendVelocitySubtextEl.textContent = 'Waiting on sales data.';
+      if(trendRestockValueEl) trendRestockValueEl.textContent = '—';
+      if(trendRestockNoteEl) trendRestockNoteEl.textContent = 'Once inventory syncs with sales we will recommend a restock amount.';
+      if(trendRevenue30El) trendRevenue30El.textContent = '$0.00';
+      if(trendRevenueAllEl) trendRevenueAllEl.textContent = '$0.00';
+      if(trendUnitsAllEl) trendUnitsAllEl.textContent = '0';
+      if(trendAvgPerOrderEl) trendAvgPerOrderEl.textContent = '—';
+      if(trendLastSoldEl) trendLastSoldEl.textContent = '—';
+      if(trendCoPurchaseListEl){
+        trendCoPurchaseListEl.innerHTML = '';
+        const li = document.createElement('li');
+        li.className = 'text-sm text-gray-500 italic';
+        li.textContent = 'No bundle activity yet.';
+        trendCoPurchaseListEl.appendChild(li);
+      }
+      return;
+    }
+
+    trendNoDataEl.classList.add('hidden');
+    trendContentEl.classList.remove('hidden');
+
+    let selectedKey = trendSelectedKey ?? trendProductSelect?.value ?? '__overall';
+    if(selectedKey !== '__overall' && !data.productMap.has(selectedKey)){
+      selectedKey = products[0]?.key ?? '__overall';
+    }
+    trendSelectedKey = selectedKey;
+    if(trendProductSelect && trendProductSelect.value !== selectedKey){
+      trendProductSelect.value = selectedKey;
+    }
+
+    if(selectedKey === '__overall'){
+      if(trendUnits30El) trendUnits30El.textContent = formatCount(data.overall.quantity30 || 0);
+      if(trendOrders30El) trendOrders30El.textContent = formatCount(data.overall.orders30 || 0);
+      if(trendOrdersDetailEl){
+        trendOrdersDetailEl.textContent = data.overall.orders30 > 0
+          ? `≈ ${(data.overall.orders30 / (TREND_WINDOW_DAYS / 7)).toFixed(2)} orders/week`
+          : 'No paid orders in the last 30 days.';
+      }
+      if(trendVelocityEl) trendVelocityEl.textContent = `${(data.overall.velocityPerDay || 0).toFixed(2)} units/day`;
+      if(trendVelocitySubtextEl){
+        trendVelocitySubtextEl.textContent = data.overall.activeProducts30 > 0
+          ? `${data.overall.activeProducts30} products sold in the last ${TREND_WINDOW_DAYS} days`
+          : 'No product movement in the last 30 days.';
+      }
+      if(trendRestockValueEl) trendRestockValueEl.textContent = '—';
+      if(trendRestockNoteEl) trendRestockNoteEl.textContent = 'Select a product to see restock guidance.';
+      if(trendRevenue30El) trendRevenue30El.textContent = `$${currency(data.overall.totalRevenue30 || 0)}`;
+      if(trendRevenueAllEl) trendRevenueAllEl.textContent = `$${currency(data.overall.totalRevenueAll || 0)}`;
+      if(trendUnitsAllEl) trendUnitsAllEl.textContent = formatCount(data.overall.totalUnitsAll || 0);
+      if(trendAvgPerOrderEl){
+        const avg = data.overall.avgUnitsPerOrderAll || 0;
+        trendAvgPerOrderEl.textContent = avg > 0 ? `${avg.toFixed(2)} units/order` : '—';
+      }
+      if(trendLastSoldEl){
+        trendLastSoldEl.textContent = data.overall.lastSale ? formatTrendDate(data.overall.lastSale) : 'No paid orders yet';
+      }
+      if(trendCoPurchaseListEl){
+        trendCoPurchaseListEl.innerHTML = '';
+        const li = document.createElement('li');
+        li.className = 'text-sm text-gray-500 italic';
+        li.textContent = 'Select a product to see bundle behaviour.';
+        trendCoPurchaseListEl.appendChild(li);
+      }
+      return;
+    }
+
+    const product = data.productMap.get(selectedKey);
+    if(!product){
+      return;
+    }
+
+    if(trendUnits30El) trendUnits30El.textContent = formatCount(product.quantity30 || 0);
+    if(trendOrders30El) trendOrders30El.textContent = formatCount(product.orderCount30 || 0);
+    if(trendOrdersDetailEl){
+      trendOrdersDetailEl.textContent = product.orderCount30 > 0
+        ? `≈ ${(product.orderCount30 / (TREND_WINDOW_DAYS / 7)).toFixed(2)} orders/week`
+        : (product.orderCount > 0 ? 'No paid orders in the last 30 days; showing lifetime pace.' : 'No orders yet.');
+    }
+    if(trendVelocityEl) trendVelocityEl.textContent = `${(product.velocityPerDay || 0).toFixed(2)} units/day`;
+    if(trendVelocitySubtextEl){
+      trendVelocitySubtextEl.textContent = product.sellFrequencyDays
+        ? `≈ every ${product.sellFrequencyDays.toFixed(1)} days`
+        : 'Not enough data to project cadence.';
+    }
+    if(trendRestockValueEl && trendRestockNoteEl){
+      if(product.restockQty === null){
+        trendRestockValueEl.textContent = '—';
+        trendRestockNoteEl.textContent = 'Inventory not linked; restock guidance unavailable.';
+      }else if(product.restockQty === 0){
+        trendRestockValueEl.textContent = 'All set';
+        trendRestockNoteEl.textContent = `Current inventory ${formatCount(product.currentInventory ?? 0)} meets the ${RESTOCK_WINDOW_DAYS}-day buffer (~${formatCount(product.recommendedStock)} units).`;
+      }else{
+        trendRestockValueEl.textContent = `${formatCount(product.restockQty)} units`;
+        trendRestockNoteEl.textContent = `Target ~${formatCount(product.recommendedStock)} units (${RESTOCK_WINDOW_DAYS}-day buffer). Current inventory: ${formatCount(product.currentInventory ?? 0)}.`;
+      }
+    }
+    if(trendRevenue30El) trendRevenue30El.textContent = `$${currency(product.revenue30 || 0)}`;
+    if(trendRevenueAllEl) trendRevenueAllEl.textContent = `$${currency(product.totalRevenue || 0)}`;
+    if(trendUnitsAllEl) trendUnitsAllEl.textContent = formatCount(product.totalQuantity || 0);
+    if(trendAvgPerOrderEl){
+      trendAvgPerOrderEl.textContent = product.avgQtyPerOrder > 0 ? `${product.avgQtyPerOrder.toFixed(2)} units/order` : '—';
+    }
+    if(trendLastSoldEl){
+      trendLastSoldEl.textContent = product.lastSoldAt ? formatTrendDate(product.lastSoldAt) : 'Not sold yet';
+    }
+    if(trendCoPurchaseListEl){
+      trendCoPurchaseListEl.innerHTML = '';
+      if(product.coPurchases.length === 0){
+        const li = document.createElement('li');
+        li.className = 'text-sm text-gray-500 italic';
+        li.textContent = 'No pairing data yet.';
+        trendCoPurchaseListEl.appendChild(li);
+      }else{
+        product.coPurchases.slice(0,5).forEach((entry, index)=>{
+          const li = document.createElement('li');
+          const rank = document.createElement('span');
+          rank.className = 'rank';
+          rank.textContent = `#${index+1}`;
+          const name = document.createElement('span');
+          name.className = 'name';
+          name.textContent = getProductPrimaryLabel(entry);
+          const value = document.createElement('span');
+          value.className = 'value';
+          const percent = entry.orderShare > 0 ? Math.round(entry.orderShare * 100) : 0;
+          const countLabel = `${formatCount(entry.count)} orders`;
+          value.textContent = percent > 0 ? `${countLabel} (${percent}%)` : countLabel;
+          li.append(rank, name, value);
+          trendCoPurchaseListEl.appendChild(li);
+        });
+      }
+    }
   }
 
   function updateLoadMoreVisibility(total){
