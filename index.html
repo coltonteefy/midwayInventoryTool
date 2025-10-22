@@ -678,6 +678,11 @@
             <h3 class="text-md font-semibold text-center text-cyan-300 mb-4">Top Products (Quantity)</h3>
             <ul id="list-top-products-quantity" class="infographic-list"></ul>
           </div>
+          <div class="infographic-card rounded-lg p-4">
+            <h3 class="text-md font-semibold text-center text-cyan-300 mb-4">Affiliate Promo Codes</h3>
+            <ul id="list-affiliate-promos" class="infographic-list"></ul>
+            <p id="affiliate-promos-empty" class="text-xs text-center text-slate-400 mt-2 hidden">No affiliate promo sales yet.</p>
+          </div>
         </div>
         <div id="infographic-placeholder" class="text-center py-12 text-gray-500">
           No sales data to display yet.
@@ -832,6 +837,12 @@
   const qs = (id) => document.getElementById(id);
   const ORDERS_PAGE_SIZE = 5;
   const UTAH_SALES_TAX_RATE = 0.065; // fallback rate if no explicit tax is stored
+  const AFFILIATE_PROMO_CODES = new Map(
+    [
+      ['ROOKIE', { label: 'Rookie' }],
+    ].map(([code, meta])=>[String(code || '').toUpperCase(), meta])
+  ); // Add new affiliate codes or labels here to include them in the infographic
+  const AFFILIATE_PAYOUT_STORAGE_KEY = 'affiliatePayoutLedger';
   const DAY_MS = 24 * 60 * 60 * 1000;
   const TREND_WINDOW_DAYS = 30;
   const TREND_PAIR_WINDOW_DAYS = 90;
@@ -850,6 +861,7 @@
   let activePrepareOrderId = null;
   let trendAnalyticsCache = null;
   let trendSelectedKey = null;
+  let affiliatePayoutLedger = loadAffiliatePayoutLedger();
 
   const loadMoreOrdersBtn = qs('load-more-orders');
   const ordersPagination = qs('orders-pagination');
@@ -1676,12 +1688,112 @@ function listenForInventory() {
     return null;
   }
 
-  function resolveOrderTotal(order){
+  function resolveOrderItemsTotal(order){
     const items = Array.isArray(order?.items) ? order.items : [];
     const computed = items.reduce((sum,it)=> sum + (Number(it?.unitPrice||0)*Number(it?.quantity||1)),0);
+    return Number.isFinite(computed) ? computed : 0;
+  }
+
+  function resolveOrderSubtotal(order, fallbackComputed){
+    if(!order || typeof order !== 'object'){
+      return Number.isFinite(fallbackComputed) ? fallbackComputed : 0;
+    }
+    const subtotal = toFiniteNumber(order?.subtotal);
+    if(subtotal !== null) return subtotal;
+    if(Number.isFinite(fallbackComputed)) return fallbackComputed;
+    return resolveOrderItemsTotal(order);
+  }
+
+  function resolveOrderTotal(order){
     const total = toFiniteNumber(order?.total);
     if(total !== null) return total;
-    return Number.isFinite(computed) ? computed : 0;
+    return resolveOrderItemsTotal(order);
+  }
+
+  function resolvePromoCode(order){
+    if(!order || typeof order !== 'object') return '';
+    const promo = order.promo;
+    if(typeof promo === 'string'){
+      const trimmed = promo.trim();
+      if(trimmed) return trimmed;
+    }else if(promo && typeof promo === 'object'){
+      const fields = ['code','id','key','label','name'];
+      for(const field of fields){
+        const value = promo[field];
+        if(typeof value === 'string'){
+          const trimmed = value.trim();
+          if(trimmed) return trimmed;
+        }
+      }
+    }
+    const fallbackFields = [order.promoCode, order.promo_code, order.discountCode, order.discount_code];
+    for(const value of fallbackFields){
+      if(typeof value === 'string'){
+        const trimmed = value.trim();
+        if(trimmed) return trimmed;
+      }
+    }
+    return '';
+  }
+
+  function loadAffiliatePayoutLedger(){
+    if(typeof localStorage === 'undefined') return new Map();
+    try{
+      const raw = localStorage.getItem(AFFILIATE_PAYOUT_STORAGE_KEY);
+      if(!raw) return new Map();
+      const parsed = JSON.parse(raw);
+      if(!parsed || typeof parsed !== 'object') return new Map();
+      const entries = Object.entries(parsed).map(([code, record])=>{
+        const normalized = String(code || '').toUpperCase();
+        const subtotal = toFiniteNumber(record?.paidThroughSubtotal);
+        const paidAtRaw = Number(record?.paidAt);
+        return [
+          normalized,
+          {
+            paidThroughSubtotal: subtotal !== null ? subtotal : 0,
+            paidAt: Number.isFinite(paidAtRaw) ? paidAtRaw : null
+          }
+        ];
+      });
+      return new Map(entries);
+    }catch(_){
+      return new Map();
+    }
+  }
+
+  function persistAffiliatePayoutLedger(){
+    if(typeof localStorage === 'undefined') return;
+    try{
+      const obj = {};
+      affiliatePayoutLedger.forEach((record, code)=>{
+        obj[code] = {
+          paidThroughSubtotal: Number(record?.paidThroughSubtotal) || 0,
+          paidAt: Number.isFinite(record?.paidAt) ? record.paidAt : null
+        };
+      });
+      localStorage.setItem(AFFILIATE_PAYOUT_STORAGE_KEY, JSON.stringify(obj));
+    }catch(_){
+      /* ignore persistence errors */
+    }
+  }
+
+  function recordAffiliatePayout(code, subtotal){
+    const normalized = String(code || '').toUpperCase();
+    const safeSubtotal = Number.isFinite(subtotal) ? subtotal : 0;
+    if(!(affiliatePayoutLedger instanceof Map)){
+      affiliatePayoutLedger = new Map();
+    }
+    affiliatePayoutLedger.set(normalized, {
+      paidThroughSubtotal: safeSubtotal,
+      paidAt: Date.now()
+    });
+    persistAffiliatePayoutLedger();
+  }
+
+  function getAffiliateLedgerEntry(code){
+    const normalized = String(code || '').toUpperCase();
+    if(!(affiliatePayoutLedger instanceof Map)) return null;
+    return affiliatePayoutLedger.get(normalized) || null;
   }
 
   function extractOrderSalesTax(order){
@@ -1834,6 +1946,8 @@ function listenForInventory() {
     const c=qs('list-top-customers');
     const pr=qs('list-top-products-revenue');
     const pq=qs('list-top-products-quantity');
+    const ap=qs('list-affiliate-promos');
+    const apEmpty=qs('affiliate-promos-empty');
     if(avg) avg.textContent='N/A';
     if(dailyTotal) dailyTotal.textContent='$0.00';
     if(weeklyTotal) weeklyTotal.textContent='$0.00';
@@ -1843,6 +1957,8 @@ function listenForInventory() {
     if(largestAmount) largestAmount.textContent='$0.00';
     if(largestMeta) largestMeta.textContent='No paid orders yet';
     m.innerHTML=''; c.innerHTML=''; pr.innerHTML=''; pq.innerHTML='';
+    if(ap) ap.innerHTML='';
+    if(apEmpty) apEmpty.classList.add('hidden');
     const paidOrders = allOrdersCache.filter(o=>o.paymentStatus==='Paid');
     updateTrendUI(buildTrendAnalytics(paidOrders));
     if(allOrdersCache.length===0){ placeholder.classList.remove('hidden'); return; }
@@ -1954,6 +2070,85 @@ function listenForInventory() {
     Object.entries(prodQty).sort(([,a],[,b])=>b-a).slice(0,5).forEach(([name,q])=>{
       const li=document.createElement('li'); li.innerHTML=`<span>${name}</span><span class="font-bold text-cyan-300">${q} sold</span>`; pq.appendChild(li);
     });
+
+    if(ap){
+      const affiliateTotals = new Map();
+      const includeAllCodes = AFFILIATE_PROMO_CODES.size === 0;
+      paidOrders.forEach(order=>{
+        const codeRaw = resolvePromoCode(order);
+        if(!codeRaw) return;
+        const normalized = codeRaw.toUpperCase();
+        if(!includeAllCodes && !AFFILIATE_PROMO_CODES.has(normalized)) return;
+        const subtotal = resolveOrderSubtotal(order);
+        if(subtotal <= 0) return;
+        const current = affiliateTotals.get(normalized) || { code: normalized, label: codeRaw, count:0, subtotal:0 };
+        current.count += 1;
+        current.subtotal += subtotal;
+        affiliateTotals.set(normalized, current);
+      });
+      const sorted = Array.from(affiliateTotals.values()).sort((a,b)=>{
+        if(b.subtotal !== a.subtotal) return b.subtotal - a.subtotal;
+        return a.code.localeCompare(b.code);
+      });
+      if(sorted.length === 0){
+        if(apEmpty) apEmpty.classList.remove('hidden');
+      }else{
+        sorted.forEach(entry=>{
+          const meta = AFFILIATE_PROMO_CODES.get(entry.code) || {};
+          const label = meta.label || entry.label || entry.code;
+          const salesLabel = entry.count === 1 ? '1 sale' : `${entry.count} sales`;
+          const totalOwed = entry.subtotal * 0.10;
+          const ledger = getAffiliateLedgerEntry(entry.code);
+          const paidThroughSubtotal = Number(ledger?.paidThroughSubtotal) || 0;
+          const outstandingSubtotal = Math.max(0, entry.subtotal - paidThroughSubtotal);
+          const outstandingOwed = outstandingSubtotal * 0.10;
+          const trackedPaid = Math.max(0, totalOwed - outstandingOwed);
+          const outstandingLabel = outstandingOwed > 0.009
+            ? `$${currency(outstandingOwed)} outstanding`
+            : 'No outstanding payout';
+          const outstandingClass = outstandingOwed > 0.009 ? 'text-amber-300 font-semibold' : 'text-emerald-300';
+          const lastPaidAt = ledger?.paidAt && Number.isFinite(ledger.paidAt) ? new Date(ledger.paidAt) : null;
+          const lastPaidDate = lastPaidAt && !Number.isNaN(lastPaidAt.valueOf())
+            ? lastPaidAt.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
+            : null;
+          const lastPaidLabel = lastPaidDate
+            ? `Logged ${lastPaidDate}${trackedPaid>0.009?` • $${currency(trackedPaid)} tracked`:''}`
+            : 'No payout logged yet';
+
+          const li=document.createElement('li');
+          li.className='flex flex-col gap-2';
+
+          const header=document.createElement('div');
+          header.className='flex items-center justify-between gap-3';
+          header.innerHTML=`<span class="font-semibold text-slate-200">${escapeHtml(label)}</span><span class="font-bold text-cyan-300">$${currency(totalOwed)} total</span>`;
+
+          const subline=document.createElement('div');
+          subline.className='flex items-center justify-between text-xs text-slate-400';
+          subline.innerHTML=`<span>${salesLabel}</span><span class="${outstandingClass}">${outstandingLabel}</span>`;
+
+          const footer=document.createElement('div');
+          footer.className='flex flex-wrap items-center justify-between gap-3';
+          const lastPaidSpan=document.createElement('span');
+          lastPaidSpan.className='text-xs text-slate-500';
+          lastPaidSpan.textContent=lastPaidLabel;
+          const button=document.createElement('button');
+          button.className='btn-neon-lime px-3 py-1 rounded text-xs font-semibold affiliate-pay-btn';
+          button.textContent=outstandingOwed>0.009?'Log Payout':'Paid Up';
+          if(outstandingOwed<=0.009){
+            button.disabled=true;
+            button.classList.add('opacity-60','cursor-not-allowed');
+          }
+          button.addEventListener('click',()=>{
+            recordAffiliatePayout(entry.code, entry.subtotal);
+            renderInfographics();
+          });
+          footer.append(lastPaidSpan, button);
+
+          li.append(header, subline, footer);
+          ap.appendChild(li);
+        });
+      }
+    }
   }
 
   function resolveOrderKey(order, index){
@@ -2566,9 +2761,9 @@ function listenForInventory() {
         return `<li class="flex justify-between items-center mb-1"><span class="text-gray-400">${label} (x${quantity})</span><span class="font-medium text-cyan-300">$${price}</span></li>`;
       }).join('');
 
-      const computed = items.reduce((s,it)=>s + (Number(it?.unitPrice||0)*Number(it?.quantity||1)),0);
+      const computed = resolveOrderItemsTotal(order);
       const totalSafe = (order.total!=null)?currency(order.total):currency(computed);
-      const discountedSubtotal = Number(order.subtotal ?? computed);
+      const discountedSubtotal = resolveOrderSubtotal(order, computed);
       const shippingCostSafe = Number(order.shippingCost ?? 0);
       const hasFreeShip = shippingCostSafe===0 && (order.promo?.type==='free_shipping');
       const salesTaxValue = extractOrderSalesTax(order);
@@ -2596,19 +2791,7 @@ function listenForInventory() {
         if(venmoUser) return { label: venmoUser, txid: '' };
         return { label: 'Not specified', txid: '' };
       })();
-      const promoCodeRaw = (() => {
-        const promo = order.promo;
-        if(typeof promo === 'string') return promo;
-        if(promo && typeof promo === 'object'){
-          if(promo.code) return promo.code;
-          if(promo.id) return promo.id;
-          if(promo.key) return promo.key;
-          if(promo.label) return promo.label;
-          if(promo.name) return promo.name;
-        }
-        return order.promoCode || order.promo_code || order.discountCode || order.discount_code || '';
-      })();
-      const promoCodeDisplay = promoCodeRaw ? String(promoCodeRaw).trim() : '';
+      const promoCodeDisplay = resolvePromoCode(order);
       const itemDiscount = Math.max(0, computed - discountedSubtotal);
       const status=order.paymentStatus||'Unknown';
       const statusClass = status==='Paid' ? 'bg-lime-900 text-lime-300' : 'bg-rose-900 text-rose-300';
@@ -3326,7 +3509,7 @@ async function handleNewCostHistory(e){
         shippingAddress: order.contactInfo?.shippingAddress ?? ""
       },
       items,
-      subtotal: Number(order.subtotal ?? computedSubtotal),
+      subtotal: resolveOrderSubtotal(order, computedSubtotal),
       shippingCost: shipping,
       total,
       paymentStatus: order.paymentStatus ?? "unpaid",
