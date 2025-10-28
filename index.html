@@ -216,6 +216,23 @@
     #promo-tool .muted {
       color:var(--muted);
     }
+
+    #email-list-wrapper.collapsed {
+      max-height:72px;
+      overflow:hidden;
+      position:relative;
+    }
+    #email-list-wrapper.collapsed::after {
+      content:"";
+      position:absolute;
+      left:0;
+      right:0;
+      bottom:0;
+      height:24px;
+      background:linear-gradient(180deg,rgba(17,24,39,0) 0%,rgba(17,24,39,0.9) 100%);
+      pointer-events:none;
+    }
+
   </style>
 </head>
 <body class="flex flex-col items-center min-h-screen p-4">
@@ -549,6 +566,23 @@
         </div>
       </div>
 
+      <!-- Email List -->
+      <div id="email-list-section" class="space-y-4 mt-8">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <h2 class="text-xl font-semibold text-white text-glow-fuchsia">Email List</h2>
+          <div class="flex flex-wrap items-center gap-2">
+            <button id="email-list-copy-all" class="btn-neon-cyan px-3 py-1 text-xs font-semibold rounded-lg hidden">Copy Emails</button>
+            <button id="email-list-toggle" class="btn-neon-lime px-3 py-1 text-xs font-semibold rounded-lg" aria-expanded="true" aria-controls="email-list-wrapper">Collapse</button>
+          </div>
+        </div>
+        <div id="email-list-wrapper" class="bg-gray-900 p-4 rounded-lg border border-gray-700 space-y-3">
+          <div id="email-list-summary" class="hidden text-gray-300 text-sm"></div>
+          <div id="email-list-loading" class="text-gray-500 text-sm">Loading emails...</div>
+          <div id="email-list-empty" class="hidden text-gray-500 text-sm">No emails found yet.</div>
+          <ul id="email-list" class="hidden divide-y divide-gray-800"></ul>
+        </div>
+      </div>
+
       <!-- Trend Tool -->
       <div id="trend-tool-section" class="space-y-4 mt-8">
         <h2 class="text-xl font-semibold text-white text-glow-fuchsia">Product Trend Tool</h2>
@@ -862,10 +896,44 @@
   let trendAnalyticsCache = null;
   let trendSelectedKey = null;
   let affiliatePayoutLedger = loadAffiliatePayoutLedger();
+  let emailListDocsCache = [];
+  let emailListLoaded = false;
+  let emailListError = null;
+  let emailListCollapsed = true;
+  let emailListCombinedEntries = [];
 
   const loadMoreOrdersBtn = qs('load-more-orders');
   const ordersPagination = qs('orders-pagination');
   const orderSearchInput = qs('order-search');
+  const emailListContainer = qs('email-list');
+  const emailListLoadingEl = qs('email-list-loading');
+  const emailListEmptyEl = qs('email-list-empty');
+  const emailListSummaryEl = qs('email-list-summary');
+  const emailListWrapper = qs('email-list-wrapper');
+  const emailListToggleBtn = qs('email-list-toggle');
+  const emailListCopyBtn = qs('email-list-copy-all');
+  const emailListPendingWrites = new Set();
+
+  if(emailListToggleBtn){
+    emailListToggleBtn.addEventListener('click', () => {
+      setEmailListCollapsed(!emailListCollapsed);
+    });
+  }
+
+  if(emailListCopyBtn){
+    emailListCopyBtn.addEventListener('click', () => {
+      if(emailListCombinedEntries.length === 0){
+        showModal('No emails available to copy yet.');
+        return;
+      }
+      const payload = emailListCombinedEntries
+        .map(entry => `${entry.uid || ''}, ${entry.email}`)
+        .join('\n');
+      if(copyToClipboard(payload)) indicateCopy(emailListCopyBtn);
+    });
+  }
+
+  setEmailListCollapsed(true);
 
   const processedTransitions = new Set();
   function transitionKey(before, after) {
@@ -877,6 +945,7 @@
 
   const INVENTORY_COLLECTION_PATH = 'inventory';
   const ORDERS_COLLECTION_PATH = 'orders';
+  const EMAIL_LIST_COLLECTION_PATH = 'emailList';
 
   // Edit modal DOM
   const editOrderBackdrop = qs('edit-order-backdrop');
@@ -1158,6 +1227,324 @@
 
   function showModal(message){ qs('modal-message').textContent = message; qs('alert-modal').classList.remove('hidden'); }
   function isValidEmail(e){ return /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.test(String(e).toLowerCase()); }
+  function normalizeEmail(raw){
+    if(typeof raw !== 'string') return null;
+    const trimmed = raw.trim();
+    if(!trimmed) return null;
+    const lower = trimmed.toLowerCase();
+    return isValidEmail(lower) ? lower : null;
+  }
+  const BASE62_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  function toBase62(num){
+    if(typeof num !== 'number' || !Number.isFinite(num)) return '0';
+    let value = num >>> 0;
+    if(value === 0) return '0';
+    let out = '';
+    while(value > 0){
+      const remainder = value % 62;
+      out = BASE62_ALPHABET.charAt(remainder) + out;
+      value = Math.floor(value / 62);
+    }
+    return out;
+  }
+  function deriveStableUid(email, seed){
+    const normalized = normalizeEmail(email);
+    if(!normalized) return null;
+    const payload = `${normalized}|${seed || ''}`;
+    let h1 = 0x811c9dc5;
+    let h2 = 0;
+    for(let i=0; i<payload.length; i++){
+      const code = payload.charCodeAt(i);
+      h1 ^= code;
+      h1 = Math.imul(h1, 16777619) >>> 0;
+      h2 = (Math.imul(h2, 33) + code) >>> 0;
+    }
+    const h3 = Math.imul(h1 ^ h2, 2246822519) >>> 0;
+    const h4 = Math.imul((h1 + h2 + payload.length) >>> 0, 3266489917) >>> 0;
+    const part1 = toBase62(h1).padStart(8,'A');
+    const part2 = toBase62(h2).padStart(8,'A');
+    const part3 = toBase62(h3).padStart(8,'A');
+    const part4 = toBase62(h4).padStart(8,'A');
+    const combined = `${part1}${part2}${part3}${part4}`;
+    return combined.slice(0, 28);
+  }
+  function toUidString(raw){
+    if(raw === null || typeof raw === 'undefined') return null;
+    if(typeof raw === 'string'){
+      const trimmed = raw.trim();
+      if(!trimmed) return null;
+      if(trimmed.includes('@')) return null;
+      if(trimmed.toLowerCase() === 'null' || trimmed.toLowerCase() === 'undefined') return null;
+      return trimmed;
+    }
+    if(typeof raw === 'number'){
+      return String(raw);
+    }
+    if(typeof raw === 'object'){
+      const candidates = [
+        raw.uid,
+        raw.userUid,
+        raw.userID,
+        raw.userId,
+        raw.customerUid,
+        raw.customerID,
+        raw.customerId,
+        raw.authUid,
+        raw.ownerUid,
+        raw.accountUid,
+        raw.accountId,
+        raw.memberUid,
+        raw.recipientUid,
+        raw.recipientId
+      ];
+      for(const candidate of candidates){
+        const resolved = toUidString(candidate);
+        if(resolved) return resolved;
+      }
+      return null;
+    }
+    return null;
+  }
+  function extractEmailsFromEmailListDoc(entry){
+    const results = [];
+    if(!entry) return results;
+    const seen = new Set();
+    const data = entry.data || {};
+    const docUid = toUidString(
+      data.uid ??
+      data.userUid ??
+      data.userID ??
+      data.userId ??
+      data.customerUid ??
+      data.customerID ??
+      data.customerId ??
+      data.authUid ??
+      data.ownerUid ??
+      data.accountUid ??
+      data.accountId ??
+      data.memberUid
+    );
+    const add = (value, metaUid) => {
+      if(!value) return;
+      if(typeof value === 'object'){
+        if(typeof value.email === 'string'){
+          const nestedUid = toUidString(value.uid ?? value.userUid ?? value.userId ?? metaUid ?? docUid);
+          add(value.email, nestedUid);
+        }
+        return;
+      }
+      const normalized = normalizeEmail(value);
+      if(!normalized || seen.has(normalized)) return;
+      seen.add(normalized);
+      const display = typeof value === 'string' && value.trim() ? value.trim() : normalized;
+      const uid = toUidString(metaUid) || docUid || deriveStableUid(normalized, normalized);
+      results.push({ normalized, display, uid });
+    };
+    add(entry.id, docUid);
+    const candidates = [
+      data?.email,
+      data?.emailAddress,
+      data?.address,
+      data?.contact,
+      data?.contactEmail,
+      data?.value,
+      data?.primaryEmail
+    ];
+    candidates.forEach(value => add(value, docUid));
+    if(Array.isArray(data?.emails)) data.emails.forEach(value => add(value, docUid));
+    if(Array.isArray(data?.values)) data.values.forEach(value => add(value, docUid));
+    if(Array.isArray(data?.list)) data.list.forEach(value => add(value, docUid));
+    return results;
+  }
+  function extractEmailsFromOrder(order){
+    const results = [];
+    if(!order || typeof order !== 'object') return results;
+    const seen = new Set();
+
+    const uidCandidates = new Set();
+    const collectUid = (value) => {
+      const uid = toUidString(value);
+      if(uid) uidCandidates.add(uid);
+    };
+    const collectFromObject = (obj) => {
+      if(!obj || typeof obj !== 'object') return;
+      collectUid(obj.uid);
+      collectUid(obj.userUid);
+      collectUid(obj.userID);
+      collectUid(obj.userId);
+      collectUid(obj.customerUid);
+      collectUid(obj.customerID);
+      collectUid(obj.customerId);
+      collectUid(obj.authUid);
+      collectUid(obj.ownerUid);
+      collectUid(obj.accountUid);
+      collectUid(obj.accountId);
+      collectUid(obj.memberUid);
+      collectUid(obj.recipientUid);
+      collectUid(obj.recipientId);
+    };
+
+    collectFromObject(order);
+    collectUid(order.uid);
+    collectUid(order.userUid);
+    collectUid(order.userID);
+    collectUid(order.userId);
+    collectUid(order.customerUid);
+    collectUid(order.customerID);
+    collectUid(order.customerId);
+    collectUid(order.authUid);
+    collectUid(order.ownerUid);
+    collectUid(order.createdByUid);
+    collectUid(order.createdBy);
+    collectUid(order.placedByUid);
+    collectUid(order.accountUid);
+    collectUid(order.accountId);
+    collectUid(order.memberUid);
+
+    const nestedObjects = [
+      order.user,
+      order.customer,
+      order.account,
+      order.profile,
+      order.billing,
+      order.shipping,
+      order.contact,
+      order.contactInfo,
+      order.recipient,
+      order.metadata,
+      order.meta,
+      order.customerProfile
+    ];
+    nestedObjects.forEach(collectFromObject);
+
+    const nestedArrays = [
+      order.users,
+      order.customers,
+      order.members,
+      order.participants,
+      order.attendees
+    ];
+    nestedArrays.forEach(list=>{
+      if(Array.isArray(list)){
+        list.forEach(item=>collectFromObject(item));
+      }
+    });
+
+    const orderSeed = String(
+      order.id ??
+      order.orderId ??
+      order.orderNumber ??
+      order.externalId ??
+      order.customerId ??
+      order.customerID ??
+      order.uid ??
+      order.userUid ??
+      order.userId ??
+      order.accountId ??
+      order.accountUid ??
+      ''
+    );
+    const fallbackUid = uidCandidates.values().next().value || null;
+
+    const addEmail = (value, metaUid) => {
+      if(!value) return;
+      if(typeof value === 'object'){
+        const candidateEmail = value.email ?? value.address ?? value.value ?? value.contactEmail;
+        const candidateUid = toUidString(value.uid ?? value.userUid ?? value.userId ?? value.customerUid ?? value.recipientUid ?? metaUid);
+        if(candidateEmail){
+          addEmail(candidateEmail, candidateUid);
+        }
+        return;
+      }
+      const normalized = normalizeEmail(value);
+      if(!normalized || seen.has(normalized)) return;
+      seen.add(normalized);
+      const display = typeof value === 'string' && value.trim() ? value.trim() : normalized;
+      const baseUid = toUidString(metaUid) || fallbackUid;
+      const uid = baseUid || deriveStableUid(normalized, orderSeed || normalized) || deriveStableUid(normalized, normalized);
+      results.push({ normalized, display, uid });
+    };
+
+    const contact = order.contactInfo || {};
+    const contactUid = toUidString(contact.uid ?? contact.userUid ?? contact.userId ?? contact.customerUid);
+    const contactCandidates = [
+      contact.email,
+      contact.emailPrimary,
+      contact.primaryEmail,
+      contact.altEmail,
+      contact.alternateEmail
+    ];
+    contactCandidates.forEach(value => addEmail(value, contactUid));
+    if(Array.isArray(contact.emails)) contact.emails.forEach(value => addEmail(value, contactUid));
+
+    const directCandidates = [
+      { value: order.email, uid: order.uid ?? order.userUid ?? order.userId ?? order.customerUid },
+      { value: order.customerEmail, uid: order.customerUid ?? order.customerId },
+      { value: order.receiptEmail, uid: order.uid ?? order.userUid ?? order.userId },
+      { value: order.recipientEmail, uid: order.recipientUid ?? order.recipientId }
+    ];
+    directCandidates.forEach(({ value, uid }) => addEmail(value, uid));
+
+    const additionalObjects = [
+      order.customer,
+      order.user,
+      order.account,
+      order.profile,
+      order.billing,
+      order.shipping,
+      order.contact,
+      order.recipient
+    ];
+    additionalObjects.forEach(obj=>{
+      if(!obj || typeof obj !== 'object') return;
+      const objUid = toUidString(obj.uid ?? obj.userUid ?? obj.userId ?? obj.customerUid ?? obj.accountUid ?? obj.memberUid ?? obj.recipientUid);
+      addEmail(obj.email, objUid);
+    });
+
+    const orderEmailsArray = Array.isArray(order.emails) ? order.emails : [];
+    orderEmailsArray.forEach(value => addEmail(value, fallbackUid));
+
+    const recipientsArray = Array.isArray(order.recipients) ? order.recipients : [];
+    recipientsArray.forEach(item=>{
+      if(item && typeof item === 'object'){
+        const itemUid = toUidString(item.uid ?? item.userUid ?? item.userId ?? item.customerUid ?? item.recipientUid);
+        const candidateEmail = item.email ?? item.address ?? item.value ?? item.contactEmail;
+        addEmail(candidateEmail, itemUid);
+      }else{
+        addEmail(item, fallbackUid);
+      }
+    });
+
+    const usersArray = Array.isArray(order.users) ? order.users : [];
+    usersArray.forEach(userObj=>{
+      if(!userObj || typeof userObj !== 'object') return;
+      const userUid = toUidString(userObj.uid ?? userObj.userUid ?? userObj.userId ?? userObj.id);
+      addEmail(userObj.email, userUid);
+    });
+
+    const customersArray = Array.isArray(order.customers) ? order.customers : [];
+    customersArray.forEach(customerObj=>{
+      if(!customerObj || typeof customerObj !== 'object') return;
+      const customerUid = toUidString(customerObj.uid ?? customerObj.userUid ?? customerObj.userId ?? customerObj.customerUid ?? customerObj.id);
+      addEmail(customerObj.email, customerUid);
+    });
+
+    const participantsLists = [order.participants, order.members, order.attendees];
+    participantsLists.forEach(list=>{
+      if(Array.isArray(list)){
+        list.forEach(item=>{
+          if(item && typeof item === 'object'){
+            const participantUid = toUidString(item.uid ?? item.userUid ?? item.userId ?? item.memberUid);
+            addEmail(item.email, participantUid);
+          }else{
+            addEmail(item, fallbackUid);
+          }
+        });
+      }
+    });
+
+    return results;
+  }
   function copyToClipboard(text){
     const t=document.createElement('textarea');
     t.value=text;
@@ -1186,6 +1573,16 @@
       btn.classList.remove('copied');
       btn._copyTimeout = null;
     }, 1200);
+  }
+  function resetCopyState(btn, fallback='Copy'){
+    if(!btn) return;
+    if(btn._copyTimeout){
+      clearTimeout(btn._copyTimeout);
+      btn._copyTimeout = null;
+    }
+    const label = btn.dataset?.originalLabel || fallback;
+    btn.textContent = label;
+    btn.classList.remove('copied');
   }
   function formatTimestamp(ts){ if(!ts) return 'Unknown date'; try{ if(typeof ts.toDate==='function'){ return ts.toDate().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});} const d=new Date(ts); if(!isNaN(d.getTime())) return d.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});}catch(_){} return 'Unknown date'; }
   function currency(n){ const num=typeof n==='number'?n:Number(n??0); return num.toFixed(2); }
@@ -1337,7 +1734,7 @@
         setToolOpen(tool,false);
       });
       if(productionToolsSection) productionToolsSection.classList.remove('hidden');
-      listenForInventory(); listenForOrders();
+      listenForInventory(); listenForOrders(); listenForEmailList();
     }else{
       userId=null;
       if(status) status.textContent='Status: Signed out';
@@ -1355,7 +1752,30 @@
       orderSearchTerm = '';
       if(orderSearchInput) orderSearchInput.value='';
       sortedOrdersCache = [];
+      allOrdersCache = [];
+      previousOrdersCache.clear();
       updateLoadMoreVisibility(0);
+      emailListDocsCache = [];
+      emailListLoaded = false;
+      emailListError = null;
+      if(emailListContainer){
+        emailListContainer.innerHTML = '';
+        emailListContainer.classList.add('hidden');
+      }
+      if(emailListSummaryEl){
+        emailListSummaryEl.textContent = '';
+        emailListSummaryEl.classList.add('hidden');
+      }
+      if(emailListEmptyEl) emailListEmptyEl.classList.add('hidden');
+      if(emailListLoadingEl){
+        emailListLoadingEl.textContent = 'Loading emails...';
+        emailListLoadingEl.classList.remove('hidden');
+      }
+      emailListCombinedEntries = [];
+      emailListCollapsed = true;
+      emailListPendingWrites.clear();
+      setEmailListCollapsed(true);
+      refreshEmailListUI();
     }
   }
 
@@ -1640,7 +2060,11 @@ function listenForInventory() {
         sortedOrdersCache=[];
         visibleOrdersCount = ORDERS_PAGE_SIZE;
         userAdjustedOrderView = false;
-        updateFinancialUI(); renderInfographics(); updateLoadMoreVisibility(0); return;
+        updateFinancialUI();
+        renderInfographics();
+        updateLoadMoreVisibility(0);
+        refreshEmailListUI();
+        return;
       }
 
       allOrdersCache=snap.docs.map(d=>({ id:d.id, ...d.data() }));
@@ -1668,12 +2092,215 @@ function listenForInventory() {
       }
 
       renderOrdersList(sortedOrdersCache);
+      refreshEmailListUI();
     },(err)=>{
       console.error('Error listening to orders:',err);
       const ordersContainer=qs('orders-container'); const loading=qs('loading-orders');
       loading.style.display='none';
       ordersContainer.innerHTML = `<div class="text-center text-red-500 py-12"><p class="text-lg">An error occurred.</p><p class="text-sm mt-2">Check the console for more details.</p></div>`;
       updateLoadMoreVisibility(0);
+    });
+  }
+
+  function setEmailListCollapsed(flag){
+    emailListCollapsed = Boolean(flag);
+    if(emailListWrapper){
+      emailListWrapper.classList.toggle('collapsed', emailListCollapsed);
+    }
+    if(emailListToggleBtn){
+      emailListToggleBtn.textContent = emailListCollapsed ? 'Expand' : 'Collapse';
+      emailListToggleBtn.setAttribute('aria-expanded', emailListCollapsed ? 'false' : 'true');
+    }
+  }
+
+  function refreshEmailListUI(){
+    if(!emailListContainer || !emailListLoadingEl || !emailListEmptyEl || !emailListSummaryEl) return;
+
+    const entriesMap = new Map();
+    const orders = Array.isArray(allOrdersCache) ? allOrdersCache : [];
+    const savedDocs = Array.isArray(emailListDocsCache) ? emailListDocsCache : [];
+    const orderBackfillMap = new Map();
+
+    emailListCombinedEntries = [];
+
+    savedDocs.forEach((docEntry)=>{
+      const emails = extractEmailsFromEmailListDoc(docEntry);
+      emails.forEach(({ normalized, display, uid })=>{
+        if(!normalized) return;
+        const ensuredUid = uid || deriveStableUid(normalized, normalized);
+        const existing = entriesMap.get(normalized);
+        if(existing){
+          if(!existing.uid){
+            existing.uid = ensuredUid;
+          }
+          existing.source = 'saved';
+        }else{
+          entriesMap.set(normalized, { normalized, email: display, source: 'saved', uid: ensuredUid });
+        }
+      });
+    });
+
+    orders.forEach((order)=>{
+      const emails = extractEmailsFromOrder(order);
+      emails.forEach(({ normalized, display, uid })=>{
+        if(!normalized) return;
+        const cleanUid = toUidString(uid) || deriveStableUid(normalized, normalized);
+        const existing = entriesMap.get(normalized);
+        if(existing){
+          if(!existing.uid){
+            existing.uid = cleanUid;
+          }
+        }else{
+          entriesMap.set(normalized, { normalized, email: display, source: 'orders', uid: cleanUid });
+        }
+        const prior = orderBackfillMap.get(normalized);
+        if(prior){
+          if(!prior.uid){
+            prior.uid = cleanUid;
+          }
+        }else{
+          orderBackfillMap.set(normalized, { normalized, email: display, uid: cleanUid });
+        }
+      });
+    });
+
+    const entries = Array.from(entriesMap.values()).sort((a,b)=>a.normalized.localeCompare(b.normalized));
+    const hasOrdersData = orders.length > 0;
+    emailListCombinedEntries = entries;
+
+    const savedEntriesCount = entries.filter(entry => entry.source === 'saved').length;
+    const orderOnlyCount = entries.length - savedEntriesCount;
+
+    ensureEmailListBackfill(Array.from(orderBackfillMap.values()));
+
+    if(emailListError){
+      emailListLoadingEl.textContent = 'Unable to load saved email list. Showing order emails only.';
+      emailListLoadingEl.classList.remove('hidden');
+    }else if(emailListLoaded || hasOrdersData){
+      emailListLoadingEl.classList.add('hidden');
+    }
+
+    if(emailListCopyBtn){
+      resetCopyState(emailListCopyBtn, 'Copy Emails');
+      if(entries.length > 0){
+        emailListCopyBtn.classList.remove('hidden');
+      }else{
+        emailListCopyBtn.classList.add('hidden');
+      }
+    }
+
+    if(entries.length === 0){
+      emailListContainer.innerHTML = '';
+      emailListContainer.classList.add('hidden');
+      emailListSummaryEl.classList.add('hidden');
+      if(emailListLoaded || hasOrdersData || emailListError){
+        emailListEmptyEl.classList.remove('hidden');
+      }else{
+        emailListEmptyEl.classList.add('hidden');
+      }
+      setEmailListCollapsed(emailListCollapsed);
+      return;
+    }
+
+    emailListEmptyEl.classList.add('hidden');
+    emailListContainer.innerHTML = entries.map(entry=>{
+      const badgeClass = entry.source === 'orders' ? 'text-amber-300' : 'text-gray-500';
+      const badgeText = entry.source === 'orders' ? 'From orders' : 'Saved email';
+      const uidLine = entry.uid ? `<span class="block text-xs text-gray-500 break-all">UID: ${escapeHtml(entry.uid)}</span>` : '';
+      return `<li class="py-2 flex flex-wrap items-start justify-between gap-3">
+        <div class="min-w-0">
+          <span class="text-gray-100 font-mono break-words">${escapeHtml(entry.email)}</span>
+          ${uidLine}
+        </div>
+        <span class="text-xs font-semibold ${badgeClass} whitespace-nowrap">${badgeText}</span>
+      </li>`;
+    }).join('');
+    emailListContainer.classList.remove('hidden');
+
+    const summaryParts = [
+      `Total ${entries.length}`,
+      emailListLoaded ? `${savedEntriesCount} saved` : 'Saved list loading…',
+      `${orderOnlyCount} from orders`
+    ];
+    emailListSummaryEl.textContent = summaryParts.join(' • ');
+    emailListSummaryEl.classList.remove('hidden');
+    setEmailListCollapsed(emailListCollapsed);
+  }
+
+  function ensureEmailListBackfill(orderEntries){
+    if(!Array.isArray(orderEntries) || orderEntries.length === 0) return;
+    if(!userId) return;
+
+    const existingDocs = new Map();
+    emailListDocsCache.forEach(({ id, data })=>{
+      const key = normalizeEmail(data?.email ?? id) || id;
+      existingDocs.set(key, data || {});
+    });
+
+    const queue = [];
+    orderEntries.forEach((entry)=>{
+      const id = entry?.normalized;
+      if(!id || emailListPendingWrites.has(id)) return;
+      const email = entry?.email || entry?.normalized || id;
+      const derivedUid = deriveStableUid(id, email);
+      const cleanUid = toUidString(entry?.uid) || derivedUid;
+      const existing = existingDocs.get(id);
+      const existingUid = existing ? toUidString(
+        existing.uid ??
+        existing.userUid ??
+        existing.userID ??
+        existing.userId ??
+        existing.customerUid ??
+        existing.customerID ??
+        existing.customerId ??
+        existing.authUid ??
+        existing.ownerUid ??
+        existing.accountUid ??
+        existing.accountId ??
+        existing.memberUid
+      ) : null;
+      if(existingUid && existingUid === cleanUid) return;
+      emailListPendingWrites.add(id);
+      queue.push({ id, email, uid: cleanUid, exists: Boolean(existing) });
+    });
+    if(queue.length === 0) return;
+    const now = Date.now();
+    const operations = queue.map(({ id, email, uid, exists })=>{
+      const payload = { email, uid };
+      if(exists){
+        payload.updatedAt = now;
+      }else{
+        payload.createdFrom = 'orders';
+        payload.createdAt = now;
+      }
+      return setDoc(
+        doc(db, EMAIL_LIST_COLLECTION_PATH, id),
+        payload,
+        { merge: true }
+      );
+    });
+    Promise.all(operations)
+      .catch((err)=>{
+        console.error('Failed to backfill order emails into emailList:', err);
+      })
+      .finally(()=>{
+        queue.forEach(({ id })=> emailListPendingWrites.delete(id));
+      });
+  }
+
+  function listenForEmailList(){
+    const ref = collection(db, EMAIL_LIST_COLLECTION_PATH);
+    onSnapshot(ref, (snap)=>{
+      emailListLoaded = true;
+      emailListError = null;
+      emailListDocsCache = snap.docs.map(d=>({ id:d.id, data:d.data() }));
+      refreshEmailListUI();
+    },(err)=>{
+      console.error('Error listening to email list:', err);
+      emailListLoaded = true;
+      emailListError = err;
+      emailListDocsCache = [];
+      refreshEmailListUI();
     });
   }
 
@@ -2051,9 +2678,27 @@ function listenForInventory() {
       }
     }
 
-    const monthly={}; allOrdersCache.forEach(o=>{ if(o.paymentStatus==='Paid' && o.timestamp){ const mo=o.timestamp.toDate().toLocaleString('en-US',{month:'short',year:'2-digit'}); monthly[mo]=(monthly[mo]||0)+(o.total||0);} });
-    Object.keys(monthly).sort((a,b)=>{ const [ma,ya]=a.split(' '), [mb,yb]=b.split(' '); return new Date(`01 ${ma} 20${ya}`)-new Date(`01 ${mb} 20${yb}`); }).forEach(month=>{
-      const li=document.createElement('li'); li.innerHTML=`<span>${month}</span><span class="font-bold text-cyan-300">$${currency(monthly[month])}</span>`; m.appendChild(li);
+    const monthlyTotals = new Map();
+    paidOrders.forEach(order=>{
+      const orderDate = extractOrderDate(order);
+      if(!orderDate) return;
+      const year = orderDate.getFullYear();
+      const monthIndex = orderDate.getMonth(); // 0-based
+      const key = `${year}-${String(monthIndex + 1).padStart(2,'0')}`;
+      const existing = monthlyTotals.get(key) || 0;
+      monthlyTotals.set(key, existing + resolveOrderTotal(order));
+    });
+    const sortedMonthlyKeys = Array.from(monthlyTotals.keys()).sort((a,b)=> a.localeCompare(b));
+    sortedMonthlyKeys.forEach(key=>{
+      const [yearStr, monthStr] = key.split('-');
+      const year = Number(yearStr);
+      const monthIndex = Number(monthStr) - 1;
+      const labelDate = new Date(year, monthIndex, 1);
+      const label = labelDate.toLocaleString('en-US',{ month:'long', year:'numeric' });
+      const total = monthlyTotals.get(key) || 0;
+      const li=document.createElement('li');
+      li.innerHTML=`<span>${label}</span><span class="font-bold text-cyan-300">$${currency(total)}</span>`;
+      m.appendChild(li);
     });
 
     const cust={}; allOrdersCache.forEach(o=>{ if(o.paymentStatus==='Paid' && o.contactInfo?.fullName){ const n=o.contactInfo.fullName; cust[n]=(cust[n]||0)+(o.total||0);} });
