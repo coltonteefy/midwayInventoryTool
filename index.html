@@ -696,6 +696,19 @@
             <p id="largest-order-amount" class="text-3xl font-bold text-center text-cyan-200">$0.00</p>
             <p id="largest-order-meta" class="text-sm text-center text-cyan-100">No paid orders yet</p>
           </div>
+          <div class="infographic-card rounded-lg p-4 flex flex-col gap-3">
+            <h3 class="text-md font-semibold text-center text-cyan-300">Product Sales Lookup</h3>
+            <select id="product-sales-select" class="bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500">
+              <option value="">-- Select a product --</option>
+            </select>
+            <p class="text-sm text-center text-slate-400">Units sold for selected product:</p>
+            <p id="product-sales-total" class="text-3xl font-bold text-center text-cyan-200">—</p>
+          </div>
+          <div class="infographic-card rounded-lg p-4 flex flex-col justify-center">
+            <h3 class="text-md font-semibold text-center text-cyan-300 mb-2">Total Products Sold</h3>
+            <p id="total-products-sold" class="text-3xl font-bold text-center text-cyan-200">0</p>
+            <p class="text-xs text-center text-slate-400 mt-2">Quantities across all orders</p>
+          </div>
           <div class="infographic-card rounded-lg p-4">
             <h3 class="text-md font-semibold text-center text-cyan-300 mb-4">Monthly Revenue</h3>
             <ul id="list-monthly-revenue" class="infographic-list"></ul>
@@ -1042,6 +1055,22 @@
   const promoToolWrapper = qs('promo-tool-wrapper');
   const togglePromoToolBtn = qs('toggle-promo-tool-btn');
   const productionToolsSection = qs('production-tools-section');
+  const productSalesSelect = qs('product-sales-select');
+  const productSalesTotal = qs('product-sales-total');
+  let productSalesLookup = new Map();
+
+  if(productSalesSelect){
+    productSalesSelect.addEventListener('change', ()=>{
+      if(!productSalesTotal) return;
+      const selected = productSalesSelect.value;
+      if(!selected){
+        productSalesTotal.textContent = '—';
+        return;
+      }
+      const quantity = Number(productSalesLookup.get(selected)) || 0;
+      productSalesTotal.textContent = quantity.toLocaleString('en-US');
+    });
+  }
 
   const TOOL_CONFIG = [
     { wrapper: costToolWrapper, button: toggleCostToolBtn, openLabel: 'Add Cost History', closeLabel: 'Add Cost History' },
@@ -2588,10 +2617,13 @@ function listenForInventory() {
     const largestMeta=qs('largest-order-meta');
     const m=qs('list-monthly-revenue');
     const c=qs('list-top-customers');
+    const totalProductsSoldEl=qs('total-products-sold');
     const pr=qs('list-top-products-revenue');
     const pq=qs('list-top-products-quantity');
     const ap=qs('list-affiliate-promos');
     const apEmpty=qs('affiliate-promos-empty');
+    const previousProductSelection = productSalesSelect ? productSalesSelect.value : '';
+    productSalesLookup = new Map();
     if(avg) avg.textContent='N/A';
     if(dailyTotal) dailyTotal.textContent='$0.00';
     if(weeklyTotal) weeklyTotal.textContent='$0.00';
@@ -2600,6 +2632,12 @@ function listenForInventory() {
     if(utahCount) utahCount.textContent='0 paid orders';
     if(largestAmount) largestAmount.textContent='$0.00';
     if(largestMeta) largestMeta.textContent='No paid orders yet';
+    if(totalProductsSoldEl) totalProductsSoldEl.textContent='0';
+    if(productSalesSelect){
+      productSalesSelect.innerHTML = '<option value="">-- Select a product --</option>';
+      productSalesSelect.disabled = true;
+    }
+    if(productSalesTotal) productSalesTotal.textContent='—';
     m.innerHTML=''; c.innerHTML=''; pr.innerHTML=''; pq.innerHTML='';
     if(ap) ap.innerHTML='';
     if(apEmpty) apEmpty.classList.add('hidden');
@@ -2607,6 +2645,17 @@ function listenForInventory() {
     updateTrendUI(buildTrendAnalytics(paidOrders));
     if(allOrdersCache.length===0){ placeholder.classList.remove('hidden'); return; }
     placeholder.classList.add('hidden');
+    if(totalProductsSoldEl){
+      const totalProductsSold = allOrdersCache.reduce((orderSum, order)=>{
+        if(!Array.isArray(order?.items)) return orderSum;
+        const qty = order.items.reduce((sum,it)=>{
+          const quantity = Number(it?.quantity);
+          return sum + (Number.isFinite(quantity) ? quantity : 0);
+        },0);
+        return orderSum + qty;
+      },0);
+      totalProductsSoldEl.textContent = totalProductsSold.toLocaleString('en-US');
+    }
     if(avg){
       if(paidOrders.length===0){
         avg.textContent='N/A';
@@ -2729,9 +2778,37 @@ function listenForInventory() {
     });
 
     const prodQty={}; allOrdersCache.forEach(o=>{ if(o.items){ o.items.forEach(it=>{ const name=it.id || it.name || 'Unknown Item'; prodQty[name]=(prodQty[name]||0)+(it.quantity||0); }); } });
-    Object.entries(prodQty).sort(([,a],[,b])=>b-a).slice(0,5).forEach(([name,q])=>{
+    const prodQtyEntries = Object.entries(prodQty);
+    prodQtyEntries.slice().sort(([,a],[,b])=>b-a).slice(0,5).forEach(([name,q])=>{
       const li=document.createElement('li'); li.innerHTML=`<span>${name}</span><span class="font-bold text-cyan-300">${q} sold</span>`; pq.appendChild(li);
     });
+    if(productSalesSelect){
+      const options = prodQtyEntries.slice().sort(([aName],[bName])=>aName.localeCompare(bName, undefined, { numeric:true, sensitivity:'base' }));
+      productSalesLookup = new Map(options);
+      if(options.length>0){
+        productSalesSelect.disabled = false;
+        options.forEach(([name,qty])=>{
+          const opt=document.createElement('option');
+          opt.value=name;
+          opt.textContent=`${name} — ${qty} sold`;
+          productSalesSelect.appendChild(opt);
+        });
+        if(previousProductSelection && productSalesLookup.has(previousProductSelection)){
+          productSalesSelect.value = previousProductSelection;
+          if(productSalesTotal){
+            const qty = Number(productSalesLookup.get(previousProductSelection)) || 0;
+            productSalesTotal.textContent = qty.toLocaleString('en-US');
+          }
+        }else if(productSalesTotal){
+          productSalesTotal.textContent = '—';
+        }
+      }else{
+        productSalesSelect.disabled = true;
+        if(productSalesTotal) productSalesTotal.textContent = '—';
+      }
+    }else{
+      productSalesLookup = new Map();
+    }
 
     if(ap){
       const affiliateTotals = new Map();
