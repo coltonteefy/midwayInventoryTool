@@ -1099,6 +1099,23 @@
     return `MG-${baseId}-${tsPart}-${lotPosition}`;
   }
 
+  function extractLotFromCostEntry(entry){
+    if(!entry) return null;
+    const candidates = [entry.lot, entry.lotId, entry.lotNumber];
+    for(const candidate of candidates){
+      if(typeof candidate === 'string'){
+        const trimmed = candidate.trim();
+        if(trimmed) return trimmed;
+      }
+    }
+    return null;
+  }
+
+  function getMostRecentLotFromHistory(costHistory){
+    if(!Array.isArray(costHistory) || costHistory.length === 0) return null;
+    return extractLotFromCostEntry(costHistory[costHistory.length - 1]);
+  }
+
   function extractCoaUrl(raw){
     if(!raw) return '';
     if(typeof raw === 'string') return raw;
@@ -1118,22 +1135,22 @@
 
   function computeNextCoaLot(itemId){
     const costHistory = Array.isArray(inventoryCache[itemId]?.costHistory) ? inventoryCache[itemId].costHistory : [];
-    const upperId = (itemId || '').toUpperCase();
+
+    const storedLot = getMostRecentLotFromHistory(costHistory);
+    if(storedLot) return storedLot;
 
     if(!costHistory.length){
       return buildLotId(itemId, costHistory);
     }
 
-    const lastIndex = costHistory.length - 1;
-    const timestamp = normalizeLotTimestamp(costHistory[lastIndex]);
-    const lotPosition = lastIndex + 1;
-    return `MG-${upperId}-${timestamp}-${lotPosition}`;
+    return buildLotId(itemId, costHistory);
   }
 
   function ensureCoaStructure(itemId, item){
     const url = extractCoaUrl(item?.coa) || 'N/A';
     const lotExisting = (item?.coa && typeof item.coa === 'object') ? item.coa.lot : null;
-    const lot = lotExisting || buildLotId(itemId, item?.costHistory);
+    const lotFromHistory = getMostRecentLotFromHistory(item?.costHistory);
+    const lot = lotExisting || lotFromHistory || buildLotId(itemId, item?.costHistory);
     return { url, lot };
   }
 
@@ -3895,8 +3912,10 @@ function listenForInventory() {
     if(isNaN(totalVialsPerKit)||totalVialsPerKit<0){ showModal('Total Vials Per Kit must be a non-negative number.'); return; }
     if(!purchaseDate){ showModal('Purchase Date is required.'); return; }
 
-    const newCostEntry = { costPerKit, purchaseDate, totalKitsBought, totalVialWeightInMg: totalVialWeight, totalVialsPerKit };
-    const newItemCoa = { url: coa || 'N/A', lot: buildLotId(id, [newCostEntry]) };
+    const baseCostEntry = { costPerKit, purchaseDate, totalKitsBought, totalVialWeightInMg: totalVialWeight, totalVialsPerKit };
+    const initialLotId = buildLotId(id, [baseCostEntry]);
+    const newCostEntry = { ...baseCostEntry, lot: initialLotId };
+    const newItemCoa = { url: coa || 'N/A', lot: initialLotId };
     const newItem = { name, blend, productIsActive, productDescription: description || 'N/A', currentInventory, sellPricePerVial, totalVialWeight, image: image||'N/A', coa: newItemCoa, vialsSold, costHistory:[newCostEntry] };
 
     try{
@@ -4115,7 +4134,11 @@ async function handleNewCostHistory(e){
   if(isNaN(totalVialsPerKit)||totalVialsPerKit<0){ showModal('Total Vials per Kit must be a non-negative number.'); return; }
   if(!purchaseDate){ showModal('Purchase Date is required.'); return; }
 
-  const newCostEntry={ costPerKit, purchaseDate, totalKitsBought, totalVialWeightInMg: totalVialWeight, totalVialsPerKit };
+  const baseCostEntry={ costPerKit, purchaseDate, totalKitsBought, totalVialWeightInMg: totalVialWeight, totalVialsPerKit };
+  const existingCostHistory = Array.isArray(inventoryCache[itemId]?.costHistory) ? inventoryCache[itemId].costHistory.slice() : [];
+  const pendingCostHistory = existingCostHistory.concat(baseCostEntry);
+  const newLotId = buildLotId(itemId, pendingCostHistory);
+  const newCostEntry = { ...baseCostEntry, lot: newLotId };
   const vialsToAdd = totalKitsBought * totalVialsPerKit;
 
   try{
@@ -4124,7 +4147,14 @@ async function handleNewCostHistory(e){
       costHistory: arrayUnion(newCostEntry),
       currentInventory: increment(vialsToAdd)
     });
-    showModal('New cost history added and inventory updated!');
+    if(inventoryCache[itemId]){
+      const history = Array.isArray(inventoryCache[itemId].costHistory) ? inventoryCache[itemId].costHistory.slice() : [];
+      history.push(newCostEntry);
+      inventoryCache[itemId].costHistory = history;
+      const currentCount = Number(inventoryCache[itemId].currentInventory) || 0;
+      inventoryCache[itemId].currentInventory = currentCount + vialsToAdd;
+    }
+    showModal(`New cost history added, inventory updated, and lot ${newLotId} generated.`);
     addCostForm.reset();
   }catch(err){
     console.error('Error adding new cost history:',err);
