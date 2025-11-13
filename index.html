@@ -2409,6 +2409,7 @@ function listenForInventory() {
     return '';
   }
 
+
   function loadAffiliatePayoutLedger(){
     if(typeof localStorage === 'undefined') return new Map();
     try{
@@ -3506,6 +3507,19 @@ function listenForInventory() {
       const shippingCostSafe = Number(order.shippingCost ?? 0);
       const hasFreeShip = shippingCostSafe===0 && (order.promo?.type==='free_shipping');
       const salesTaxValue = extractOrderSalesTax(order);
+      const shippingTypeRaw = order.contactInfo?.shippingMethod;
+      const shippingTypeDisplay = shippingTypeRaw ? escapeHtml(String(shippingTypeRaw)) : 'Not specified';
+      const shippingInsuranceCostRaw = toFiniteNumber(order.insuranceCost);
+      const shippingInsuranceState = (() => {
+        if(shippingInsuranceCostRaw === null) return { label: 'Not specified', className: 'text-gray-300' };
+        if(shippingInsuranceCostRaw > 0){
+          return { label: `Opted in ($${currency(shippingInsuranceCostRaw)})`, className: 'text-emerald-300 font-semibold' };
+        }
+        if(shippingInsuranceCostRaw === 0){
+          return { label: 'Declined', className: 'text-rose-300 font-semibold' };
+        }
+        return { label: 'Not specified', className: 'text-gray-300' };
+      })();
       const paymentDetails = (()=>{
         const payment = order.payment || {};
         const meta = payment.meta || {};
@@ -3612,6 +3626,8 @@ function listenForInventory() {
               ${salesTaxValue>0?`<div><span class="text-gray-500">Sales Tax:</span> $${currency(salesTaxValue)}</div>`:``}
               ${itemDiscount>0?`<div><span class="text-gray-500">Items discount:</span> <span class="text-green-300 font-semibold">-$${currency(itemDiscount)}</span></div>`:``}
               <div><span class="text-gray-500">Shipping:</span> ${hasFreeShip?`<span class="text-green-300 font-semibold">FREE</span>`:`$${currency(shippingCostSafe)}`}</div>
+              <div><span class="text-gray-500">Shipping Type:</span> <span class="text-gray-300">${shippingTypeDisplay}</span></div>
+              <div><span class="text-gray-500">Shipping Insurance:</span> <span class="${shippingInsuranceState.className}">${shippingInsuranceState.label}</span></div>
               <div>
                 <span class="text-gray-500">Payment Type:</span> <span class="text-gray-300">${paymentDetails.label}</span>
                 ${paymentDetails.txid ? `<div class="text-gray-500 text-xs mt-1 pl-4">TXID: <span class="text-gray-300 txid-value">${paymentDetails.txid}</span></div>` : ''}
