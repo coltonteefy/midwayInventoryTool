@@ -681,6 +681,11 @@
             <p class="text-xs text-center text-slate-400 mt-2">Paid orders last 7 days</p>
           </div>
           <div class="infographic-card rounded-lg p-4 flex flex-col justify-center">
+            <h3 class="text-md font-semibold text-center text-cyan-300 mb-2">Weekly Paid Orders</h3>
+            <p id="weekly-paid-orders" class="text-3xl font-bold text-center text-cyan-200">0</p>
+            <p class="text-xs text-center text-slate-400 mt-2">Paid orders last 7 days</p>
+          </div>
+          <div class="infographic-card rounded-lg p-4 flex flex-col justify-center">
             <h3 class="text-md font-semibold text-center text-cyan-300 mb-2">Daily Average Order Total</h3>
             <p id="daily-average-order" class="text-3xl font-bold text-center text-cyan-200">N/A</p>
             <p class="text-xs text-center text-slate-400 mt-2">Paid orders today</p>
@@ -2611,6 +2616,7 @@ function listenForInventory() {
     const avg=qs('average-order-total');
     const dailyTotal=qs('daily-total-sales');
     const weeklyTotal=qs('weekly-total-sales');
+    const weeklyOrders=qs('weekly-paid-orders');
     const dailyAverage=qs('daily-average-order');
     const utahTax=qs('utah-tax-total');
     const utahCount=qs('utah-order-count');
@@ -2628,6 +2634,7 @@ function listenForInventory() {
     if(avg) avg.textContent='N/A';
     if(dailyTotal) dailyTotal.textContent='$0.00';
     if(weeklyTotal) weeklyTotal.textContent='$0.00';
+    if(weeklyOrders) weeklyOrders.textContent='0';
     if(dailyAverage) dailyAverage.textContent='N/A';
     if(utahTax) utahTax.textContent='$0.00';
     if(utahCount) utahCount.textContent='0 paid orders';
@@ -2669,7 +2676,7 @@ function listenForInventory() {
 
     let startOfToday=null;
     let endOfToday=null;
-    if((dailyTotal || dailyAverage || weeklyTotal) && paidOrders.length>0){
+    if((dailyTotal || dailyAverage || weeklyTotal || weeklyOrders) && paidOrders.length>0){
       startOfToday=new Date();
       startOfToday.setHours(0,0,0,0);
       endOfToday=new Date(startOfToday);
@@ -2690,17 +2697,20 @@ function listenForInventory() {
       if(dailyAverage) dailyAverage.textContent=todayCount>0?`$${currency(todayTotal/todayCount)}`:'N/A';
     }
 
-    if(weeklyTotal && paidOrders.length>0 && startOfToday && endOfToday){
+    if((weeklyTotal || weeklyOrders) && paidOrders.length>0 && startOfToday && endOfToday){
       const startOfWeek=new Date(startOfToday);
       startOfWeek.setDate(startOfWeek.getDate()-6);
       let sevenDayTotal=0;
+      let sevenDayCount=0;
       paidOrders.forEach(order=>{
         const orderDate=extractOrderDate(order);
         if(orderDate && orderDate>=startOfWeek && orderDate<endOfToday){
           sevenDayTotal+=resolveOrderTotal(order);
+          sevenDayCount++;
         }
       });
-      weeklyTotal.textContent=`$${currency(sevenDayTotal)}`;
+      if(weeklyTotal) weeklyTotal.textContent=`$${currency(sevenDayTotal)}`;
+      if(weeklyOrders) weeklyOrders.textContent = sevenDayCount.toLocaleString('en-US');
     }
 
     if((largestAmount || largestMeta) && paidOrders.length>0){
