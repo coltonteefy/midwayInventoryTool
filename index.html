@@ -548,6 +548,46 @@
         </div>
       </div>
 
+      <!-- Financial Health Section -->
+      <section id="financial-health-section" class="space-y-4 mt-10">
+        <h2 class="text-xl font-semibold text-white text-glow-fuchsia">Financial Health Snapshot</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="infographic-card rounded-lg p-4 flex flex-col gap-3">
+            <h3 class="text-md font-semibold text-center text-cyan-300">Monthly Revenue (Gross + Net)</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-center">
+              <div>
+                <p class="text-xs uppercase tracking-wide text-gray-400">Gross</p>
+                <p id="kpi-monthly-gross" class="text-2xl font-bold text-cyan-200">$0.00</p>
+              </div>
+              <div>
+                <p class="text-xs uppercase tracking-wide text-gray-400">Net</p>
+                <p id="kpi-monthly-net" class="text-2xl font-bold text-emerald-200">$0.00</p>
+              </div>
+            </div>
+            <p class="text-xs text-center text-slate-400">Paid orders this month with COGS from inventory history.</p>
+          </div>
+          <div class="infographic-card rounded-lg p-4 flex flex-col gap-2 justify-center">
+            <h3 class="text-md font-semibold text-center text-cyan-300">Average Margin per Product</h3>
+            <p id="kpi-average-margin" class="text-3xl font-bold text-center text-cyan-200">—</p>
+            <p id="kpi-average-margin-percent" class="text-sm text-center text-slate-400">Waiting on sales data</p>
+          </div>
+          <div class="infographic-card rounded-lg p-4 flex flex-col gap-3">
+            <h3 class="text-md font-semibold text-center text-cyan-300">Current Inventory + Cost Basis</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-center">
+              <div>
+                <p class="text-xs uppercase tracking-wide text-gray-400">Units on Hand</p>
+                <p id="kpi-total-inventory-units" class="text-2xl font-bold text-cyan-200">0</p>
+              </div>
+              <div>
+                <p class="text-xs uppercase tracking-wide text-gray-400">Cost Basis</p>
+                <p id="kpi-inventory-cost-basis" class="text-2xl font-bold text-emerald-200">$0.00</p>
+              </div>
+            </div>
+            <p class="text-xs text-center text-slate-400">Snapshot of active inventory valuation.</p>
+          </div>
+        </div>
+      </section>
+
       <!-- Orders -->
       <div class="space-y-4 mt-8">
         <h2 class="text-xl font-semibold text-white text-glow-fuchsia">Order Data Stream</h2>
@@ -910,6 +950,8 @@
   let allOrdersCache = [];
   let previousOrdersCache = new Map();
   let inventoryCache = {};
+  let inventoryNameLookup = Object.create(null);
+  const inventoryCostMemo = new Map();
   let activePrepareOrderId = null;
   let trendAnalyticsCache = null;
   let trendSelectedKey = null;
@@ -1805,6 +1847,9 @@
       sortedOrdersCache = [];
       allOrdersCache = [];
       previousOrdersCache.clear();
+      inventoryCache = {};
+      inventoryNameLookup = Object.create(null);
+      inventoryCostMemo.clear();
       updateLoadMoreVisibility(0);
       emailListDocsCache = [];
       emailListLoaded = false;
@@ -1864,10 +1909,12 @@ function listenForInventory() {
 
     totalCost = 0;
     inventoryCache = {};
+    inventoryNameLookup = Object.create(null);
+    inventoryCostMemo.clear();
 
     // Build fast lookup maps for order/inventory joins
     const inventoryById = {};
-    const inventoryByNameLower = {};
+    const inventoryByNameLower = Object.create(null);
 
     const docsMissingActiveFlag = [];
     const docsNeedingCoaUpgrade = [];
@@ -1884,8 +1931,13 @@ function listenForInventory() {
       }
       inventoryCache[d.id] = inv;
       inventoryById[d.id] = inv;
-      if (item.name) inventoryByNameLower[item.name.toLowerCase()] = inv;
+      const invName = typeof item.name === 'string' ? item.name.trim().toLowerCase() : '';
+      if (invName) inventoryByNameLower[invName] = inv;
+      const invCode = typeof item.code === 'string' ? item.code.trim().toLowerCase() : '';
+      if (invCode) inventoryByNameLower[invCode] = inv;
     });
+
+    inventoryNameLookup = inventoryByNameLower;
 
     if (docsMissingActiveFlag.length) {
       docsMissingActiveFlag.forEach((ref) => {
@@ -1907,7 +1959,10 @@ function listenForInventory() {
     window._getInvFromOrderItem = function (it) {
       if (!it) return null;
       if (it.id && inventoryById[it.id]) return inventoryById[it.id];
-      if (it.name && inventoryByNameLower[it.name.toLowerCase()]) return inventoryByNameLower[it.name.toLowerCase()];
+      const normalizedName = typeof it.name === 'string' ? it.name.trim().toLowerCase() : '';
+      if (normalizedName && inventoryByNameLower[normalizedName]) return inventoryByNameLower[normalizedName];
+      const normalizedSku = typeof it.sku === 'string' ? it.sku.trim().toLowerCase() : '';
+      if (normalizedSku && inventoryByNameLower[normalizedSku]) return inventoryByNameLower[normalizedSku];
       return null;
     };
 
@@ -2035,6 +2090,7 @@ function listenForInventory() {
     });
 
     updateFinancialUI();
+    renderInfographics();
   }, (error) => {
     console.error('Error listening to inventory:', error);
     const tbody = qs('inventory-list');
@@ -2611,6 +2667,197 @@ function listenForInventory() {
     return 0;
   }
 
+  function getInventoryResolver(){
+    if(typeof window !== 'undefined' && typeof window._getInvFromOrderItem === 'function'){
+      return window._getInvFromOrderItem;
+    }
+    return null;
+  }
+
+  function getInventoryCostKey(inventory){
+    if(!inventory || typeof inventory !== 'object') return null;
+    if(typeof inventory.id === 'string' && inventory.id.trim()) return inventory.id.trim();
+    if(typeof inventory.code === 'string' && inventory.code.trim()) return inventory.code.trim();
+    if(typeof inventory.name === 'string' && inventory.name.trim()) return inventory.name.trim();
+    return null;
+  }
+
+  function estimateInventoryCostPerUnit(inventory){
+    if(!inventory) return null;
+    const key = getInventoryCostKey(inventory);
+    if(key && inventoryCostMemo.has(key)) return inventoryCostMemo.get(key);
+    let totalCost = 0;
+    let totalUnits = 0;
+    const history = Array.isArray(inventory.costHistory) ? inventory.costHistory : [];
+    history.forEach((entry)=>{
+      const kits = toFiniteNumber(entry?.totalKitsBought);
+      const costPerKit = toFiniteNumber(entry?.costPerKit);
+      const vialsPerKit = toFiniteNumber(entry?.totalVialsPerKit ?? entry?.vialsPerKit ?? entry?.totalVials ?? entry?.unitsPerKit);
+      if(kits === null || kits <= 0) return;
+      if(costPerKit === null || vialsPerKit === null || vialsPerKit <= 0) return;
+      const units = kits * vialsPerKit;
+      if(units <= 0) return;
+      totalUnits += units;
+      totalCost += costPerKit * kits;
+    });
+    let result = null;
+    if(totalUnits > 0){
+      result = totalCost / totalUnits;
+    }else{
+      const fallbackCost = toFiniteNumber(inventory.costPerKit);
+      const fallbackVials = toFiniteNumber(inventory.totalVialsPerKit);
+      if(fallbackCost !== null && fallbackVials !== null && fallbackVials > 0){
+        result = fallbackCost / fallbackVials;
+      }
+    }
+    if(key) inventoryCostMemo.set(key, result);
+    return result;
+  }
+
+  function resolveInventoryForOrderItem(orderItem, resolver){
+    if(!orderItem) return null;
+    if(typeof resolver === 'function'){
+      try{
+        const resolved = resolver(orderItem);
+        if(resolved) return resolved;
+      }catch(_){}
+    }
+    const idCandidates = [
+      orderItem.id,
+      orderItem.inventoryId,
+      orderItem.productId,
+      orderItem.sku
+    ];
+    for(const candidate of idCandidates){
+      if(candidate === null || candidate === undefined) continue;
+      const key = String(candidate).trim();
+      if(key && inventoryCache[key]) return inventoryCache[key];
+    }
+    const nameCandidates = [
+      orderItem.name,
+      orderItem.title,
+      orderItem.label,
+      orderItem.productName
+    ];
+    for(const value of nameCandidates){
+      if(typeof value !== 'string') continue;
+      const normalized = value.trim().toLowerCase();
+      if(normalized && inventoryNameLookup && inventoryNameLookup[normalized]){
+        return inventoryNameLookup[normalized];
+      }
+    }
+    return null;
+  }
+
+  function resolveItemCostPerUnit(orderItem, inventoryResolver){
+    if(!orderItem) return null;
+    const candidateFields = [
+      orderItem.costPerUnit,
+      orderItem.unitCost,
+      orderItem.cost,
+      orderItem.baseCostPerUnit,
+      orderItem.baseCost
+    ];
+    for(const field of candidateFields){
+      const numeric = toFiniteNumber(field);
+      if(numeric !== null) return numeric;
+    }
+    const inventory = resolveInventoryForOrderItem(orderItem, inventoryResolver);
+    if(!inventory) return null;
+    return estimateInventoryCostPerUnit(inventory);
+  }
+
+  function updateFinancialHealthSection(paidOrders){
+    const monthlyGrossEl = qs('kpi-monthly-gross');
+    const monthlyNetEl = qs('kpi-monthly-net');
+    const avgMarginEl = qs('kpi-average-margin');
+    const avgMarginPercentEl = qs('kpi-average-margin-percent');
+    const inventoryUnitsEl = qs('kpi-total-inventory-units');
+    const inventoryCostBasisEl = qs('kpi-inventory-cost-basis');
+    const formatMoney = (value)=>{
+      const num = Number(value) || 0;
+      const abs = Math.abs(num);
+      const base = `$${currency(abs)}`;
+      return num < 0 ? `-${base}` : base;
+    };
+    if(monthlyGrossEl) monthlyGrossEl.textContent = '$0.00';
+    if(monthlyNetEl) monthlyNetEl.textContent = '$0.00';
+    if(avgMarginEl) avgMarginEl.textContent = '—';
+    if(avgMarginPercentEl) avgMarginPercentEl.textContent = 'Need paid orders with cost data';
+    if(inventoryUnitsEl) inventoryUnitsEl.textContent = '0';
+    if(inventoryCostBasisEl) inventoryCostBasisEl.textContent = '$0.00';
+
+    const orders = Array.isArray(paidOrders) ? paidOrders : [];
+    const inventoryResolver = getInventoryResolver();
+    if(orders.length > 0){
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const startOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      let monthlyGross = 0;
+      let monthlyCost = 0;
+      let marginUnits = 0;
+      let marginValue = 0;
+      let marginRevenue = 0;
+      orders.forEach(order=>{
+        const orderDate = extractOrderDate(order);
+        const withinMonth = orderDate && orderDate >= startOfMonth && orderDate < startOfNextMonth;
+        if(withinMonth){
+          monthlyGross += resolveOrderTotal(order);
+        }
+        const items = Array.isArray(order?.items) ? order.items : [];
+        items.forEach(item=>{
+          const quantity = toFiniteNumber(item?.quantity);
+          if(!quantity || quantity <= 0) return;
+          const unitCost = resolveItemCostPerUnit(item, inventoryResolver);
+          if(withinMonth && unitCost !== null){
+            monthlyCost += unitCost * quantity;
+          }
+          const unitPrice = toFiniteNumber(item?.unitPrice ?? item?.price ?? item?.amount);
+          if(unitPrice === null || unitCost === null) return;
+          marginUnits += quantity;
+          marginValue += (unitPrice - unitCost) * quantity;
+          marginRevenue += unitPrice * quantity;
+        });
+      });
+      if(monthlyGrossEl) monthlyGrossEl.textContent = formatMoney(monthlyGross);
+      if(monthlyNetEl) monthlyNetEl.textContent = formatMoney(monthlyGross - monthlyCost);
+      if(avgMarginEl){
+        if(marginUnits > 0){
+          const avgMargin = marginValue / marginUnits;
+          avgMarginEl.textContent = formatMoney(avgMargin);
+        }else{
+          avgMarginEl.textContent = '—';
+        }
+      }
+      if(avgMarginPercentEl){
+        if(marginUnits > 0 && marginRevenue > 0){
+          const percent = (marginValue / marginRevenue) * 100;
+          avgMarginPercentEl.textContent = `${percent.toFixed(1)}% weighted margin`;
+        }else{
+          avgMarginPercentEl.textContent = 'Need paid orders with cost data';
+        }
+      }
+    }
+
+    const inventoryItems = Object.values(inventoryCache || {});
+    if(inventoryItems.length > 0){
+      let totalUnits = 0;
+      let costBasis = 0;
+      inventoryItems.forEach(item=>{
+        const qty = toFiniteNumber(item?.currentInventory);
+        if(qty !== null && qty > 0){
+          totalUnits += qty;
+          const unitCost = estimateInventoryCostPerUnit(item);
+          if(unitCost !== null){
+            costBasis += unitCost * qty;
+          }
+        }
+      });
+      if(inventoryUnitsEl) inventoryUnitsEl.textContent = totalUnits.toLocaleString('en-US');
+      if(inventoryCostBasisEl) inventoryCostBasisEl.textContent = formatMoney(costBasis);
+    }
+  }
+
   function renderInfographics(){
     const placeholder=qs('infographic-placeholder');
     const avg=qs('average-order-total');
@@ -2651,6 +2898,7 @@ function listenForInventory() {
     if(apEmpty) apEmpty.classList.add('hidden');
     const paidOrders = allOrdersCache.filter(o=>o.paymentStatus==='Paid');
     updateTrendUI(buildTrendAnalytics(paidOrders));
+    updateFinancialHealthSection(paidOrders);
     if(allOrdersCache.length===0){ placeholder.classList.remove('hidden'); return; }
     placeholder.classList.add('hidden');
     if(totalProductsSoldEl){
