@@ -276,6 +276,7 @@
             <button id="toggle-cost-tool-btn" class="btn-neon-lime px-4 py-2 rounded-lg font-semibold text-xs hidden">Add Cost History</button>
             <button id="toggle-inventory-tool-btn" class="btn-neon-lime px-4 py-2 rounded-lg font-semibold text-xs hidden">Add Inventory</button>
             <button id="toggle-edit-item-tool-btn" class="btn-neon-lime px-4 py-2 rounded-lg font-semibold text-xs hidden">Edit Inventory</button>
+            <button id="toggle-sale-tool-btn" class="btn-neon-cyan px-4 py-2 rounded-lg font-semibold text-xs hidden">Sale Tool</button>
             <button id="toggle-promo-tool-btn" class="btn-neon-cyan px-4 py-2 rounded-lg font-semibold text-xs hidden">Promo Tool</button>
           </div>
           <div id="inventory-tool-wrapper" class="mt-4 hidden">
@@ -463,6 +464,31 @@
                   <button type="submit" class="btn-neon-lime px-4 py-2 rounded-lg font-semibold w-full sm:w-auto">Add Cost Entry</button>
                 </div>
               </form>
+            </section>
+          </div>
+          <div id="sale-tool-wrapper" class="mt-4 hidden">
+            <section class="bg-gray-900 p-4 rounded-lg border border-gray-700 space-y-4">
+              <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 class="text-xl font-semibold text-white text-glow-fuchsia">Full Inventory Sale</h3>
+                  <p class="text-sm text-gray-400">Push one discount to every inventory item.</p>
+                </div>
+                <div id="sale-status-label" class="text-sm font-semibold text-cyan-300">Sale status unavailable</div>
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label for="sale-discount-input" class="block text-sm font-medium text-gray-400">Discount Percentage (%)</label>
+                  <input type="number" id="sale-discount-input" min="0" max="95" step="0.5" value="10" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-200 focus:ring-cyan-500 focus:border-cyan-500" placeholder="10">
+                  <p class="text-xs text-gray-500 mt-1">This value overwrites the discount on all products.</p>
+                </div>
+                <div class="flex flex-col justify-center">
+                  <p id="sale-consistency-warning" class="text-xs text-amber-300 hidden">Inventory has mixed sale settings. Updates will overwrite every item.</p>
+                </div>
+              </div>
+              <div class="flex flex-wrap gap-3">
+                <button type="button" id="sale-save-discount-btn" class="btn-neon-cyan px-4 py-2 rounded-lg font-semibold text-xs">Save Discount</button>
+                <button type="button" id="sale-toggle-btn" class="btn-neon-lime px-4 py-2 rounded-lg font-semibold text-xs" data-state="inactive">Activate Sale</button>
+              </div>
             </section>
           </div>
           <div id="promo-tool-wrapper" class="mt-4 hidden">
@@ -1099,6 +1125,13 @@
   const toggleCostToolBtn = qs('toggle-cost-tool-btn');
   const inventoryToolWrapper = qs('inventory-tool-wrapper');
   const toggleInventoryToolBtn = qs('toggle-inventory-tool-btn');
+  const saleToolWrapper = qs('sale-tool-wrapper');
+  const toggleSaleToolBtn = qs('toggle-sale-tool-btn');
+  const saleDiscountInput = qs('sale-discount-input');
+  const saleStatusLabel = qs('sale-status-label');
+  const saleConsistencyWarning = qs('sale-consistency-warning');
+  const saleSaveDiscountBtn = qs('sale-save-discount-btn');
+  const saleToggleBtn = qs('sale-toggle-btn');
   const promoToolWrapper = qs('promo-tool-wrapper');
   const togglePromoToolBtn = qs('toggle-promo-tool-btn');
   const productionToolsSection = qs('production-tools-section');
@@ -1123,6 +1156,7 @@
     { wrapper: costToolWrapper, button: toggleCostToolBtn, openLabel: 'Add Cost History', closeLabel: 'Add Cost History' },
     { wrapper: inventoryToolWrapper, button: toggleInventoryToolBtn, openLabel: 'Add Inventory', closeLabel: 'Add Inventory' },
     { wrapper: inventoryEditorWrapper, button: toggleEditItemToolBtn, openLabel: 'Edit Inventory', closeLabel: 'Edit Inventory' },
+    { wrapper: saleToolWrapper, button: toggleSaleToolBtn, openLabel: 'Sale Tool', closeLabel: 'Sale Tool' },
     { wrapper: promoToolWrapper, button: togglePromoToolBtn, openLabel: 'Promo Tool', closeLabel: 'Promo Tool' }
   ];
 
@@ -1143,6 +1177,122 @@
       setToolOpen(tool,false);
     });
   }
+
+  function getSaleSnapshot(){
+    const entries = Object.values(inventoryCache || {});
+    if(entries.length === 0){
+      return { hasData: false, active: false, discount: 10, consistent: true };
+    }
+    const baseSale = entries[0]?.activeSale || {};
+    const baseActive = Boolean(baseSale.active);
+    const baseDiscountRaw = toFiniteNumber(baseSale.discount);
+    const baseDiscount = Number.isFinite(baseDiscountRaw) ? baseDiscountRaw : 0;
+    let consistent = true;
+    for(let i = 1; i < entries.length; i++){
+      const nextSale = entries[i]?.activeSale || {};
+      const nextActive = Boolean(nextSale.active);
+      const nextDiscountRaw = toFiniteNumber(nextSale.discount);
+      const nextDiscount = Number.isFinite(nextDiscountRaw) ? nextDiscountRaw : 0;
+      if(nextActive !== baseActive || Math.abs(nextDiscount - baseDiscount) > 0.0001){
+        consistent = false;
+        break;
+      }
+    }
+    return { hasData: true, active: baseActive, discount: baseDiscount, consistent };
+  }
+
+  function refreshSaleToolUI(){
+    if(!saleStatusLabel && !saleToggleBtn && !saleDiscountInput && !saleConsistencyWarning) return;
+    const snapshot = getSaleSnapshot();
+    if(saleStatusLabel){
+      saleStatusLabel.textContent = snapshot.hasData
+        ? (snapshot.active ? `Sale active (${snapshot.discount}% off)` : 'Sale inactive')
+        : 'Sale status unavailable';
+    }
+    if(saleToggleBtn){
+      saleToggleBtn.textContent = snapshot.active ? 'Deactivate Sale' : 'Activate Sale';
+      saleToggleBtn.dataset.state = snapshot.active ? 'active' : 'inactive';
+    }
+    if(saleConsistencyWarning){
+      saleConsistencyWarning.classList.toggle('hidden', snapshot.consistent);
+      if(!snapshot.consistent){
+        saleConsistencyWarning.textContent = 'Inventory has mixed sale settings. Updates will overwrite every item.';
+      }
+    }
+    if(saleDiscountInput && document.activeElement !== saleDiscountInput){
+      const fallback = snapshot.hasData ? snapshot.discount : 10;
+      const normalized = Number.isFinite(fallback) ? fallback : 10;
+      saleDiscountInput.value = normalized;
+    }
+  }
+
+  function setSaleToolBusy(isBusy){
+    [saleSaveDiscountBtn, saleToggleBtn].forEach((btn)=>{
+      if(!btn) return;
+      btn.disabled = isBusy;
+      btn.classList.toggle('opacity-60', isBusy);
+      btn.classList.toggle('cursor-not-allowed', isBusy);
+    });
+  }
+
+  function buildSalePayload(item, overrides = {}){
+    const existing = (item && item.activeSale) || {};
+    const discountRaw = overrides.discount !== undefined ? overrides.discount : toFiniteNumber(existing.discount);
+    const discount = Number.isFinite(discountRaw) ? discountRaw : 0;
+    return {
+      active: typeof overrides.active === 'boolean' ? overrides.active : Boolean(existing.active),
+      discount
+    };
+  }
+
+  async function applySaleUpdateToAll(overrides, successMessage){
+    const entries = Object.entries(inventoryCache || {});
+    if(!entries.length){
+      showModal('Inventory must finish loading before updating the sale.');
+      return;
+    }
+    setSaleToolBusy(true);
+    try{
+      const tasks = entries.map(([id, item])=>{
+        const payload = buildSalePayload(item, overrides);
+        const ref = doc(db, INVENTORY_COLLECTION_PATH, id);
+        return { id, payload, promise: updateDoc(ref, { activeSale: payload }) };
+      });
+      await Promise.all(tasks.map((task)=>task.promise));
+      tasks.forEach(({ id, payload })=>{
+        const cached = inventoryCache[id] || { id };
+        inventoryCache[id] = { ...cached, activeSale: payload };
+      });
+      if(successMessage) showModal(successMessage);
+    }catch(err){
+      console.error('Sale update failed:', err);
+      showModal(`Failed to update sale: ${err.message || 'See console for details.'}`);
+    }finally{
+      setSaleToolBusy(false);
+      refreshSaleToolUI();
+    }
+  }
+
+  function readSaleDiscountInput(){
+    if(!saleDiscountInput){
+      showModal('Sale discount input is unavailable.');
+      return null;
+    }
+    const parsed = Number(saleDiscountInput.value);
+    if(!Number.isFinite(parsed)){
+      showModal('Enter a valid discount percentage.');
+      return null;
+    }
+    if(parsed < 0 || parsed > 95){
+      showModal('Discount must be between 0% and 95%.');
+      return null;
+    }
+    const normalized = Math.round(parsed * 100) / 100;
+    saleDiscountInput.value = normalized;
+    return normalized;
+  }
+
+  refreshSaleToolUI();
 
   function normalizeLotTimestamp(entry){
     if(!entry) return new Date().toISOString().replace(/[^0-9]/g,'');
@@ -1850,6 +2000,7 @@
       inventoryCache = {};
       inventoryNameLookup = Object.create(null);
       inventoryCostMemo.clear();
+      refreshSaleToolUI();
       updateLoadMoreVisibility(0);
       emailListDocsCache = [];
       emailListLoaded = false;
@@ -2089,6 +2240,7 @@ function listenForInventory() {
       }
     });
 
+    refreshSaleToolUI();
     updateFinancialUI();
     renderInfographics();
   }, (error) => {
@@ -4402,6 +4554,23 @@ function listenForInventory() {
     }
   }
 
+  async function handleSaveSaleDiscount(){
+    const discount = readSaleDiscountInput();
+    if(discount === null) return;
+    await applySaleUpdateToAll({ discount }, 'Sale discount updated for all inventory.');
+  }
+
+  async function handleToggleSaleState(){
+    const isActive = saleToggleBtn?.dataset.state === 'active';
+    if(!isActive){
+      const discount = readSaleDiscountInput();
+      if(discount === null) return;
+      await applySaleUpdateToAll({ active: true, discount }, 'Sale activated for all inventory.');
+    }else{
+      await applySaleUpdateToAll({ active: false }, 'Sale deactivated for all inventory.');
+    }
+  }
+
   async function handleDeprecateCurrentCoa(){
     if(!editItemSelect){ showModal('Item selector not available.'); return; }
     const itemId = editItemSelect.value;
@@ -4715,6 +4884,8 @@ async function handleNewCostHistory(e){
     });
     if(editItemDeprecateBtn) editItemDeprecateBtn.addEventListener('click', handleDeprecateCurrentCoa);
     if(editItemForm) editItemForm.addEventListener('submit', handleEditInventoryItem);
+    if(saleSaveDiscountBtn) saleSaveDiscountBtn.addEventListener('click', handleSaveSaleDiscount);
+    if(saleToggleBtn) saleToggleBtn.addEventListener('click', handleToggleSaleState);
 
     TOOL_CONFIG.forEach((tool)=>{
       if(!tool.button || !tool.wrapper) return;
