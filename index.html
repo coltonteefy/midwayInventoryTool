@@ -620,6 +620,7 @@
         <div class="flex flex-col sm:flex-row sm:items-center gap-3">
           <label for="order-search" class="sr-only">Search Orders</label>
           <input id="order-search" type="search" placeholder="Search by order ID, customer name, or phone" class="w-full sm:w-80 bg-gray-800 border border-gray-600 rounded-md shadow-sm p-3 text-gray-200 focus:ring-cyan-500 focus:border-cyan-500" autocomplete="off" spellcheck="false">
+          <button id="export-unshipped-orders" class="btn-neon-lime px-4 py-2 rounded-lg font-semibold text-xs w-full sm:w-auto">Export Unshipped Orders</button>
         </div>
         <div id="orders-container" class="space-y-6">
           <div id="loading-orders" class="text-center py-12">
@@ -966,6 +967,7 @@
   const TREND_PAIR_WINDOW_DAYS = 90;
   const RESTOCK_WINDOW_DAYS = 14;
   const TREND_MINIMUM_BUFFER = 2;
+  const PACKAGE_DEFAULTS = { weightLbs: 1, lengthIn: 9, widthIn: 6, heightIn: 2 };
   let visibleOrdersCount = ORDERS_PAGE_SIZE;
   let orderSearchTerm = '';
   let userAdjustedOrderView = false;
@@ -991,6 +993,7 @@
   const loadMoreOrdersBtn = qs('load-more-orders');
   const ordersPagination = qs('orders-pagination');
   const orderSearchInput = qs('order-search');
+  const exportUnshippedBtn = qs('export-unshipped-orders');
   const emailListContainer = qs('email-list');
   const emailListLoadingEl = qs('email-list-loading');
   const emailListEmptyEl = qs('email-list-empty');
@@ -1925,6 +1928,115 @@
     }
     if(Array.isArray(raw)) return raw.some(entry => Boolean(entry?.hasShipped));
     return false;
+  }
+
+  function firstNonEmpty(...values){
+    for(const value of values){
+      const str = typeof value === 'string' ? value.trim() : (value == null ? '' : String(value).trim());
+      if(str) return str;
+    }
+    return '';
+  }
+
+  function parseAddressString(raw){
+    const result = { address:'', city:'', state:'', zip:'' };
+    if(typeof raw !== 'string') return result;
+    const lines = raw.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+    if(lines.length === 0) return result;
+    result.address = lines[0];
+    const tail = lines.slice(1).join(' ') || lines[0];
+    const cityStateZipMatch = tail.match(/([^,]+),?\s*([A-Za-z]{2})\s+(\d{5}(?:-\d{4})?)/);
+    if(cityStateZipMatch){
+      result.city = cityStateZipMatch[1].trim();
+      result.state = cityStateZipMatch[2].trim();
+      result.zip = cityStateZipMatch[3].trim();
+    }else if(lines.length > 1){
+      const alt = lines[1];
+      const altMatch = alt.match(/([^,]+),?\s*([A-Za-z]{2})(?:\s+(\d{5}(?:-\d{4})?))?/);
+      if(altMatch){
+        result.city = altMatch[1].trim();
+        result.state = altMatch[2].trim();
+        result.zip = (altMatch[3] || '').trim();
+      }
+    }
+    return result;
+  }
+
+  function extractShippingFields(order){
+    const contact = order?.contactInfo || {};
+    const shippingRoot = order?.shipping || order?.shippingDetails || order?.shipping_address || contact.shipping || {};
+    const shippingAddrObj = typeof order?.shippingAddress === 'object' ? order.shippingAddress : null;
+    const parsedFromString = parseAddressString(firstNonEmpty(
+      typeof contact.shippingAddress === 'string' ? contact.shippingAddress : '',
+      typeof order?.shippingAddress === 'string' ? order.shippingAddress : ''
+    ));
+    const address = firstNonEmpty(
+      shippingRoot?.line1,
+      shippingRoot?.address1,
+      shippingRoot?.address,
+      shippingRoot?.street1,
+      shippingRoot?.street,
+      shippingRoot?.addressLine1,
+      shippingAddrObj?.line1,
+      contact.address,
+      contact.street,
+      contact.shippingLine1,
+      typeof contact.shippingAddress === 'string' ? contact.shippingAddress : '',
+      typeof order?.shippingAddress === 'string' ? order.shippingAddress : '',
+      parsedFromString.address
+    );
+    const city = firstNonEmpty(
+      shippingRoot?.city,
+      shippingRoot?.town,
+      shippingRoot?.locality,
+      shippingAddrObj?.city,
+      contact.city,
+      contact.shippingCity,
+      contact.shipping?.city,
+      parsedFromString.city
+    );
+    const state = firstNonEmpty(
+      shippingRoot?.state,
+      shippingRoot?.province,
+      shippingRoot?.region,
+      shippingAddrObj?.state,
+      contact.state,
+      contact.shippingState,
+      contact.shipping?.state,
+      parsedFromString.state
+    );
+    const zip = firstNonEmpty(
+      shippingRoot?.zip,
+      shippingRoot?.zipcode,
+      shippingRoot?.postalCode,
+      shippingRoot?.postal,
+      shippingAddrObj?.zip,
+      shippingAddrObj?.postalCode,
+      contact.zip,
+      contact.zipcode,
+      contact.postalCode,
+      contact.shipping?.zip,
+      contact.shipping?.postalCode,
+      parsedFromString.zip
+    );
+    const name = firstNonEmpty(
+      contact.fullName,
+      shippingRoot?.name,
+      [contact.firstName, contact.lastName].filter(Boolean).join(' '),
+      order?.shippingName
+    );
+    const email = firstNonEmpty(contact.email, shippingRoot?.email, order?.email);
+    const phone = firstNonEmpty(contact.phone, shippingRoot?.phone, order?.phone);
+    return { name, address, city, state, zip, email, phone };
+  }
+
+  function isOrderMarkedShipped(order){
+    if(!order || typeof order !== 'object') return false;
+    if(order.orderDelivered === true) return true;
+    if(typeof order?.tracking?.hasShipped === 'boolean') return order.tracking.hasShipped;
+    const entries = extractTrackingEntries(order.tracking);
+    if(entries.some(entry => entry?.hasShipped === true)) return true;
+    return extractTrackingHasShipped(order.tracking);
   }
 
   let _trackingMemoryCache = [];
@@ -4103,6 +4215,56 @@ function listenForInventory() {
     updateLoadMoreVisibility(filteredOrders.length);
   }
 
+  function formatCsvValue(value){
+    const str = value == null ? '' : String(value);
+    const escaped = str.replace(/"/g,'""');
+    return /[",\n]/.test(escaped) ? `"${escaped}"` : escaped;
+  }
+
+  function buildUnshippedOrdersCsvRows(){
+    const header = ['Order ID','Name','Address','City','State','Zipcode','Email','Phone','Pounds','Length','Width','Height'];
+    const orders = Array.isArray(allOrdersCache) ? allOrdersCache : [];
+    const pending = orders.filter(order => !isOrderMarkedShipped(order));
+    const rows = [header];
+
+    pending.forEach(order=>{
+      const shipping = extractShippingFields(order);
+      rows.push([
+        order.orderId || order.id || '',
+        shipping.name,
+        shipping.address,
+        shipping.city,
+        shipping.state,
+        shipping.zip,
+        shipping.email,
+        shipping.phone,
+        PACKAGE_DEFAULTS.weightLbs,
+        PACKAGE_DEFAULTS.lengthIn,
+        PACKAGE_DEFAULTS.widthIn,
+        PACKAGE_DEFAULTS.heightIn
+      ]);
+    });
+
+    return { rows, count: pending.length };
+  }
+
+  function handleExportUnshippedOrders(){
+    const { rows, count } = buildUnshippedOrdersCsvRows();
+    if(count === 0){
+      showModal('All orders are marked shipped — nothing to export right now.');
+      return;
+    }
+    const csv = rows.map(row => row.map(formatCsvValue).join(',')).join('\n');
+    const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'unshipped-orders.csv';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(link.href);
+  }
+
   if(loadMoreOrdersBtn){
     loadMoreOrdersBtn.addEventListener('click',()=>{
       const filtered = filterOrders(sortedOrdersCache);
@@ -4121,6 +4283,10 @@ function listenForInventory() {
     };
     orderSearchInput.addEventListener('input', handleOrderSearch);
     orderSearchInput.addEventListener('search', handleOrderSearch);
+  }
+
+  if(exportUnshippedBtn){
+    exportUnshippedBtn.addEventListener('click', handleExportUnshippedOrders);
   }
 
   /* Read-only order item element */
