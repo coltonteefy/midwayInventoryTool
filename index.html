@@ -620,6 +620,10 @@
         <div class="flex flex-col sm:flex-row sm:items-center gap-3">
           <label for="order-search" class="sr-only">Search Orders</label>
           <input id="order-search" type="search" placeholder="Search by order ID, customer name, or phone" class="w-full sm:w-80 bg-gray-800 border border-gray-600 rounded-md shadow-sm p-3 text-gray-200 focus:ring-cyan-500 focus:border-cyan-500" autocomplete="off" spellcheck="false">
+          <label for="order-payment-filter" class="sr-only">Filter by payment type</label>
+          <select id="order-payment-filter" class="w-full sm:w-56 bg-gray-800 border border-gray-600 rounded-md shadow-sm p-3 text-gray-200 focus:ring-cyan-500 focus:border-cyan-500">
+            <option value="">All payment types</option>
+          </select>
           <button id="export-unshipped-orders" class="btn-neon-lime px-4 py-2 rounded-lg font-semibold text-xs w-full sm:w-auto">Export Unshipped Orders</button>
         </div>
         <div id="orders-container" class="space-y-6">
@@ -741,6 +745,7 @@
             <h3 class="text-md font-semibold text-center text-cyan-300 mb-2">Daily Total Sales</h3>
             <p id="daily-total-sales" class="text-3xl font-bold text-center text-cyan-200">$0.00</p>
             <p class="text-xs text-center text-slate-400 mt-2">Paid orders today</p>
+            <p id="daily-total-orders" class="text-sm text-center text-cyan-100 mt-1">0 orders</p>
           </div>
           <div class="infographic-card rounded-lg p-4 flex flex-col justify-center">
             <h3 class="text-md font-semibold text-center text-cyan-300 mb-2">Weekly Total Sales</h3>
@@ -762,6 +767,26 @@
             <p id="utah-tax-total" class="text-3xl font-bold text-center text-cyan-200">$0.00</p>
             <p id="utah-order-count" class="text-sm text-center text-cyan-100">0 paid orders</p>
             <p class="text-xs text-center text-slate-400 mt-2">Aggregated paid orders</p>
+          </div>
+          <div class="infographic-card rounded-lg p-4 flex flex-col justify-center">
+            <h3 class="text-md font-semibold text-center text-cyan-300 mb-2">Promo Savings Today</h3>
+            <p id="promo-savings-today" class="text-3xl font-bold text-center text-cyan-200">$0.00</p>
+            <p class="text-xs text-center text-slate-400 mt-2">Discount value on paid orders today</p>
+          </div>
+          <div class="infographic-card rounded-lg p-4 flex flex-col justify-center">
+            <h3 class="text-md font-semibold text-center text-cyan-300 mb-2">Promo Sales Share Today</h3>
+            <p id="promo-sales-share-today" class="text-3xl font-bold text-center text-cyan-200">0%</p>
+            <p id="promo-sales-share-meta-today" class="text-xs text-center text-slate-400 mt-2">Promo orders today: 0/0</p>
+          </div>
+          <div class="infographic-card rounded-lg p-4 flex flex-col justify-center">
+            <h3 class="text-md font-semibold text-center text-cyan-300 mb-2">Promo Savings This Month</h3>
+            <p id="promo-savings-month" class="text-3xl font-bold text-center text-cyan-200">$0.00</p>
+            <p class="text-xs text-center text-slate-400 mt-2">Discount value on paid orders this month</p>
+          </div>
+          <div class="infographic-card rounded-lg p-4 flex flex-col justify-center">
+            <h3 class="text-md font-semibold text-center text-cyan-300 mb-2">Promo Sales Share</h3>
+            <p id="promo-sales-share" class="text-3xl font-bold text-center text-cyan-200">0%</p>
+            <p id="promo-sales-share-meta" class="text-xs text-center text-slate-400 mt-2">Share of monthly paid revenue from promo orders</p>
           </div>
           <div class="infographic-card rounded-lg p-4 flex flex-col justify-center">
             <h3 class="text-md font-semibold text-center text-cyan-300 mb-2">Largest Order</h3>
@@ -797,10 +822,18 @@
             <h3 class="text-md font-semibold text-center text-cyan-300 mb-4">Top Products (Quantity)</h3>
             <ul id="list-top-products-quantity" class="infographic-list"></ul>
           </div>
-          <div class="infographic-card rounded-lg p-4">
+          <div class="infographic-card rounded-lg p-4 sm:col-span-2 lg:col-span-4">
             <h3 class="text-md font-semibold text-center text-cyan-300 mb-4">Affiliate Promo Codes</h3>
             <ul id="list-affiliate-promos" class="infographic-list"></ul>
             <p id="affiliate-promos-empty" class="text-xs text-center text-slate-400 mt-2 hidden">No affiliate promo sales yet.</p>
+          </div>
+          <div class="infographic-card rounded-lg p-4 sm:col-span-2 lg:col-span-4">
+            <h3 class="text-md font-semibold text-center text-cyan-300 mb-2">Affiliate Promo Counts</h3>
+            <p id="affiliate-promo-today-count" class="text-3xl font-bold text-center text-cyan-200">0</p>
+            <p class="text-xs text-center text-slate-400 mt-2 mb-3">Number of affiliate promo orders today</p>
+            <p id="affiliate-promo-today-amount" class="text-md font-semibold text-center text-cyan-200 mb-4">$0.00</p>
+            <ul id="list-affiliate-promos-period" class="infographic-list"></ul>
+            <p id="affiliate-promos-period-empty" class="text-xs text-center text-slate-400 mt-2 hidden">No affiliate promo orders yet.</p>
           </div>
         </div>
         <div id="infographic-placeholder" class="text-center py-12 text-gray-500">
@@ -956,6 +989,7 @@
   const qs = (id) => document.getElementById(id);
   const ORDERS_PAGE_SIZE = 5;
   const UTAH_SALES_TAX_RATE = 0.065; // fallback rate if no explicit tax is stored
+  const AFFILIATE_COLLECTION_PATH = 'affiliates';
   const AFFILIATE_PROMO_CODES = new Map(
     [
       ['ROOKIE', { label: 'Rookie' }],
@@ -984,15 +1018,18 @@
   let trendAnalyticsCache = null;
   let trendSelectedKey = null;
   let affiliatePayoutLedger = loadAffiliatePayoutLedger();
+  let unsubscribeAffiliates = null;
   let emailListDocsCache = [];
   let emailListLoaded = false;
   let emailListError = null;
   let emailListCollapsed = true;
   let emailListCombinedEntries = [];
+  let orderPaymentFilterValue = '';
 
   const loadMoreOrdersBtn = qs('load-more-orders');
   const ordersPagination = qs('orders-pagination');
   const orderSearchInput = qs('order-search');
+  const orderPaymentFilterSelect = qs('order-payment-filter');
   const exportUnshippedBtn = qs('export-unshipped-orders');
   const emailListContainer = qs('email-list');
   const emailListLoadingEl = qs('email-list-loading');
@@ -1152,6 +1189,28 @@
       }
       const quantity = Number(productSalesLookup.get(selected)) || 0;
       productSalesTotal.textContent = quantity.toLocaleString('en-US');
+    });
+  }
+
+  function listenForAffiliateCodes(){
+    if(!userId) return;
+    try{
+      if(typeof unsubscribeAffiliates === 'function') unsubscribeAffiliates();
+    }catch(_){}
+    const ref = collection(db, AFFILIATE_COLLECTION_PATH);
+    unsubscribeAffiliates = onSnapshot(ref, (snap)=>{
+      AFFILIATE_PROMO_CODES.clear();
+      snap.forEach(docSnap=>{
+        const data = docSnap.data() || {};
+        const rawCode = (data.customDiscountCode || data.code || docSnap.id || '').toString().trim();
+        if(!rawCode) return;
+        const normalized = rawCode.toUpperCase();
+        const label = (data.name || rawCode || normalized).toString().trim() || normalized;
+        AFFILIATE_PROMO_CODES.set(normalized, { label });
+      });
+      renderInfographics();
+    }, (err)=>{
+      console.error('Error listening to affiliates:', err);
     });
   }
 
@@ -2090,6 +2149,7 @@
       });
       if(productionToolsSection) productionToolsSection.classList.remove('hidden');
       listenForInventory(); listenForOrders(); listenForEmailList();
+      listenForAffiliateCodes();
     }else{
       userId=null;
       if(status) status.textContent='Status: Signed out';
@@ -2106,6 +2166,8 @@
       userAdjustedOrderView = false;
       orderSearchTerm = '';
       if(orderSearchInput) orderSearchInput.value='';
+      orderPaymentFilterValue = '';
+      if(orderPaymentFilterSelect) orderPaymentFilterSelect.value = '';
       sortedOrdersCache = [];
       allOrdersCache = [];
       previousOrdersCache.clear();
@@ -2135,6 +2197,10 @@
       emailListPendingWrites.clear();
       setEmailListCollapsed(true);
       refreshEmailListUI();
+      try{
+        if(typeof unsubscribeAffiliates === 'function') unsubscribeAffiliates();
+      }catch(_){}
+      AFFILIATE_PROMO_CODES.clear();
     }
   }
 
@@ -2429,6 +2495,7 @@ function listenForInventory() {
         ordersContainer.innerHTML=`<div class="text-center text-gray-500 py-12"><p class="text-lg">No orders found.</p><p class="text-sm mt-2">Your orders will appear here once they've been placed.</p></div>`;
         allOrdersCache=[]; totalRevenue=0; previousOrdersCache.clear();
         sortedOrdersCache=[];
+        updatePaymentFilterOptions(sortedOrdersCache);
         visibleOrdersCount = ORDERS_PAGE_SIZE;
         userAdjustedOrderView = false;
         updateFinancialUI();
@@ -2453,6 +2520,7 @@ function listenForInventory() {
       updateFinancialUI(); renderInfographics();
 
       sortedOrdersCache = sorted;
+      updatePaymentFilterOptions(sortedOrdersCache);
       if(!userAdjustedOrderView){
         visibleOrdersCount = Math.min(sortedOrdersCache.length, ORDERS_PAGE_SIZE);
       }
@@ -2732,6 +2800,54 @@ function listenForInventory() {
       }
     }
     return '';
+  }
+
+  function extractPromoSavings(order){
+    if(!order || typeof order !== 'object') return 0;
+    // Only count promo-related reductions (not generic price differences)
+    let best = 0;
+    const numericCandidates = [
+      order?.promo?.amount,
+      order?.promo?.value,
+      order?.promo?.discount,
+      order?.promo?.discountAmount,
+      order?.promoDiscount,
+      order?.promo_discount,
+      order?.promoSavings,
+      order?.promoSavingsAmount,
+      order?.discountAmount, // common field some carts use for promo code
+      order?.discount_amount
+    ];
+    numericCandidates.forEach(val=>{
+      const num = toFiniteNumber(val);
+      if(num !== null && Math.abs(num) > best) best = Math.abs(num);
+    });
+
+    const promoCollections = [
+      order?.discounts,
+      order?.adjustments,
+      order?.priceAdjustments,
+      order?.charges
+    ];
+    promoCollections.forEach(collection=>{
+      if(!Array.isArray(collection)) return;
+      collection.forEach(entry=>{
+        const label = String(entry?.label || entry?.type || entry?.name || '').toLowerCase();
+        const hasPromoCue = label.includes('promo') || label.includes('coupon') || label.includes('code') || label.includes('promotion');
+        if(!hasPromoCue) return;
+        const amount = toFiniteNumber(entry?.amount ?? entry?.value ?? entry?.total ?? entry?.price);
+        if(amount === null) return;
+        const candidate = Math.abs(amount);
+        if(candidate > best) best = candidate;
+      });
+    });
+
+    if(order?.charges && typeof order.charges === 'object' && !Array.isArray(order.charges)){
+      const amount = toFiniteNumber(order.charges.promo ?? order.charges.coupon);
+      if(amount !== null && Math.abs(amount) > best) best = Math.abs(amount);
+    }
+
+    return best;
   }
 
 
@@ -3126,6 +3242,7 @@ function listenForInventory() {
     const placeholder=qs('infographic-placeholder');
     const avg=qs('average-order-total');
     const dailyTotal=qs('daily-total-sales');
+    const dailyOrders=qs('daily-total-orders');
     const weeklyTotal=qs('weekly-total-sales');
     const weeklyOrders=qs('weekly-paid-orders');
     const dailyAverage=qs('daily-average-order');
@@ -3140,10 +3257,21 @@ function listenForInventory() {
     const pq=qs('list-top-products-quantity');
     const ap=qs('list-affiliate-promos');
     const apEmpty=qs('affiliate-promos-empty');
+    const apPeriod=qs('list-affiliate-promos-period');
+    const apPeriodEmpty=qs('affiliate-promos-period-empty');
+    const apTodayCount=qs('affiliate-promo-today-count');
+    const apTodayAmount=qs('affiliate-promo-today-amount');
+    const promoSavingsTodayEl=qs('promo-savings-today');
+    const promoSalesShareTodayEl=qs('promo-sales-share-today');
+    const promoSalesShareMetaTodayEl=qs('promo-sales-share-meta-today');
+    const promoSavingsMonthEl=qs('promo-savings-month');
+    const promoSalesShareEl=qs('promo-sales-share');
+    const promoSalesShareMetaEl=qs('promo-sales-share-meta');
     const previousProductSelection = productSalesSelect ? productSalesSelect.value : '';
     productSalesLookup = new Map();
     if(avg) avg.textContent='N/A';
     if(dailyTotal) dailyTotal.textContent='$0.00';
+    if(dailyOrders) dailyOrders.textContent='0 orders';
     if(weeklyTotal) weeklyTotal.textContent='$0.00';
     if(weeklyOrders) weeklyOrders.textContent='0';
     if(dailyAverage) dailyAverage.textContent='N/A';
@@ -3160,6 +3288,16 @@ function listenForInventory() {
     m.innerHTML=''; c.innerHTML=''; pr.innerHTML=''; pq.innerHTML='';
     if(ap) ap.innerHTML='';
     if(apEmpty) apEmpty.classList.add('hidden');
+    if(apPeriod) apPeriod.innerHTML='';
+    if(apPeriodEmpty) apPeriodEmpty.classList.add('hidden');
+    if(apTodayCount) apTodayCount.textContent='0';
+    if(apTodayAmount) apTodayAmount.textContent='$0.00';
+    if(promoSavingsTodayEl) promoSavingsTodayEl.textContent='$0.00';
+    if(promoSalesShareTodayEl) promoSalesShareTodayEl.textContent='0%';
+    if(promoSalesShareMetaTodayEl) promoSalesShareMetaTodayEl.textContent='Promo orders today: 0/0';
+    if(promoSavingsMonthEl) promoSavingsMonthEl.textContent='$0.00';
+    if(promoSalesShareEl) promoSalesShareEl.textContent='0%';
+    if(promoSalesShareMetaEl) promoSalesShareMetaEl.textContent='Share of monthly paid revenue from promo orders';
     const paidOrders = allOrdersCache.filter(o=>o.paymentStatus==='Paid');
     updateTrendUI(buildTrendAnalytics(paidOrders));
     updateFinancialHealthSection(paidOrders);
@@ -3188,25 +3326,43 @@ function listenForInventory() {
 
     let startOfToday=null;
     let endOfToday=null;
+    let startOfWeek=null;
     if((dailyTotal || dailyAverage || weeklyTotal || weeklyOrders) && paidOrders.length>0){
       startOfToday=new Date();
       startOfToday.setHours(0,0,0,0);
       endOfToday=new Date(startOfToday);
       endOfToday.setDate(endOfToday.getDate()+1);
+      startOfWeek=new Date(startOfToday);
+      startOfWeek.setDate(startOfWeek.getDate()-6);
     }
 
     if((dailyTotal || dailyAverage) && paidOrders.length>0 && startOfToday && endOfToday){
       let todayCount=0;
       let todayTotal=0;
+      let promoOrdersToday=0;
+      let promoRevenueToday=0;
       paidOrders.forEach(order=>{
         const orderDate=extractOrderDate(order);
         if(orderDate && orderDate>=startOfToday && orderDate<endOfToday){
           todayCount++;
           todayTotal+=resolveOrderTotal(order);
+          const hasPromo = Boolean(resolvePromoCode(order));
+          if(hasPromo){
+            promoOrdersToday++;
+            promoRevenueToday += resolveOrderTotal(order);
+          }
         }
       });
       if(dailyTotal) dailyTotal.textContent=`$${currency(todayTotal)}`;
       if(dailyAverage) dailyAverage.textContent=todayCount>0?`$${currency(todayTotal/todayCount)}`:'N/A';
+      if(dailyOrders) dailyOrders.textContent = todayCount === 1 ? '1 order' : `${todayCount} orders`;
+      if(promoSalesShareTodayEl){
+        const share = todayTotal>0 ? (promoRevenueToday/todayTotal)*100 : 0;
+        promoSalesShareTodayEl.textContent = `${share.toFixed(1)}%`;
+      }
+      if(promoSalesShareMetaTodayEl){
+        promoSalesShareMetaTodayEl.textContent = `Promo orders today: ${promoOrdersToday}/${todayCount}`;
+      }
     }
 
     if((weeklyTotal || weeklyOrders) && paidOrders.length>0 && startOfToday && endOfToday){
@@ -3411,6 +3567,96 @@ function listenForInventory() {
         });
       }
     }
+
+    if(paidOrders.length>0 && startOfToday && endOfToday){
+      const startOfMonth = new Date(startOfToday.getFullYear(), startOfToday.getMonth(), 1);
+      const startOfNextMonth = new Date(startOfMonth);
+      startOfNextMonth.setMonth(startOfNextMonth.getMonth() + 1);
+      const windowStartOfWeek = startOfWeek ? new Date(startOfWeek) : (()=>{ const d=new Date(startOfToday); d.setDate(d.getDate()-6); return d; })();
+      let promoSavingsToday=0;
+      let promoSavingsMonth=0;
+      let promoRevenueMonth=0;
+      let totalRevenueMonth=0;
+      let promoOrdersMonth=0;
+      let totalOrdersMonth=0;
+      const affiliatePeriodTotals = new Map();
+      const includeAllCodes = AFFILIATE_PROMO_CODES.size === 0;
+      paidOrders.forEach(order=>{
+        const orderDate = extractOrderDate(order);
+        const hasPromo = Boolean(resolvePromoCode(order));
+        const orderTotal = resolveOrderTotal(order);
+        const inMonth = orderDate && orderDate>=startOfMonth && orderDate<startOfNextMonth;
+        const inToday = orderDate && orderDate>=startOfToday && orderDate<endOfToday;
+        const inWeek = orderDate && orderDate>=windowStartOfWeek && orderDate<endOfToday;
+        if(inMonth){
+          totalOrdersMonth++;
+          totalRevenueMonth += orderTotal;
+          if(hasPromo){
+            promoOrdersMonth++;
+            promoRevenueMonth += orderTotal;
+            promoSavingsMonth += extractPromoSavings(order);
+          }
+        }
+        if(inToday && hasPromo){
+          promoSavingsToday += extractPromoSavings(order);
+        }
+
+        // Affiliate period counts
+        const codeRaw = resolvePromoCode(order);
+        if(!codeRaw) return;
+        const normalized = codeRaw.toUpperCase();
+        if(!includeAllCodes && !AFFILIATE_PROMO_CODES.has(normalized)) return;
+        const entry = affiliatePeriodTotals.get(normalized) || {
+          code: normalized,
+          label: (AFFILIATE_PROMO_CODES.get(normalized)?.label || codeRaw || normalized),
+          today:0,
+          week:0,
+          month:0,
+          todayAmount:0,
+          weekAmount:0,
+          monthAmount:0
+        };
+        if(inToday){ entry.today += 1; entry.todayAmount += orderTotal; }
+        if(inWeek){ entry.week += 1; entry.weekAmount += orderTotal; }
+        if(inMonth){ entry.month += 1; entry.monthAmount += orderTotal; }
+        affiliatePeriodTotals.set(normalized, entry);
+      });
+      if(promoSavingsTodayEl) promoSavingsTodayEl.textContent = `$${currency(promoSavingsToday)}`;
+      if(promoSavingsMonthEl) promoSavingsMonthEl.textContent = `$${currency(promoSavingsMonth)}`;
+      if(promoSalesShareEl){
+        const share = totalRevenueMonth>0 ? (promoRevenueMonth/totalRevenueMonth)*100 : 0;
+        promoSalesShareEl.textContent = `${share.toFixed(1)}%`;
+      }
+      if(promoSalesShareMetaEl){
+        if(totalOrdersMonth>0){
+          promoSalesShareMetaEl.textContent = `Promo orders this month: ${promoOrdersMonth}/${totalOrdersMonth}`;
+        }else{
+          promoSalesShareMetaEl.textContent = 'No paid orders this month yet';
+        }
+      }
+      if(apPeriod){
+        apPeriod.innerHTML = '';
+        const sortedAffiliates = Array.from(affiliatePeriodTotals.values()).sort((a,b)=> b.month - a.month || a.code.localeCompare(b.code));
+        if(sortedAffiliates.length === 0){
+          if(apPeriodEmpty) apPeriodEmpty.classList.remove('hidden');
+        }else{
+          sortedAffiliates.forEach(entry=>{
+            const li=document.createElement('li');
+            li.innerHTML = `<span>${escapeHtml(entry.label)}</span><span class="font-bold text-cyan-300 text-right">Today: ${entry.today} ($${currency(entry.todayAmount)}) • Week: ${entry.week} ($${currency(entry.weekAmount)}) • Month: ${entry.month} ($${currency(entry.monthAmount)})</span>`;
+            apPeriod.appendChild(li);
+          });
+        }
+      }
+      if(apTodayCount){
+        const todayAffiliateTotal = Array.from(affiliatePeriodTotals.values()).reduce((sum, entry)=> sum + (entry.today || 0), 0);
+        apTodayCount.textContent = todayAffiliateTotal.toLocaleString('en-US');
+      }
+      if(apTodayAmount){
+        const todayAffiliateAmount = Array.from(affiliatePeriodTotals.values()).reduce((sum, entry)=> sum + (entry.todayAmount || 0), 0);
+        apTodayAmount.textContent = `$${currency(todayAffiliateAmount)}`;
+      }
+    }
+
   }
 
   function resolveOrderKey(order, index){
@@ -3962,6 +4208,84 @@ function listenForInventory() {
     }
   }
 
+  function normalizePaymentFilterKey(label){
+    const base = (label || '').toString().trim().toLowerCase();
+    if(!base) return 'unspecified';
+    const cleaned = base.replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+    return cleaned || 'unspecified';
+  }
+
+  function derivePaymentMeta(order){
+    const payment = order?.payment || {};
+    const meta = payment.meta || {};
+    const methodRaw = payment.method || payment.type || meta.type || order.paymentType || order.paymentMethod || order.payment_method;
+    const venmoUser = payment.venmoUser || meta.venmoUser;
+    const txid = payment.txid || payment.transactionId || payment.txId || meta.txid || meta.transactionId || meta.txId;
+    const method = methodRaw ? String(methodRaw) : '';
+    const methodLower = method.toLowerCase();
+
+    if(methodLower.includes('venmo')){
+      return { label: venmoUser ? `${method} (${venmoUser})` : (method || 'Venmo'), txid: '', filterLabel: 'Venmo', filterKey: 'venmo' };
+    }
+
+    if(methodLower.includes('bitcoin') || methodLower==='btc'){
+      return { label: method || 'Bitcoin', txid: txid ? String(txid) : '', filterLabel: 'Bitcoin', filterKey: 'bitcoin' };
+    }
+
+    if(methodLower.includes('cash app') || methodLower==='cashapp' || methodLower==='cash app'){
+      const label = method || 'Cash App';
+      return { label, txid: txid ? String(txid) : '', filterLabel: 'Cash App', filterKey: 'cash-app' };
+    }
+
+    if(method){
+      const filterLabel = method;
+      const filterKey = normalizePaymentFilterKey(filterLabel);
+      const label = venmoUser ? `${method} (${venmoUser})` : method;
+      return { label, txid: txid ? String(txid) : '', filterLabel, filterKey };
+    }
+
+    if(venmoUser){
+      return { label: venmoUser, txid: '', filterLabel: 'Venmo', filterKey: 'venmo' };
+    }
+
+    return { label: 'Not specified', txid: '', filterLabel: 'Not specified', filterKey: 'unspecified' };
+  }
+
+  function orderMatchesPaymentType(order, selectedKey){
+    if(!selectedKey) return true;
+    const meta = derivePaymentMeta(order);
+    const currentKey = (meta.filterKey || '').toLowerCase();
+    return currentKey === selectedKey.toLowerCase();
+  }
+
+  function updatePaymentFilterOptions(orders){
+    if(!orderPaymentFilterSelect) return;
+    const options = new Map();
+    options.set('', 'All payment types');
+    (Array.isArray(orders) ? orders : []).forEach(order=>{
+      const meta = derivePaymentMeta(order);
+      const key = meta.filterKey || 'unspecified';
+      const label = meta.filterLabel || meta.label || 'Not specified';
+      if(!options.has(key)) options.set(key, label);
+    });
+
+    const previous = orderPaymentFilterValue;
+    orderPaymentFilterSelect.innerHTML = '';
+    options.forEach((label,key)=>{
+      const opt = document.createElement('option');
+      opt.value = key;
+      opt.textContent = label;
+      orderPaymentFilterSelect.appendChild(opt);
+    });
+
+    if(options.has(previous)){
+      orderPaymentFilterSelect.value = previous;
+    }else{
+      orderPaymentFilterValue = '';
+      orderPaymentFilterSelect.value = '';
+    }
+  }
+
   function getNormalizedOrderSearchTerm(){
     return orderSearchTerm.trim().toLowerCase();
   }
@@ -3981,9 +4305,12 @@ function listenForInventory() {
   function filterOrders(baseOrders){
     const list = Array.isArray(baseOrders) ? baseOrders : [];
     const normalizedTerm = getNormalizedOrderSearchTerm();
-    if(!normalizedTerm) return list;
     const normalizedDigits = normalizedTerm.replace(/[^0-9]/g,'');
-    return list.filter(order => orderMatchesSearch(order, normalizedTerm, normalizedDigits));
+    return list.filter(order => {
+      const matchesSearch = normalizedTerm ? orderMatchesSearch(order, normalizedTerm, normalizedDigits) : true;
+      const matchesPayment = orderMatchesPaymentType(order, orderPaymentFilterValue);
+      return matchesSearch && matchesPayment;
+    });
   }
 
   function renderOrdersList(sortedOrders){
@@ -3996,12 +4323,18 @@ function listenForInventory() {
     const filteredOrders = filterOrders(sortedOrders);
     if(filteredOrders.length === 0){
       const trimmedTerm = orderSearchTerm.trim();
+      const paymentFilterLabel = orderPaymentFilterSelect?.selectedOptions?.[0]?.textContent || '';
+      const hasPaymentFilter = Boolean(orderPaymentFilterValue);
       const headline = trimmedTerm
         ? `No orders match "${escapeHtml(trimmedTerm)}".`
-        : 'No orders found.';
+        : hasPaymentFilter
+          ? `No orders for ${escapeHtml(paymentFilterLabel || 'selected payment type')}.`
+          : 'No orders found.';
       const detail = trimmedTerm
         ? 'Try a different name, order ID, or phone number.'
-        : 'Your orders will appear here once they have been placed.';
+        : hasPaymentFilter
+          ? 'Try another payment type or clear the filter.'
+          : 'Your orders will appear here once they have been placed.';
       ordersContainer.innerHTML=`<div class="text-center text-gray-500 py-12"><p class="text-lg">${headline}</p><p class="text-sm mt-2">${detail}</p></div>`;
       updateLoadMoreVisibility(0);
       return;
@@ -4042,30 +4375,7 @@ function listenForInventory() {
         }
         return { label: 'Not specified', className: 'text-gray-300' };
       })();
-      const paymentDetails = (()=>{
-        const payment = order.payment || {};
-        const meta = payment.meta || {};
-        const methodRaw = payment.method || payment.type || meta.type || order.paymentType || order.paymentMethod || order.payment_method;
-        const venmoUser = payment.venmoUser || meta.venmoUser;
-        const txid = payment.txid || payment.transactionId || payment.txId || meta.txid || meta.transactionId || meta.txId;
-        const method = methodRaw ? String(methodRaw) : '';
-        const methodLower = method.toLowerCase();
-
-        if(methodLower.includes('venmo')){
-          const label = venmoUser ? `${method} (${venmoUser})` : (method || 'Venmo');
-          return { label, txid: '' };
-        }
-
-        if(methodLower.includes('bitcoin') || methodLower==='btc'){
-          const label = method || 'Bitcoin';
-          return { label, txid: txid ? String(txid) : '' };
-        }
-
-        if(venmoUser && method) return { label: `${method} (${venmoUser})`, txid: '' };
-        if(method) return { label: method, txid: '' };
-        if(venmoUser) return { label: venmoUser, txid: '' };
-        return { label: 'Not specified', txid: '' };
-      })();
+      const paymentDetails = derivePaymentMeta(order);
       const promoCodeDisplay = resolvePromoCode(order);
       const itemDiscount = Math.max(0, computed - discountedSubtotal);
       const status=order.paymentStatus||'Unknown';
@@ -4283,6 +4593,14 @@ function listenForInventory() {
     };
     orderSearchInput.addEventListener('input', handleOrderSearch);
     orderSearchInput.addEventListener('search', handleOrderSearch);
+  }
+
+  if(orderPaymentFilterSelect){
+    orderPaymentFilterSelect.addEventListener('change', ()=>{
+      orderPaymentFilterValue = orderPaymentFilterSelect.value || '';
+      visibleOrdersCount = ORDERS_PAGE_SIZE;
+      renderOrdersList(sortedOrdersCache);
+    });
   }
 
   if(exportUnshippedBtn){
