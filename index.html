@@ -624,6 +624,7 @@
           <select id="order-payment-filter" class="w-full sm:w-56 bg-gray-800 border border-gray-600 rounded-md shadow-sm p-3 text-gray-200 focus:ring-cyan-500 focus:border-cyan-500">
             <option value="">All payment types</option>
           </select>
+          <button id="open-items-sold-modal" class="btn-neon-cyan px-4 py-2 rounded-lg font-semibold text-xs w-full sm:w-auto">Items Sold Between Dates</button>
           <button id="export-unshipped-orders" class="btn-neon-lime px-4 py-2 rounded-lg font-semibold text-xs w-full sm:w-auto">Export Unshipped Orders</button>
         </div>
         <div id="orders-container" class="space-y-6">
@@ -960,6 +961,37 @@
     </div>
   </div>
 
+  <!-- Items Sold Between Dates Modal -->
+  <div id="items-sold-backdrop" class="modal-backdrop hidden"></div>
+  <div id="items-sold-modal" class="modal-main hidden">
+    <div class="flex justify-between items-center text-cyan-300 border-b pb-4 mb-4 border-gray-700">
+      <h2 class="text-2xl font-bold">Items Sold Between Dates</h2>
+      <button id="items-sold-close-btn" class="p-2 rounded-full text-gray-400 hover:text-white transition-colors" aria-label="Close items sold modal">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+    <div class="space-y-4 text-gray-200">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div>
+          <label for="items-sold-start" class="block text-sm font-medium text-gray-400">Start date</label>
+          <input id="items-sold-start" type="date" class="mt-1 w-full bg-gray-900 border border-gray-700 rounded-md p-2 text-gray-200 focus:ring-cyan-500 focus:border-cyan-500">
+        </div>
+        <div>
+          <label for="items-sold-end" class="block text-sm font-medium text-gray-400">End date</label>
+          <input id="items-sold-end" type="date" class="mt-1 w-full bg-gray-900 border border-gray-700 rounded-md p-2 text-gray-200 focus:ring-cyan-500 focus:border-cyan-500">
+        </div>
+      </div>
+      <div class="flex flex-wrap items-center gap-3">
+        <button id="items-sold-apply" class="btn-neon-cyan px-4 py-2 rounded-lg font-semibold text-xs">Apply Range</button>
+        <p id="items-sold-summary" class="text-sm text-gray-400">Pick a start and end date to see sold items.</p>
+      </div>
+      <div id="items-sold-empty" class="hidden text-sm text-gray-500 italic">No paid orders in this range.</div>
+      <ul id="items-sold-results" class="space-y-2"></ul>
+    </div>
+  </div>
+
   <!-- Firebase -->
   <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
@@ -1089,6 +1121,16 @@
   const prepareOrderItemsEl = qs('prepare-order-items');
   const prepareOrderTotalItemsEl = qs('prepare-order-total-items');
   const prepareOrderNotesInput = qs('prepare-order-notes');
+  const itemsSoldBackdrop = qs('items-sold-backdrop');
+  const itemsSoldModal = qs('items-sold-modal');
+  const itemsSoldCloseBtn = qs('items-sold-close-btn');
+  const itemsSoldStartInput = qs('items-sold-start');
+  const itemsSoldEndInput = qs('items-sold-end');
+  const itemsSoldApplyBtn = qs('items-sold-apply');
+  const itemsSoldSummary = qs('items-sold-summary');
+  const itemsSoldResults = qs('items-sold-results');
+  const itemsSoldEmpty = qs('items-sold-empty');
+  const openItemsSoldBtn = qs('open-items-sold-modal');
 
   // Trend tool DOM
   const trendProductSelect = qs('trend-product-select');
@@ -1531,6 +1573,112 @@
   }
 
   function showModal(message){ qs('modal-message').textContent = message; qs('alert-modal').classList.remove('hidden'); }
+  function getStartOfCurrentMonth(){
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  }
+  function parseDateInputValue(inputEl, endOfDay=false){
+    if(!inputEl || !inputEl.value) return null;
+    const suffix = endOfDay ? 'T23:59:59.999' : 'T00:00:00';
+    const d = new Date(`${inputEl.value}${suffix}`);
+    return Number.isNaN(d.valueOf()) ? null : d;
+  }
+  function openItemsSoldModal(){
+    if(!itemsSoldModal || !itemsSoldBackdrop) return;
+    const monthStart = getStartOfCurrentMonth();
+    const today = new Date();
+    if(itemsSoldStartInput && !itemsSoldStartInput.value){
+      itemsSoldStartInput.value = monthStart.toISOString().slice(0,10);
+    }
+    if(itemsSoldEndInput && !itemsSoldEndInput.value){
+      itemsSoldEndInput.value = today.toISOString().slice(0,10);
+    }
+    renderItemsSoldBetweenDates();
+    itemsSoldModal.classList.remove('hidden');
+    itemsSoldBackdrop.classList.remove('hidden');
+    itemsSoldModal.classList.add('is-open');
+    itemsSoldBackdrop.classList.add('is-open');
+  }
+  function closeItemsSoldModal(){
+    if(!itemsSoldModal || !itemsSoldBackdrop) return;
+    itemsSoldModal.classList.remove('is-open');
+    itemsSoldBackdrop.classList.remove('is-open');
+    itemsSoldModal.classList.add('hidden');
+    itemsSoldBackdrop.classList.add('hidden');
+  }
+  function renderItemsSoldBetweenDates(){
+    if(!itemsSoldResults || !itemsSoldSummary || !itemsSoldEmpty) return;
+    const start = parseDateInputValue(itemsSoldStartInput, false);
+    const end = parseDateInputValue(itemsSoldEndInput, true);
+    itemsSoldResults.innerHTML = '';
+    if(!start || !end){
+      itemsSoldEmpty.classList.add('hidden');
+      itemsSoldSummary.textContent = 'Pick a start and end date to see sold items.';
+      return;
+    }
+    if(end < start){
+      itemsSoldEmpty.classList.remove('hidden');
+      itemsSoldEmpty.textContent = 'End date must be after the start date.';
+      itemsSoldSummary.textContent = '';
+      return;
+    }
+
+    const orders = Array.isArray(allOrdersCache) ? allOrdersCache : [];
+    const paidOrders = orders.filter(order=>{
+      if(order?.paymentStatus !== 'Paid') return false;
+      const date = extractOrderDate(order);
+      if(!date) return false;
+      return date >= start && date <= end;
+    });
+
+    const itemsMap = new Map();
+    let totalQty = 0;
+
+    paidOrders.forEach(order=>{
+      const items = Array.isArray(order.items) ? order.items : [];
+      items.forEach(item=>{
+        const label = item.id || item.name || 'Item';
+        const key = (item.id || item.name || 'Item').toLowerCase();
+        const qtyRaw = Number(item.quantity ?? 0);
+        const qty = Number.isFinite(qtyRaw) ? qtyRaw : 0;
+        const revenueRaw = Number(item.unitPrice ?? 0) * qty;
+        const revenue = Number.isFinite(revenueRaw) ? revenueRaw : 0;
+        if(!itemsMap.has(key)){
+          itemsMap.set(key, { label, quantity: 0, revenue: 0 });
+        }
+        const entry = itemsMap.get(key);
+        entry.quantity += qty;
+        entry.revenue += revenue;
+        totalQty += qty;
+      });
+    });
+
+    if(itemsMap.size === 0){
+      itemsSoldEmpty.classList.remove('hidden');
+      itemsSoldEmpty.textContent = 'No paid orders in this range.';
+      itemsSoldSummary.textContent = `${paidOrders.length} paid orders`;
+      return;
+    }
+
+    itemsSoldEmpty.classList.add('hidden');
+    const rows = Array.from(itemsMap.values()).sort((a,b)=>{
+      if(b.quantity !== a.quantity) return b.quantity - a.quantity;
+      return a.label.localeCompare(b.label);
+    });
+    itemsSoldResults.innerHTML = rows.map(row=>{
+      const qty = row.quantity;
+      const revenue = currency(row.revenue || 0);
+      return `<li class="flex items-center justify-between gap-3 p-3 border border-gray-700 rounded-lg bg-gray-900/60">
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-semibold text-cyan-200 break-words">${escapeHtml(row.label)}</p>
+          <p class="text-xs text-gray-400">Revenue: $${revenue}</p>
+        </div>
+        <span class="text-sm font-semibold text-emerald-300 whitespace-nowrap">Qty: ${qty}</span>
+      </li>`;
+    }).join('');
+
+    itemsSoldSummary.textContent = `${paidOrders.length} paid orders • ${totalQty} units`;
+  }
   function isValidEmail(e){ return /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.test(String(e).toLowerCase()); }
   function normalizeEmail(raw){
     if(typeof raw !== 'string') return null;
@@ -2531,6 +2679,9 @@ function listenForInventory() {
       }
 
       renderOrdersList(sortedOrdersCache);
+      if(itemsSoldModal && itemsSoldModal.classList.contains('is-open')){
+        renderItemsSoldBetweenDates();
+      }
       refreshEmailListUI();
     },(err)=>{
       console.error('Error listening to orders:',err);
@@ -4325,16 +4476,20 @@ function listenForInventory() {
       const trimmedTerm = orderSearchTerm.trim();
       const paymentFilterLabel = orderPaymentFilterSelect?.selectedOptions?.[0]?.textContent || '';
       const hasPaymentFilter = Boolean(orderPaymentFilterValue);
-      const headline = trimmedTerm
-        ? `No orders match "${escapeHtml(trimmedTerm)}".`
-        : hasPaymentFilter
-          ? `No orders for ${escapeHtml(paymentFilterLabel || 'selected payment type')}.`
-          : 'No orders found.';
-      const detail = trimmedTerm
-        ? 'Try a different name, order ID, or phone number.'
-        : hasPaymentFilter
-          ? 'Try another payment type or clear the filter.'
-          : 'Your orders will appear here once they have been placed.';
+      let headline;
+      let detail;
+      if(trimmedTerm){
+        headline = `No orders match "${escapeHtml(trimmedTerm)}".`;
+        detail = 'Try a different name, order ID, or phone number.';
+      }else if(hasPaymentFilter){
+        const parts = [];
+        if(hasPaymentFilter) parts.push(paymentFilterLabel || 'selected payment type');
+        headline = `No orders for ${escapeHtml(parts.join(' and '))}.`;
+        detail = 'Try another filter or clear the current filters.';
+      }else{
+        headline = 'No orders found.';
+        detail = 'Your orders will appear here once they have been placed.';
+      }
       ordersContainer.innerHTML=`<div class="text-center text-gray-500 py-12"><p class="text-lg">${headline}</p><p class="text-sm mt-2">${detail}</p></div>`;
       updateLoadMoreVisibility(0);
       return;
@@ -4606,6 +4761,29 @@ function listenForInventory() {
   if(exportUnshippedBtn){
     exportUnshippedBtn.addEventListener('click', handleExportUnshippedOrders);
   }
+
+  if(openItemsSoldBtn){
+    openItemsSoldBtn.addEventListener('click', openItemsSoldModal);
+  }
+  if(itemsSoldCloseBtn){
+    itemsSoldCloseBtn.addEventListener('click', closeItemsSoldModal);
+  }
+  if(itemsSoldBackdrop){
+    itemsSoldBackdrop.addEventListener('click', closeItemsSoldModal);
+  }
+  if(itemsSoldApplyBtn){
+    itemsSoldApplyBtn.addEventListener('click', renderItemsSoldBetweenDates);
+  }
+  [itemsSoldStartInput, itemsSoldEndInput].forEach(input=>{
+    if(input){
+      input.addEventListener('change', renderItemsSoldBetweenDates);
+    }
+  });
+  window.addEventListener('keydown',(e)=>{
+    if(e.key==='Escape' && itemsSoldModal && itemsSoldModal.classList.contains('is-open')){
+      closeItemsSoldModal();
+    }
+  });
 
   /* Read-only order item element */
   function createOrderItemElement(item){
