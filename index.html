@@ -4542,6 +4542,17 @@ function listenForInventory() {
         { label:'Phone', value: contact.phone },
         { label:'Address', value: contact.shippingAddress }
       ];
+      const contactCopyParts = [
+        contact.fullName,
+        contact.email,
+        contact.shippingAddress
+      ].map(v => (v ?? '').toString().trim()).filter(Boolean);
+      const contactCopyText = contactCopyParts.join('\n');
+      const contactHasData = contactCopyParts.length>0 || contactEntries.some(({value})=>(value??'').toString().trim().length>0);
+      const contactCopyAttr = contactCopyText ? ` data-copy="${encodeURIComponent(contactCopyText)}"` : '';
+      const contactCopyBtn = contactHasData
+        ? `<button type="button" class="copy-contact btn-neon-cyan px-2 py-0.5 rounded text-xs font-semibold shrink-0"${contactCopyAttr}>Copy Contact</button>`
+        : '';
       const contactHtml = contactEntries.map(({label,value})=>{
         const raw = (value ?? '').toString();
         const hasValue = raw.trim().length>0;
@@ -4630,7 +4641,10 @@ function listenForInventory() {
         </div>
 
         <div>
-          <p class="font-semibold text-gray-400 mb-2">Contact Info:</p>
+          <div class="flex items-center gap-2 mb-2">
+            <p class="font-semibold text-gray-400">Contact Info:</p>
+            ${contactCopyBtn}
+          </div>
           <div class="text-sm text-gray-500 space-y-1">
             ${contactHtml}
           </div>
