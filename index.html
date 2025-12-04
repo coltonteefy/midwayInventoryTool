@@ -629,8 +629,8 @@
         </div>
         <div class="flex flex-wrap items-center gap-2 text-xs">
           <span class="uppercase tracking-wide text-gray-500 font-semibold">View:</span>
-          <button type="button" class="order-filter-btn px-3 py-1 rounded-full border border-gray-700 bg-gray-800 text-gray-300 font-semibold" data-order-filter="all">All</button>
-          <button type="button" class="order-filter-btn px-3 py-1 rounded-full border border-gray-700 bg-gray-800 text-gray-300 font-semibold" data-order-filter="unshipped">Unshipped</button>
+          <button type="button" class="order-filter-btn px-3 py-1 rounded-full border border-gray-700 bg-gray-800 text-gray-300 font-semibold" data-order-filter="all">All Unshipped</button>
+          <button type="button" class="order-filter-btn px-3 py-1 rounded-full border border-gray-700 bg-gray-800 text-gray-300 font-semibold" data-order-filter="unshipped">Grouped Unshipped</button>
           <button type="button" class="order-filter-btn px-3 py-1 rounded-full border border-gray-700 bg-gray-800 text-gray-300 font-semibold" data-order-filter="shipped">Shipped</button>
         </div>
         <div id="orders-container" class="space-y-6">
@@ -2045,7 +2045,23 @@
     btn.textContent = label;
     btn.classList.remove('copied');
   }
-  function formatTimestamp(ts){ if(!ts) return 'Unknown date'; try{ if(typeof ts.toDate==='function'){ return ts.toDate().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});} const d=new Date(ts); if(!isNaN(d.getTime())) return d.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});}catch(_){} return 'Unknown date'; }
+  function formatTimestamp(ts){
+    if(!ts) return 'Unknown date';
+    try{
+      const d = typeof ts.toDate === 'function' ? ts.toDate() : new Date(ts);
+      if(!isNaN(d.getTime())){
+        return d.toLocaleString('en-US', {
+          year:'numeric',
+          month:'long',
+          day:'numeric',
+          hour:'numeric',
+          minute:'2-digit',
+          hour12:true
+        });
+      }
+    }catch(_){}
+    return 'Unknown date';
+  }
   function currency(n){ const num=typeof n==='number'?n:Number(n??0); return num.toFixed(2); }
   function toDateOrNull(raw){
     if(!raw) return null;
@@ -2137,11 +2153,12 @@
   }
 
   function extractTrackingHasShipped(raw){
+    const isMarkedTrue = (value) => value === true || value === 'true';
     if(raw && typeof raw === 'object'){
       if(typeof raw.hasShipped === 'boolean') return raw.hasShipped;
-      if(Array.isArray(raw.entries)) return raw.entries.some(entry => Boolean(entry?.hasShipped));
+      if(Array.isArray(raw.entries)) return raw.entries.some(entry => isMarkedTrue(entry?.hasShipped));
     }
-    if(Array.isArray(raw)) return raw.some(entry => Boolean(entry?.hasShipped));
+    if(Array.isArray(raw)) return raw.some(entry => isMarkedTrue(entry?.hasShipped));
     return false;
   }
 
@@ -2491,6 +2508,8 @@ function listenForInventory() {
     // ===== Table render (unchanged) =====
     snap.forEach((d) => {
       const item = inventoryCache[d.id] || d.data();
+      const isDeprecated = item?.deprecated === true || item?.deprecated === 'true';
+      if(isDeprecated) return;
       const tr = document.createElement('tr');
       tr.dataset.id = d.id;
       tr.className = 'hover:bg-gray-700 transition-colors duration-150';
@@ -4486,16 +4505,15 @@ function listenForInventory() {
     const list = Array.isArray(baseOrders) ? baseOrders : [];
     const normalizedTerm = getNormalizedOrderSearchTerm();
     const normalizedDigits = normalizedTerm.replace(/[^0-9]/g,'');
+    const effectiveShippingFilter = orderShippingFilter === 'all' ? 'unshipped' : orderShippingFilter;
     return list.filter(order => {
       const matchesSearch = normalizedTerm ? orderMatchesSearch(order, normalizedTerm, normalizedDigits) : true;
       const matchesPayment = orderMatchesPaymentType(order, orderPaymentFilterValue);
       const shipped = isOrderMarkedShipped(order);
       const matchesShipping =
-        orderShippingFilter === 'all'
-          ? true
-          : orderShippingFilter === 'shipped'
-            ? shipped
-            : !shipped;
+        effectiveShippingFilter === 'shipped'
+          ? shipped
+          : !shipped;
       return matchesSearch && matchesPayment && matchesShipping;
     });
   }
@@ -4762,7 +4780,8 @@ function listenForInventory() {
       const trimmedTerm = orderSearchTerm.trim();
       const paymentFilterLabel = orderPaymentFilterSelect?.selectedOptions?.[0]?.textContent || '';
       const hasPaymentFilter = Boolean(orderPaymentFilterValue);
-      const hasShippingFilter = orderShippingFilter !== 'all';
+      const effectiveShippingFilter = orderShippingFilter === 'all' ? 'unshipped' : orderShippingFilter;
+      const hasShippingFilter = effectiveShippingFilter !== 'all';
       let headline;
       let detail;
       if(trimmedTerm){
@@ -4771,7 +4790,7 @@ function listenForInventory() {
       }else if(hasPaymentFilter || hasShippingFilter){
         const parts = [];
         if(hasPaymentFilter) parts.push(paymentFilterLabel || 'selected payment type');
-        if(hasShippingFilter) parts.push(orderShippingFilter === 'shipped' ? 'shipped orders' : 'unshipped orders');
+        if(hasShippingFilter) parts.push(effectiveShippingFilter === 'shipped' ? 'shipped orders' : 'unshipped orders');
         headline = `No orders for ${escapeHtml(parts.join(' and '))}.`;
         detail = 'Try another filter or clear the current filters.';
       }else{
