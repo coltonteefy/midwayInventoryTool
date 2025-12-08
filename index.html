@@ -5554,7 +5554,23 @@ async function handleNewCostHistory(e){
     })) : [];
     const computedSubtotal = items.reduce((s,i)=>s+(Number(i.unitPrice)*Number(i.quantity)),0);
     const shipping = Number(order.shippingCost ?? 0);
+    const tax = Number(order.tax ?? order.taxAmount ?? 0);
+    const discount = Number(order.discount ?? order.discountAmount ?? 0);
     const total = Number(order.total ?? (computedSubtotal + shipping));
+    const payment = order.payment || {};
+    const paymentMeta = payment.meta || {};
+    const paymentMethod = payment.method || payment.type || paymentMeta.type || order.paymentMethod || order.paymentType || order.payment_method;
+    const venmoUser = paymentMeta.venmoUser || payment.venmoUser || order.venmoUser || order.paymentVenmoUser;
+    const paymentPayload = {
+      ...payment,
+      method: payment.method || paymentMethod,
+      type: payment.type || paymentMethod,
+      venmoUser: payment.venmoUser || venmoUser,
+      meta: {
+        ...paymentMeta,
+        venmoUser: paymentMeta.venmoUser || venmoUser
+      }
+    };
     const trackingEntries = extractTrackingEntries(order.tracking);
     const defaultHasShipped = extractTrackingHasShipped(order.tracking);
 
@@ -5569,7 +5585,10 @@ async function handleNewCostHistory(e){
       items,
       subtotal: resolveOrderSubtotal(order, computedSubtotal),
       shippingCost: shipping,
+      tax,
+      discount,
       total,
+      payment: paymentPayload,
       paymentStatus: order.paymentStatus ?? "unpaid",
       timestampISO: (order.timestamp?.toDate?.() && order.timestamp.toDate().toISOString()) || new Date().toISOString(),
       tracking: trackingEntries.map(t=>({
