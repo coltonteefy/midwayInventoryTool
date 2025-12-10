@@ -830,11 +830,6 @@
             <ul id="list-top-products-quantity" class="infographic-list"></ul>
           </div>
           <div class="infographic-card rounded-lg p-4 sm:col-span-2 lg:col-span-4">
-            <h3 class="text-md font-semibold text-center text-cyan-300 mb-4">Affiliate Promo Codes</h3>
-            <ul id="list-affiliate-promos" class="infographic-list"></ul>
-            <p id="affiliate-promos-empty" class="text-xs text-center text-slate-400 mt-2 hidden">No affiliate promo sales yet.</p>
-          </div>
-          <div class="infographic-card rounded-lg p-4 sm:col-span-2 lg:col-span-4">
             <h3 class="text-md font-semibold text-center text-cyan-300 mb-2">Affiliate Promo Counts</h3>
             <p id="affiliate-promo-today-count" class="text-3xl font-bold text-center text-cyan-200">0</p>
             <p class="text-xs text-center text-slate-400 mt-2 mb-3">Number of affiliate promo orders today</p>
@@ -1033,7 +1028,6 @@
       ['ROOKIE', { label: 'Rookie' }],
     ].map(([code, meta])=>[String(code || '').toUpperCase(), meta])
   ); // Add new affiliate codes or labels here to include them in the infographic
-  const AFFILIATE_PAYOUT_STORAGE_KEY = 'affiliatePayoutLedger';
   const DAY_MS = 24 * 60 * 60 * 1000;
   const TREND_WINDOW_DAYS = 30;
   const TREND_PAIR_WINDOW_DAYS = 90;
@@ -1055,7 +1049,6 @@
   let activePrepareOrderId = null;
   let trendAnalyticsCache = null;
   let trendSelectedKey = null;
-  let affiliatePayoutLedger = loadAffiliatePayoutLedger();
   let unsubscribeAffiliates = null;
   let emailListDocsCache = [];
   let emailListLoaded = false;
@@ -3050,66 +3043,6 @@ function listenForInventory() {
   }
 
 
-  function loadAffiliatePayoutLedger(){
-    if(typeof localStorage === 'undefined') return new Map();
-    try{
-      const raw = localStorage.getItem(AFFILIATE_PAYOUT_STORAGE_KEY);
-      if(!raw) return new Map();
-      const parsed = JSON.parse(raw);
-      if(!parsed || typeof parsed !== 'object') return new Map();
-      const entries = Object.entries(parsed).map(([code, record])=>{
-        const normalized = String(code || '').toUpperCase();
-        const subtotal = toFiniteNumber(record?.paidThroughSubtotal);
-        const paidAtRaw = Number(record?.paidAt);
-        return [
-          normalized,
-          {
-            paidThroughSubtotal: subtotal !== null ? subtotal : 0,
-            paidAt: Number.isFinite(paidAtRaw) ? paidAtRaw : null
-          }
-        ];
-      });
-      return new Map(entries);
-    }catch(_){
-      return new Map();
-    }
-  }
-
-  function persistAffiliatePayoutLedger(){
-    if(typeof localStorage === 'undefined') return;
-    try{
-      const obj = {};
-      affiliatePayoutLedger.forEach((record, code)=>{
-        obj[code] = {
-          paidThroughSubtotal: Number(record?.paidThroughSubtotal) || 0,
-          paidAt: Number.isFinite(record?.paidAt) ? record.paidAt : null
-        };
-      });
-      localStorage.setItem(AFFILIATE_PAYOUT_STORAGE_KEY, JSON.stringify(obj));
-    }catch(_){
-      /* ignore persistence errors */
-    }
-  }
-
-  function recordAffiliatePayout(code, subtotal){
-    const normalized = String(code || '').toUpperCase();
-    const safeSubtotal = Number.isFinite(subtotal) ? subtotal : 0;
-    if(!(affiliatePayoutLedger instanceof Map)){
-      affiliatePayoutLedger = new Map();
-    }
-    affiliatePayoutLedger.set(normalized, {
-      paidThroughSubtotal: safeSubtotal,
-      paidAt: Date.now()
-    });
-    persistAffiliatePayoutLedger();
-  }
-
-  function getAffiliateLedgerEntry(code){
-    const normalized = String(code || '').toUpperCase();
-    if(!(affiliatePayoutLedger instanceof Map)) return null;
-    return affiliatePayoutLedger.get(normalized) || null;
-  }
-
   function extractOrderSalesTax(order){
     if(!order || typeof order !== 'object') return 0;
 
@@ -3454,8 +3387,6 @@ function listenForInventory() {
     const totalProductsSoldEl=qs('total-products-sold');
     const pr=qs('list-top-products-revenue');
     const pq=qs('list-top-products-quantity');
-    const ap=qs('list-affiliate-promos');
-    const apEmpty=qs('affiliate-promos-empty');
     const apPeriod=qs('list-affiliate-promos-period');
     const apPeriodEmpty=qs('affiliate-promos-period-empty');
     const apTodayCount=qs('affiliate-promo-today-count');
@@ -3485,8 +3416,6 @@ function listenForInventory() {
     }
     if(productSalesTotal) productSalesTotal.textContent='—';
     m.innerHTML=''; c.innerHTML=''; pr.innerHTML=''; pq.innerHTML='';
-    if(ap) ap.innerHTML='';
-    if(apEmpty) apEmpty.classList.add('hidden');
     if(apPeriod) apPeriod.innerHTML='';
     if(apPeriodEmpty) apPeriodEmpty.classList.add('hidden');
     if(apTodayCount) apTodayCount.textContent='0';
@@ -3686,85 +3615,6 @@ function listenForInventory() {
       }
     }else{
       productSalesLookup = new Map();
-    }
-
-    if(ap){
-      const affiliateTotals = new Map();
-      const includeAllCodes = AFFILIATE_PROMO_CODES.size === 0;
-      paidOrders.forEach(order=>{
-        const codeRaw = resolvePromoCode(order);
-        if(!codeRaw) return;
-        const normalized = codeRaw.toUpperCase();
-        if(!includeAllCodes && !AFFILIATE_PROMO_CODES.has(normalized)) return;
-        const subtotal = resolveOrderSubtotal(order);
-        if(subtotal <= 0) return;
-        const current = affiliateTotals.get(normalized) || { code: normalized, label: codeRaw, count:0, subtotal:0 };
-        current.count += 1;
-        current.subtotal += subtotal;
-        affiliateTotals.set(normalized, current);
-      });
-      const sorted = Array.from(affiliateTotals.values()).sort((a,b)=>{
-        if(b.subtotal !== a.subtotal) return b.subtotal - a.subtotal;
-        return a.code.localeCompare(b.code);
-      });
-      if(sorted.length === 0){
-        if(apEmpty) apEmpty.classList.remove('hidden');
-      }else{
-        sorted.forEach(entry=>{
-          const meta = AFFILIATE_PROMO_CODES.get(entry.code) || {};
-          const label = meta.label || entry.label || entry.code;
-          const salesLabel = entry.count === 1 ? '1 sale' : `${entry.count} sales`;
-          const totalOwed = entry.subtotal * 0.10;
-          const ledger = getAffiliateLedgerEntry(entry.code);
-          const paidThroughSubtotal = Number(ledger?.paidThroughSubtotal) || 0;
-          const outstandingSubtotal = Math.max(0, entry.subtotal - paidThroughSubtotal);
-          const outstandingOwed = outstandingSubtotal * 0.10;
-          const trackedPaid = Math.max(0, totalOwed - outstandingOwed);
-          const outstandingLabel = outstandingOwed > 0.009
-            ? `$${currency(outstandingOwed)} outstanding`
-            : 'No outstanding payout';
-          const outstandingClass = outstandingOwed > 0.009 ? 'text-amber-300 font-semibold' : 'text-emerald-300';
-          const lastPaidAt = ledger?.paidAt && Number.isFinite(ledger.paidAt) ? new Date(ledger.paidAt) : null;
-          const lastPaidDate = lastPaidAt && !Number.isNaN(lastPaidAt.valueOf())
-            ? lastPaidAt.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
-            : null;
-          const lastPaidLabel = lastPaidDate
-            ? `Logged ${lastPaidDate}${trackedPaid>0.009?` • $${currency(trackedPaid)} tracked`:''}`
-            : 'No payout logged yet';
-
-          const li=document.createElement('li');
-          li.className='flex flex-col gap-2';
-
-          const header=document.createElement('div');
-          header.className='flex items-center justify-between gap-3';
-          header.innerHTML=`<span class="font-semibold text-slate-200">${escapeHtml(label)}</span><span class="font-bold text-cyan-300">$${currency(totalOwed)} total</span>`;
-
-          const subline=document.createElement('div');
-          subline.className='flex items-center justify-between text-xs text-slate-400';
-          subline.innerHTML=`<span>${salesLabel}</span><span class="${outstandingClass}">${outstandingLabel}</span>`;
-
-          const footer=document.createElement('div');
-          footer.className='flex flex-wrap items-center justify-between gap-3';
-          const lastPaidSpan=document.createElement('span');
-          lastPaidSpan.className='text-xs text-slate-500';
-          lastPaidSpan.textContent=lastPaidLabel;
-          const button=document.createElement('button');
-          button.className='btn-neon-lime px-3 py-1 rounded text-xs font-semibold affiliate-pay-btn';
-          button.textContent=outstandingOwed>0.009?'Log Payout':'Paid Up';
-          if(outstandingOwed<=0.009){
-            button.disabled=true;
-            button.classList.add('opacity-60','cursor-not-allowed');
-          }
-          button.addEventListener('click',()=>{
-            recordAffiliatePayout(entry.code, entry.subtotal);
-            renderInfographics();
-          });
-          footer.append(lastPaidSpan, button);
-
-          li.append(header, subline, footer);
-          ap.appendChild(li);
-        });
-      }
     }
 
     if(paidOrders.length>0 && startOfToday && endOfToday){
