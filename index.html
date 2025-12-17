@@ -838,6 +838,55 @@
             <p id="affiliate-promos-period-empty" class="text-xs text-center text-slate-400 mt-2 hidden">No affiliate promo orders yet.</p>
           </div>
         </div>
+        <!-- Daily Snapshots -->
+        <div id="daily-snapshot-section" class="space-y-3 mt-8">
+          <div class="flex items-center justify-between flex-wrap gap-3">
+            <h2 class="text-xl font-semibold text-white text-glow-fuchsia">Daily Snapshots</h2>
+            <div class="flex items-center gap-2">
+              <label for="snapshot-date" class="text-xs uppercase tracking-wide text-gray-400">Day</label>
+              <input id="snapshot-date" type="date" class="bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-200 focus:ring-cyan-500 focus:border-cyan-500">
+            </div>
+          </div>
+          <div class="grid gap-4 md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+            <div class="infographic-card rounded-lg p-4">
+              <div class="flex items-start justify-between gap-3">
+                <div class="space-y-1">
+                  <p class="text-xs uppercase tracking-wide text-gray-400">Start of day</p>
+                  <p id="snapshot-start-onhand" class="text-3xl font-bold text-cyan-200">0</p>
+                  <p class="text-xs text-slate-400">Based on prior stock and purchases.</p>
+                </div>
+                <div class="space-y-1 text-right">
+                  <p class="text-xs uppercase tracking-wide text-gray-400">End of day</p>
+                  <p id="snapshot-end-onhand" class="text-3xl font-bold text-emerald-200">0</p>
+                  <p id="snapshot-sold-count" class="text-sm text-emerald-100">Sold: 0</p>
+                </div>
+              </div>
+              <p class="text-xs text-slate-400 mt-2">Computed from cost history (adds) minus paid order quantities (subtracts).</p>
+              <div class="mt-4">
+                <div class="flex items-center justify-between text-xs uppercase tracking-wide text-gray-500 border-b border-gray-700 pb-2">
+                  <span>Date</span>
+                  <span class="flex items-center gap-6">
+                    <span>Start → End</span>
+                    <span>Sold</span>
+                  </span>
+                </div>
+                <ul id="snapshot-daily-list" class="divide-y divide-gray-800"></ul>
+                <p id="snapshot-daily-empty" class="text-sm text-gray-500 italic mt-3 hidden">Need inventory history and paid orders to build snapshots.</p>
+              </div>
+            </div>
+            <div class="infographic-card rounded-lg p-4">
+              <h3 class="text-md font-semibold text-center text-cyan-300 mb-2">Products Sold (selected day)</h3>
+              <p class="text-xs text-center text-slate-400 mb-3">Counts per paid order items.</p>
+              <ul id="snapshot-products-list" class="space-y-2"></ul>
+              <p id="snapshot-products-empty" class="text-sm text-gray-500 italic text-center hidden">No paid sales for this day.</p>
+              <div class="mt-5 border-t border-gray-800 pt-3">
+                <h4 class="text-sm font-semibold text-cyan-200 text-center mb-2">Started With (sold items)</h4>
+                <ul id="snapshot-products-start-list" class="space-y-2"></ul>
+                <p id="snapshot-products-start-empty" class="text-sm text-gray-500 italic text-center hidden">No sold items to show starting counts.</p>
+              </div>
+            </div>
+          </div>
+        </div>
         <div id="infographic-placeholder" class="text-center py-12 text-gray-500">
           No sales data to display yet.
         </div>
@@ -1034,6 +1083,7 @@
   const RESTOCK_WINDOW_DAYS = 14;
   const TREND_MINIMUM_BUFFER = 2;
   const PACKAGE_DEFAULTS = { weightLbs: 1, lengthIn: 9, widthIn: 6, heightIn: 2 };
+  const SNAPSHOT_LOOKBACK_DAYS = 14;
   let visibleOrdersCount = ORDERS_PAGE_SIZE;
   let orderSearchTerm = '';
   let userAdjustedOrderView = false;
@@ -1057,6 +1107,8 @@
   let emailListCombinedEntries = [];
   let orderPaymentFilterValue = '';
   let orderShippingFilter = 'all';
+  let dailySnapshotsCache = [];
+  let soldByDateCache = new Map();
 
   const loadMoreOrdersBtn = qs('load-more-orders');
   const ordersPagination = qs('orders-pagination');
@@ -1132,6 +1184,16 @@
   const itemsSoldResults = qs('items-sold-results');
   const itemsSoldEmpty = qs('items-sold-empty');
   const openItemsSoldBtn = qs('open-items-sold-modal');
+  const snapshotDateInput = qs('snapshot-date');
+  const snapshotStartOnHandEl = qs('snapshot-start-onhand');
+  const snapshotEndOnHandEl = qs('snapshot-end-onhand');
+  const snapshotSoldCountEl = qs('snapshot-sold-count');
+  const snapshotDailyList = qs('snapshot-daily-list');
+  const snapshotDailyEmpty = qs('snapshot-daily-empty');
+  const snapshotProductsList = qs('snapshot-products-list');
+  const snapshotProductsEmpty = qs('snapshot-products-empty');
+  const snapshotProductsStartList = qs('snapshot-products-start-list');
+  const snapshotProductsStartEmpty = qs('snapshot-products-start-empty');
 
   // Trend tool DOM
   const trendProductSelect = qs('trend-product-select');
@@ -1679,6 +1741,258 @@
     }).join('');
 
     itemsSoldSummary.textContent = `${paidOrders.length} paid orders • ${totalQty} units`;
+  }
+  function buildDateKeyFromValue(value){
+    if(!value) return null;
+    const d = new Date(value);
+    if(Number.isNaN(d.valueOf())) return null;
+    d.setHours(0,0,0,0);
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,'0');
+    const day = String(d.getDate()).padStart(2,'0');
+    return `${y}-${m}-${day}`;
+  }
+  function dateFromKey(key){
+    if(!key || typeof key !== 'string') return null;
+    const parts = key.split('-').map(Number);
+    if(parts.length !== 3 || parts.some(n=>!Number.isFinite(n))) return null;
+    const [y,m,d] = parts;
+    const dt = new Date(y, (m-1), d);
+    dt.setHours(0,0,0,0);
+    return Number.isNaN(dt.valueOf()) ? null : dt;
+  }
+  function computeVialsFromCostEntry(entry){
+    if(!entry) return 0;
+    const kits = Number(entry.totalKitsBought ?? 0);
+    const perKit = Number(entry.totalVialsPerKit ?? 0);
+    const qty = kits * perKit;
+    return Number.isFinite(qty) && qty > 0 ? qty : 0;
+  }
+  function recomputeDailySnapshots(){
+    if(!snapshotDailyList && !snapshotStartOnHandEl && !snapshotEndOnHandEl) return;
+
+    const eventsByDate = new Map();
+    const soldByDate = new Map();
+
+    Object.values(inventoryCache || {}).forEach(item=>{
+      const history = Array.isArray(item.costHistory) ? item.costHistory : [];
+      history.forEach(entry=>{
+        const dateKey = buildDateKeyFromValue(entry.purchaseDate);
+        const qty = computeVialsFromCostEntry(entry);
+        if(!dateKey || !qty) return;
+        const bucket = eventsByDate.get(dateKey) || { incoming:0, outgoing:0 };
+        bucket.incoming += qty;
+        eventsByDate.set(dateKey, bucket);
+      });
+    });
+
+    const paidOrders = Array.isArray(allOrdersCache) ? allOrdersCache.filter(o=>o.paymentStatus==='Paid') : [];
+    paidOrders.forEach(order=>{
+      const date = extractOrderDate(order);
+      const dateKey = buildDateKeyFromValue(date);
+      if(!dateKey) return;
+      let outgoing = 0;
+      const productsForDay = soldByDate.get(dateKey) || new Map();
+      const items = Array.isArray(order.items) ? order.items : [];
+      items.forEach(item=>{
+        const qty = Number(item?.quantity ?? 0);
+        if(!Number.isFinite(qty) || qty <= 0) return;
+        outgoing += qty;
+        const inv = typeof window._getInvFromOrderItem === 'function' ? window._getInvFromOrderItem(item) : null;
+        const label = inv?.name || item?.name || item?.id || 'Unknown Item';
+        const key = label.toLowerCase();
+        const existing = productsForDay.get(key) || { label, quantity: 0 };
+        existing.quantity += qty;
+        productsForDay.set(key, existing);
+      });
+      if(outgoing > 0){
+        const bucket = eventsByDate.get(dateKey) || { incoming:0, outgoing:0 };
+        bucket.outgoing += outgoing;
+        eventsByDate.set(dateKey, bucket);
+      }
+      if(productsForDay.size > 0){
+        soldByDate.set(dateKey, productsForDay);
+      }
+    });
+
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const lookbackStart = new Date(today);
+    lookbackStart.setDate(lookbackStart.getDate() - (SNAPSHOT_LOOKBACK_DAYS - 1));
+
+    let preStartBalance = 0;
+    eventsByDate.forEach((bucket,key)=>{
+      const dt = dateFromKey(key);
+      if(dt && dt < lookbackStart){
+        preStartBalance += (bucket.incoming || 0) - (bucket.outgoing || 0);
+      }
+    });
+
+    const snapshots = [];
+    let running = preStartBalance;
+    for(let cursor = new Date(lookbackStart); cursor <= today; cursor.setDate(cursor.getDate()+1)){
+      const key = buildDateKeyFromValue(cursor);
+      const bucket = eventsByDate.get(key) || { incoming:0, outgoing:0 };
+      const startOnHand = Math.max(0, Math.round(running));
+      running += (bucket.incoming || 0) - (bucket.outgoing || 0);
+      const endOnHand = Math.max(0, Math.round(running));
+      snapshots.push({ dateKey:key, startOnHand, endOnHand, sold: bucket.outgoing || 0 });
+    }
+
+    const computedLatest = snapshots.length ? snapshots[snapshots.length-1].endOnHand : 0;
+    const actualCurrent = Object.values(inventoryCache || {}).reduce((sum,item)=>{
+      const qty = Number(item?.currentInventory ?? 0);
+      return sum + (Number.isFinite(qty) ? qty : 0);
+    },0);
+    const offset = actualCurrent - computedLatest;
+    if(offset !== 0){
+      snapshots.forEach(snap=>{
+        snap.startOnHand = Math.max(0, snap.startOnHand + offset);
+        snap.endOnHand = Math.max(0, snap.endOnHand + offset);
+      });
+    }
+
+    dailySnapshotsCache = snapshots;
+    soldByDateCache = soldByDate;
+    renderDailySnapshotUI();
+  }
+  function aggregatePaidItemsBetween(start, end){
+    const out = new Map();
+    let totalQty = 0;
+    if(!start || !end) return { map: out, totalQty };
+    const paidOrders = Array.isArray(allOrdersCache)
+      ? allOrdersCache.filter(order=>{
+          if(order?.paymentStatus !== 'Paid') return false;
+          const dt = extractOrderDate(order);
+          if(!dt) return false;
+          return dt >= start && dt <= end;
+        })
+      : [];
+    paidOrders.forEach(order=>{
+      const items = Array.isArray(order.items) ? order.items : [];
+      items.forEach(item=>{
+        const qtyRaw = Number(item?.quantity ?? 0);
+        const qty = Number.isFinite(qtyRaw) && qtyRaw > 0 ? qtyRaw : 0;
+        if(!qty) return;
+        const inv = typeof window._getInvFromOrderItem === 'function' ? window._getInvFromOrderItem(item) : null;
+        const label = inv?.id || inv?.name || item?.id || item?.name || 'Unknown Item';
+        const key = label.toLowerCase();
+        const existing = out.get(key) || { label, quantity: 0 };
+        existing.quantity += qty;
+        out.set(key, existing);
+        totalQty += qty;
+      });
+    });
+    return { map: out, totalQty };
+  }
+  function formatDateLabel(dateKey){
+    const dt = dateFromKey(dateKey);
+    if(!dt) return dateKey || '—';
+    return dt.toLocaleDateString(undefined,{ month:'short', day:'numeric' });
+  }
+  function renderDailySnapshotUI(){
+    if(!snapshotDailyList && !snapshotStartOnHandEl && !snapshotEndOnHandEl) return;
+
+    if(snapshotDailyList) snapshotDailyList.innerHTML = '';
+    if(snapshotProductsList) snapshotProductsList.innerHTML = '';
+    if(snapshotProductsStartList) snapshotProductsStartList.innerHTML = '';
+    if(snapshotDailyEmpty) snapshotDailyEmpty.classList.toggle('hidden', dailySnapshotsCache.length > 0);
+
+    const selectedKey = buildDateKeyFromValue(snapshotDateInput?.value || null);
+    const fallbackKey = (selectedKey && dailySnapshotsCache.some(s=>s.dateKey===selectedKey))
+      ? selectedKey
+      : (dailySnapshotsCache.length ? dailySnapshotsCache[dailySnapshotsCache.length-1].dateKey : null);
+
+    if(snapshotDateInput && !snapshotDateInput.value && fallbackKey){
+      snapshotDateInput.value = fallbackKey;
+    }
+
+    const snapshot = dailySnapshotsCache.find(s=>s.dateKey === fallbackKey) || null;
+    if(snapshotStartOnHandEl) snapshotStartOnHandEl.textContent = snapshot ? snapshot.startOnHand.toLocaleString('en-US') : '0';
+    if(snapshotEndOnHandEl) snapshotEndOnHandEl.textContent = snapshot ? snapshot.endOnHand.toLocaleString('en-US') : '0';
+    const selectedStart = snapshotDateInput ? parseDateInputValue(snapshotDateInput,false) : null;
+    const selectedEnd = snapshotDateInput ? parseDateInputValue(snapshotDateInput,true) : null;
+    const { map: dayMap, totalQty: daySold } = aggregatePaidItemsBetween(selectedStart, selectedEnd);
+    if(snapshotSoldCountEl){
+      snapshotSoldCountEl.textContent = `Sold that day: ${daySold.toLocaleString('en-US')}`;
+    }
+
+    if(snapshotDailyList && dailySnapshotsCache.length){
+      const rows = dailySnapshotsCache.slice(-SNAPSHOT_LOOKBACK_DAYS).slice().reverse();
+      rows.forEach(row=>{
+        const li = document.createElement('li');
+        li.className = 'flex items-center justify-between py-2';
+        const dateSpan = document.createElement('span');
+        dateSpan.className = 'text-sm text-gray-200';
+        dateSpan.textContent = formatDateLabel(row.dateKey);
+        const metrics = document.createElement('span');
+        metrics.className = 'flex items-center gap-6 text-sm';
+        const onHand = document.createElement('span');
+        onHand.className = 'font-semibold text-cyan-200';
+        onHand.textContent = `${row.startOnHand.toLocaleString('en-US')} → ${row.endOnHand.toLocaleString('en-US')}`;
+        const sold = document.createElement('span');
+        sold.className = 'font-semibold text-emerald-200';
+        sold.textContent = row.sold.toLocaleString('en-US');
+        metrics.appendChild(onHand);
+        metrics.appendChild(sold);
+        li.appendChild(dateSpan);
+        li.appendChild(metrics);
+        snapshotDailyList.appendChild(li);
+      });
+    }
+
+    if(snapshotProductsList && snapshotProductsEmpty){
+      const soldMap = dayMap;
+      if(!soldMap || soldMap.size === 0){
+        snapshotProductsEmpty.classList.remove('hidden');
+        if(snapshotProductsStartEmpty) snapshotProductsStartEmpty.classList.remove('hidden');
+      }else{
+        snapshotProductsEmpty.classList.add('hidden');
+        if(snapshotProductsStartEmpty) snapshotProductsStartEmpty.classList.add('hidden');
+        const products = Array.from(soldMap.values()).sort((a,b)=>{
+          if(b.quantity !== a.quantity) return b.quantity - a.quantity;
+          return a.label.localeCompare(b.label);
+        });
+        products.forEach(prod=>{
+          const li = document.createElement('li');
+          li.className = 'flex items-center justify-between p-3 rounded-lg border border-gray-700 bg-gray-900/60';
+          const name = document.createElement('span');
+          name.className = 'text-sm font-semibold text-cyan-200 break-words';
+          name.textContent = prod.label;
+          const qty = document.createElement('span');
+          qty.className = 'text-sm font-semibold text-emerald-300 whitespace-nowrap';
+          qty.textContent = `Qty: ${prod.quantity.toLocaleString('en-US')}`;
+          li.appendChild(name);
+          li.appendChild(qty);
+          snapshotProductsList.appendChild(li);
+
+          if(snapshotProductsStartList){
+            const startLi = document.createElement('li');
+            startLi.className = 'flex items-center justify-between p-3 rounded-lg border border-gray-700 bg-gray-900/60';
+            const startName = document.createElement('span');
+            startName.className = 'text-sm font-semibold text-cyan-200 break-words';
+            startName.textContent = prod.label;
+            const startQty = document.createElement('span');
+            startQty.className = 'text-sm font-semibold text-amber-200 whitespace-nowrap';
+            const inv = typeof window._getInvFromOrderItem === 'function' ? window._getInvFromOrderItem({ id: prod.label, name: prod.label }) : null;
+            const currentInv = Number(inv?.currentInventory ?? 0);
+            const todaysAdds = (()=> {
+              if(!inv || !Array.isArray(inv.costHistory) || !selectedStart) return 0;
+              const todayKey = buildDateKeyFromValue(selectedStart);
+              return inv.costHistory.reduce((sum,entry)=>{
+                const k = buildDateKeyFromValue(entry.purchaseDate);
+                return k === todayKey ? sum + computeVialsFromCostEntry(entry) : sum;
+              },0);
+            })();
+            const startCount = Math.max(0, currentInv + prod.quantity - todaysAdds);
+            startQty.textContent = `Start: ${startCount.toLocaleString('en-US')}`;
+            startLi.appendChild(startName);
+            startLi.appendChild(startQty);
+            snapshotProductsStartList.appendChild(startLi);
+          }
+        });
+      }
+    }
   }
   function isValidEmail(e){ return /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.test(String(e).toLowerCase()); }
   function normalizeEmail(raw){
@@ -2361,6 +2675,9 @@
       emailListCombinedEntries = [];
       emailListCollapsed = true;
       emailListPendingWrites.clear();
+      dailySnapshotsCache = [];
+      soldByDateCache = new Map();
+      renderDailySnapshotUI();
       setEmailListCollapsed(true);
       refreshEmailListUI();
       try{
@@ -2589,6 +2906,7 @@ function listenForInventory() {
     refreshSaleToolUI();
     updateFinancialUI();
     renderInfographics();
+    recomputeDailySnapshots();
   }, (error) => {
     console.error('Error listening to inventory:', error);
     const tbody = qs('inventory-list');
@@ -2685,7 +3003,7 @@ function listenForInventory() {
         return sum;
       },0);
 
-      updateFinancialUI(); renderInfographics();
+      updateFinancialUI(); renderInfographics(); recomputeDailySnapshots();
 
       sortedOrdersCache = sorted;
       updatePaymentFilterOptions(sortedOrdersCache);
@@ -4830,6 +5148,9 @@ function listenForInventory() {
       input.addEventListener('change', renderItemsSoldBetweenDates);
     }
   });
+  if(snapshotDateInput){
+    snapshotDateInput.addEventListener('change', ()=>renderDailySnapshotUI());
+  }
   window.addEventListener('keydown',(e)=>{
     if(e.key==='Escape' && itemsSoldModal && itemsSoldModal.classList.contains('is-open')){
       closeItemsSoldModal();
