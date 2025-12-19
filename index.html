@@ -26,25 +26,17 @@
     .infographic-list li{ display:flex; justify-content:space-between; align-items:center; padding:.5rem 0; border-bottom:1px dashed #374151 }
     .infographic-list li:last-child{ border-bottom:none }
     .infographic-list .rank{ font-weight:bold; color:#06b6d4 }
-    #trend-tool-section .trend-shell{ background:#10172b; border:1px solid #1f2937; border-radius:18px; padding:24px; box-shadow:0 18px 40px rgba(8,145,178,.12); }
-    #trend-tool-section .trend-card{ background:#111827; border:1px solid #1f2937; border-radius:14px; padding:18px; box-shadow:0 12px 28px rgba(15,118,110,.15); display:flex; flex-direction:column; gap:1rem; }
-    #trend-tool-section .trend-card p{ margin:0; }
-    #trend-tool-section .trend-label{ font-size:.7rem; letter-spacing:.12em; text-transform:uppercase; color:#94a3b8; }
-    #trend-tool-section .trend-value{ font-size:1.75rem; font-weight:700; color:#38bdf8; }
-    #trend-tool-section .trend-subtext{ font-size:.85rem; color:#cbd5f5; }
-    #trend-tool-section .trend-grid{ display:grid; gap:1rem; grid-template-columns:repeat(1,minmax(0,1fr)); }
-    @media (min-width:640px){ #trend-tool-section .trend-grid{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
-    @media (min-width:1024px){ #trend-tool-section .trend-grid{ grid-template-columns:repeat(4,minmax(0,1fr)); } }
-    #trend-tool-section .trend-subgrid{ display:grid; gap:1rem; grid-template-columns:repeat(1,minmax(0,1fr)); }
-    @media (min-width:768px){ #trend-tool-section .trend-subgrid{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
-    #trend-tool-section .trend-list{ list-style:none; margin:0; padding:0; }
-    #trend-tool-section .trend-list li{ display:flex; align-items:center; justify-content:space-between; gap:.75rem; padding:.55rem 0; border-bottom:1px dashed #374151; }
-    #trend-tool-section .trend-list li:last-child{ border-bottom:none; }
-    #trend-tool-section .trend-list .rank{ font-weight:700; color:#38bdf8; font-size:.75rem; text-transform:uppercase; }
-    #trend-tool-section .trend-list .name{ flex:1 1 auto; color:#e2e8f0; font-size:.9rem; }
-    #trend-tool-section .trend-list .value{ font-weight:600; color:#cbd5f5; font-size:.85rem; text-align:right; white-space:nowrap; }
-    #trend-tool-section label{ font-size:.7rem; letter-spacing:.12em; text-transform:uppercase; color:#94a3b8; margin:0; display:block; }
-    #trend-tool-section select{ margin:0; }
+    .financial-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:1.5rem }
+    .financial-card{ padding:1.25rem }
+    .financial-card h3{ font-size:clamp(1rem,3vw + .4rem,1.35rem); line-height:1.25 }
+    .financial-kpi{ font-size:clamp(1.6rem,3vw + 1rem,2.5rem); font-weight:700 }
+    .financial-kpi-lg{ font-size:clamp(2rem,4vw + 1rem,2.8rem); font-weight:700 }
+    .financial-sub{ font-size:clamp(.85rem,1.5vw + .35rem,1rem) }
+    @media (max-width:1400px){ .financial-grid{ grid-template-columns:1fr } }
+    @media (max-width:640px){
+      .financial-grid{ gap:1rem }
+      .financial-card{ padding:1rem }
+    }
     .modal-backdrop{ position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:40; opacity:0; transition:opacity .3s; pointer-events:none }
     .modal-backdrop.is-open{ opacity:1; pointer-events:auto }
     .modal-main{ position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); width:90%; max-width:600px; background:#111827; z-index:50; border-radius:12px; box-shadow:0 10px 25px rgba(0,0,0,.5); padding:2rem; transition:transform .3s,opacity .3s; opacity:0; pointer-events:none; max-height:90%; overflow-y:auto }
@@ -577,39 +569,39 @@
       <!-- Financial Health Section -->
       <section id="financial-health-section" class="space-y-4 mt-10">
         <h2 class="text-xl font-semibold text-white text-glow-fuchsia">Financial Health Snapshot</h2>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div class="infographic-card rounded-lg p-4 flex flex-col gap-3">
+        <div class="financial-grid">
+          <div class="infographic-card financial-card rounded-lg flex flex-col gap-3">
             <h3 class="text-md font-semibold text-center text-cyan-300">Monthly Revenue (Gross + Net)</h3>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-center">
               <div>
                 <p class="text-xs uppercase tracking-wide text-gray-400">Gross</p>
-                <p id="kpi-monthly-gross" class="text-2xl font-bold text-cyan-200">$0.00</p>
+                <p id="kpi-monthly-gross" class="financial-kpi text-center text-cyan-200">$0.00</p>
               </div>
               <div>
                 <p class="text-xs uppercase tracking-wide text-gray-400">Net</p>
-                <p id="kpi-monthly-net" class="text-2xl font-bold text-emerald-200">$0.00</p>
+                <p id="kpi-monthly-net" class="financial-kpi text-center text-emerald-200">$0.00</p>
               </div>
             </div>
-            <p class="text-xs text-center text-slate-400">Paid orders this month with COGS from inventory history.</p>
+            <p class="financial-sub text-center text-slate-400">Paid orders this month with COGS from inventory history.</p>
           </div>
-          <div class="infographic-card rounded-lg p-4 flex flex-col gap-2 justify-center">
+          <div class="infographic-card financial-card rounded-lg flex flex-col gap-2 justify-center">
             <h3 class="text-md font-semibold text-center text-cyan-300">Average Margin per Product</h3>
-            <p id="kpi-average-margin" class="text-3xl font-bold text-center text-cyan-200">—</p>
-            <p id="kpi-average-margin-percent" class="text-sm text-center text-slate-400">Waiting on sales data</p>
+            <p id="kpi-average-margin" class="financial-kpi-lg text-center text-cyan-200">—</p>
+            <p id="kpi-average-margin-percent" class="financial-sub text-center text-slate-400">Waiting on sales data</p>
           </div>
-          <div class="infographic-card rounded-lg p-4 flex flex-col gap-3">
+          <div class="infographic-card financial-card rounded-lg flex flex-col gap-3">
             <h3 class="text-md font-semibold text-center text-cyan-300">Current Inventory + Cost Basis</h3>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-center">
               <div>
                 <p class="text-xs uppercase tracking-wide text-gray-400">Units on Hand</p>
-                <p id="kpi-total-inventory-units" class="text-2xl font-bold text-cyan-200">0</p>
+                <p id="kpi-total-inventory-units" class="financial-kpi text-center text-cyan-200">0</p>
               </div>
               <div>
                 <p class="text-xs uppercase tracking-wide text-gray-400">Cost Basis</p>
-                <p id="kpi-inventory-cost-basis" class="text-2xl font-bold text-emerald-200">$0.00</p>
+                <p id="kpi-inventory-cost-basis" class="financial-kpi text-center text-emerald-200">$0.00</p>
               </div>
             </div>
-            <p class="text-xs text-center text-slate-400">Snapshot of active inventory valuation.</p>
+            <p class="financial-sub text-center text-slate-400">Snapshot of active inventory valuation.</p>
           </div>
         </div>
       </section>
@@ -658,84 +650,6 @@
           <div id="email-list-loading" class="text-gray-500 text-sm">Loading emails...</div>
           <div id="email-list-empty" class="hidden text-gray-500 text-sm">No emails found yet.</div>
           <ul id="email-list" class="hidden divide-y divide-gray-800"></ul>
-        </div>
-      </div>
-
-      <!-- Trend Tool -->
-      <div id="trend-tool-section" class="space-y-4 mt-8">
-        <h2 class="text-xl font-semibold text-white text-glow-fuchsia">Product Trend Tool</h2>
-        <div class="trend-shell">
-          <div class="grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] mb-4">
-            <div class="trend-card">
-              <label for="trend-product-select">Focus Product</label>
-              <select id="trend-product-select" class="w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-3 text-gray-200 focus:ring-cyan-500 focus:border-cyan-500">
-                <option value="">Loading...</option>
-              </select>
-              <p class="trend-subtext">Pick a product to see velocity, bundle trends, and restock guidance.</p>
-            </div>
-            <div class="trend-card">
-              <p class="trend-label">Top Performer (30d)</p>
-              <p id="trend-top-performer" class="trend-value">—</p>
-              <p id="trend-top-performer-meta" class="trend-subtext">Waiting on paid orders to surface a leader.</p>
-            </div>
-          </div>
-          <div id="trend-no-data" class="text-center text-gray-500 py-8">
-            Waiting on paid orders to compute trend insights.
-          </div>
-          <div id="trend-content" class="space-y-4 hidden">
-            <div class="trend-grid">
-              <div class="trend-card">
-                <p class="trend-label">Units Sold (30d)</p>
-                <p id="trend-metric-units-30" class="trend-value">0</p>
-              </div>
-              <div class="trend-card">
-                <p class="trend-label">Orders (30d)</p>
-                <p id="trend-metric-orders-30" class="trend-value">0</p>
-                <p id="trend-metric-orders-detail" class="trend-subtext">—</p>
-              </div>
-              <div class="trend-card">
-                <p class="trend-label">Sales Velocity</p>
-                <p id="trend-metric-velocity" class="trend-value">0.00 units/day</p>
-                <p id="trend-metric-velocity-subtext" class="trend-subtext">—</p>
-              </div>
-              <div class="trend-card">
-                <p class="trend-label">Restock Suggestion</p>
-                <p id="trend-metric-restock" class="trend-value">—</p>
-                <p id="trend-restock-note" class="trend-subtext">Select a product to calculate restock guidance.</p>
-              </div>
-            </div>
-            <div class="trend-subgrid">
-              <div class="trend-card">
-                <p class="trend-label">Frequently Bought With</p>
-                <ul id="trend-co-purchase-list" class="trend-list"></ul>
-              </div>
-              <div class="trend-card">
-                <p class="trend-label">Sales Snapshot</p>
-                <div class="space-y-2 text-sm text-gray-300">
-                  <div class="flex justify-between">
-                    <span class="text-gray-400">Revenue (30d)</span>
-                    <span id="trend-revenue-30" class="font-semibold text-cyan-300">$0.00</span>
-                  </div>
-                  <div class="flex justify-between">
-                    <span class="text-gray-400">Revenue (all)</span>
-                    <span id="trend-revenue-all" class="font-semibold text-cyan-300">$0.00</span>
-                  </div>
-                  <div class="flex justify-between">
-                    <span class="text-gray-400">Units sold (all)</span>
-                    <span id="trend-units-all" class="font-semibold text-cyan-300">0</span>
-                  </div>
-                  <div class="flex justify-between">
-                    <span class="text-gray-400">Avg per order</span>
-                    <span id="trend-avg-per-order" class="font-semibold text-cyan-300">—</span>
-                  </div>
-                  <div class="flex justify-between">
-                    <span class="text-gray-400">Last sold</span>
-                    <span id="trend-last-sold" class="font-semibold text-cyan-300">—</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
