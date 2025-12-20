@@ -5822,15 +5822,20 @@ async function handleNewCostHistory(e){
     const targetTracking = trackingNumber || payloadOrder.tracking?.[0]?.number || "";
     if(!targetTracking){ showModal('No tracking number available for this order.'); return; }
 
+    // Get carrier from tracking entry
+    const entries = extractTrackingEntries(order.tracking);
+    let idx = Number(trackIndex);
+    if(Number.isNaN(idx) || idx < 0 || idx >= entries.length){
+      idx = entries.findIndex(t=>String(t.number||'')===String(targetTracking));
+    }
+    const carrier = (idx>=0 && idx<entries.length && entries[idx].carrier) 
+      ? entries[idx].carrier.toLowerCase() 
+      : 'ups'; // Default to UPS
+
     const original = btn?.textContent;
     if(btn){ btn.disabled = true; btn.textContent = 'Sending...'; btn.classList.add('opacity-70','cursor-not-allowed'); }
     try{
-      await sendShippingFn({ order: payloadOrder, trackingNumber: targetTracking });
-      const entries = extractTrackingEntries(order.tracking);
-      let idx = Number(trackIndex);
-      if(Number.isNaN(idx) || idx < 0 || idx >= entries.length){
-        idx = entries.findIndex(t=>String(t.number||'')===String(targetTracking));
-      }
+      await sendShippingFn({ order: payloadOrder, trackingNumber: targetTracking, carrier });
       if(idx>=0 && idx<entries.length){
         entries[idx] = { ...entries[idx], hasEmailSent:true };
         const orderRef = doc(db, ORDERS_COLLECTION_PATH, orderId);
