@@ -3183,7 +3183,7 @@ function listenForInventory() {
     const explicit = (order?.contactInfo?.shippingMethod || '').toString().trim();
     const subtotalValue = toFiniteNumber(subtotalHint);
     const subtotal = subtotalValue !== null ? subtotalValue : resolveOrderSubtotal(order);
-    if(Number.isFinite(subtotal) && subtotal >= 200){
+    if(Number.isFinite(subtotal) && subtotal >= 300){
       return '2nd Day Air';
     }
     return explicit;
