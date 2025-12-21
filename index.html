@@ -293,6 +293,10 @@
                     <input type="number" step="0.01" id="new-item-price" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" value="0" min="0" required>
                   </div>
                   <div class="w-full">
+                    <label for="new-item-price-per-kit" class="block text-sm font-medium text-gray-400">Sell Price per Kit ($)</label>
+                    <input type="number" step="0.01" id="new-item-price-per-kit" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" value="0" min="0" required>
+                  </div>
+                  <div class="w-full">
                     <label for="new-item-total-vial-weight" class="block text-sm font-medium text-gray-400">Total Vial Weight (mg)</label>
                     <input type="number" step="0.01" id="new-item-total-vial-weight" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" value="0" min="0" required>
                   </div>
@@ -309,8 +313,11 @@
                     </div>
                   </div>
                   <div class="w-full col-span-1 sm:col-span-2 lg:col-span-3">
-                    <label for="new-item-image" class="block text-sm font-medium text-gray-400">Image URL</label>
-                    <input type="url" id="new-item-image" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="https://example.com/image.jpg">
+                    <label for="new-item-image" class="block text-sm font-medium text-gray-400 mb-2">Image URL</label>
+                    <div class="flex items-center bg-gray-800 border border-gray-600 rounded-md overflow-hidden">
+                      <span class="px-3 py-2 bg-gray-700 text-gray-400 text-sm whitespace-nowrap">https://midwaygrays.com/productImage/</span>
+                      <input type="text" id="new-item-image" class="flex-1 bg-gray-800 border-0 p-2 text-gray-300 focus:ring-0 focus:outline-none" placeholder="image.jpg">
+                    </div>
                   </div>
                   <div class="w-full col-span-1 sm:col-span-2 lg:col-span-3">
                     <label for="new-item-description" class="block text-sm font-medium text-gray-400">Product Description</label>
@@ -321,8 +328,16 @@
                 <div class="space-y-3 mt-6 p-4 rounded-lg border border-gray-700">
                   <h3 class="text-lg font-semibold text-white text-glow-cyan">Certificate of Analysis</h3>
                   <div>
-                    <label for="new-item-coa" class="block text-sm font-medium text-gray-400">COA URL</label>
-                    <input type="url" id="new-item-coa" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="https://example.com/coa.pdf">
+                    <label for="new-item-coa" class="block text-sm font-medium text-gray-400 mb-2">COA URL</label>
+                    <div class="flex items-center bg-gray-800 border border-gray-600 rounded-md overflow-hidden">
+                      <span class="px-3 py-2 bg-gray-700 text-gray-400 text-sm whitespace-nowrap">https://midwaygrays.com/COA/</span>
+                      <input type="text" id="new-item-coa" class="flex-1 bg-gray-800 border-0 p-2 text-gray-300 focus:ring-0 focus:outline-none" placeholder="image.jpg">
+                    </div>
+                  </div>
+                  <div class="mt-4 p-3 bg-gray-900 rounded-md border border-cyan-600">
+                    <label class="block text-xs font-medium text-gray-400 mb-1">Batch ID Preview</label>
+                    <div id="new-batch-id-preview" class="text-cyan-400 font-mono text-sm">MG[COA_NAME]</div>
+                    <p class="text-xs text-gray-500 mt-1">Based on COA filename (without extension)</p>
                   </div>
                 </div>
 
@@ -393,9 +408,12 @@
                 <div class="space-y-3 p-4 rounded-lg border border-gray-700">
                   <h3 class="text-lg font-semibold text-white text-glow-cyan">Certificate of Analysis</h3>
                   <div>
-                    <label for="edit-item-coa" class="block text-sm font-medium text-gray-400">COA URL</label>
-                    <div class="mt-1 flex flex-col sm:flex-row gap-2">
-                      <input type="text" id="edit-item-coa" class="flex-1 bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="https://..." disabled>
+                    <label for="edit-item-coa" class="block text-sm font-medium text-gray-400 mb-2">COA URL</label>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                      <div class="flex-1 flex items-center bg-gray-800 border border-gray-600 rounded-md overflow-hidden">
+                        <span class="px-3 py-2 bg-gray-700 text-gray-400 text-sm whitespace-nowrap">https://midwaygrays.com/COA/</span>
+                        <input type="text" id="edit-item-coa" class="flex-1 bg-gray-800 border-0 p-2 text-gray-300 focus:ring-0 focus:outline-none" placeholder="image.png" disabled>
+                      </div>
                       <button type="button" id="edit-item-deprecate-btn" class="btn-neon-red px-4 py-2 rounded-lg font-semibold text-xs sm:text-sm opacity-60 cursor-not-allowed" disabled>Deprecate</button>
                     </div>
                   </div>
@@ -1142,6 +1160,7 @@
   const newItemIdInput = qs('new-item-id');
   const newItemVialsSoldInput = qs('new-item-vials-sold');
   const newItemPriceInput = qs('new-item-price');
+  const newItemPricePerKitInput = qs('new-item-price-per-kit');
   const newItemTotalVialWeightInput = qs('new-item-total-vial-weight');
   const newItemBlendInput = qs('new-item-blend');
   const newItemIsActiveInput = qs('new-item-is-active');
@@ -1152,6 +1171,23 @@
   const newTotalKitsBoughtInput = qs('new-total-kits-bought');
   const newTotalVialsPerKitInput = qs('new-total-vials-per-kit');
   const newPurchaseDateInput = qs('new-purchase-date');
+  const newBatchIdPreview = qs('new-batch-id-preview');
+
+  // Update batch ID preview when COA changes
+  if(newItemCoaInput && newBatchIdPreview){
+    const updateBatchPreview = ()=>{
+      const coaValue = newItemCoaInput.value.trim();
+      if(coaValue){
+        // Remove file extension
+        const withoutExtension = coaValue.replace(/\.(png|jpg|jpeg|gif|webp|pdf)$/i, '');
+        newBatchIdPreview.textContent = withoutExtension;
+      }else{
+        newBatchIdPreview.textContent = 'MG[COA_NAME]';
+      }
+    };
+    newItemCoaInput.addEventListener('input', updateBatchPreview);
+    newItemCoaInput.addEventListener('change', updateBatchPreview);
+  }
 
   const inventoryEditorWrapper = qs('inventory-editor-wrapper');
   const toggleEditItemToolBtn = qs('toggle-edit-item-tool-btn');
@@ -1397,13 +1433,13 @@
   function buildLotId(itemId, costHistory){
     const baseId = (itemId || '').toUpperCase();
     if(!Array.isArray(costHistory) || costHistory.length === 0){
-      return `MG-${baseId}-${Date.now()}-1`;
+      return `MG${baseId}${Date.now()}1`;
     }
     const lastIndex = costHistory.length - 1;
     const lastEntry = costHistory[lastIndex] || {};
     const tsPart = normalizeLotTimestamp(lastEntry);
     const lotPosition = lastIndex + 1;
-    return `MG-${baseId}-${tsPart}-${lotPosition}`;
+    return `MG${baseId}${tsPart}${lotPosition}`;
   }
 
   function extractLotFromCostEntry(entry){
@@ -1541,7 +1577,12 @@
     if(editItemPriceInput) editItemPriceInput.value = asNumber(inv.sellPricePerVial, '');
     if(editItemTotalVialWeightInput) editItemTotalVialWeightInput.value = asNumber(inv.totalVialWeight, '');
     if(editItemImageInput) editItemImageInput.value = cleanField(inv.image);
-    if(editItemCoaInput) editItemCoaInput.value = cleanField(extractCoaUrl(inv.coa));
+    // Extract just the filename from the COA URL
+    if(editItemCoaInput) {
+      const fullUrl = cleanField(extractCoaUrl(inv.coa));
+      const filename = fullUrl.replace('https://midwaygrays.com/COA/', '');
+      editItemCoaInput.value = filename !== 'N/A' && filename !== fullUrl ? filename : fullUrl;
+    }
     if(editItemCoaLotInput) editItemCoaLotInput.value = cleanField(extractCoaLot(inv.coa));
     if(editItemDescriptionInput) editItemDescriptionInput.value = cleanField(inv.productDescription);
     if(editItemIsActiveInput) editItemIsActiveInput.checked = Boolean(inv.productIsActive);
@@ -5342,9 +5383,12 @@ function listenForInventory() {
     const productIsActive=newItemIsActiveInput.checked;
     const currentInventory=parseInt(newTotalKitsBoughtInput.value,10)*parseInt(newTotalVialsPerKitInput.value,10);
     const sellPricePerVial=parseFloat(newItemPriceInput.value);
+    const sellPricePerKit=parseFloat(newItemPricePerKitInput.value);
     const totalVialWeight=parseFloat(newItemTotalVialWeightInput.value);
-    const image=newItemImageInput.value.trim();
-    const coa=newItemCoaInput.value.trim();
+    const imageInput=newItemImageInput.value.trim();
+    const image = imageInput ? `https://midwaygrays.com/productImage/${imageInput}` : '';
+    const coaInput=newItemCoaInput.value.trim();
+    const coa = coaInput ? `https://midwaygrays.com/COA/${coaInput}` : '';
     const description=newItemDescriptionInput.value.trim();
     const vialsSold=parseInt(newItemVialsSoldInput.value,10);
 
@@ -5355,7 +5399,8 @@ function listenForInventory() {
 
     if(!name || !id){ showModal('Item Name and ID are required.'); return; }
     if(isNaN(currentInventory)||currentInventory<0){ showModal('Initial Inventory must be a non-negative number.'); return; }
-    if(isNaN(sellPricePerVial)||sellPricePerVial<0){ showModal('Sell Price must be a non-negative number.'); return; }
+    if(isNaN(sellPricePerVial)||sellPricePerVial<0){ showModal('Sell Price per Vial must be a non-negative number.'); return; }
+    if(isNaN(sellPricePerKit)||sellPricePerKit<0){ showModal('Sell Price per Kit must be a non-negative number.'); return; }
     if(isNaN(totalVialWeight)||totalVialWeight<0){ showModal('Total Vial Weight must be a non-negative number.'); return; }
     if(isNaN(vialsSold)||vialsSold<0){ showModal('Vials Sold must be a non-negative number.'); return; }
     if(isNaN(costPerKit)||costPerKit<0){ showModal('Cost Per Kit must be a non-negative number.'); return; }
@@ -5364,10 +5409,12 @@ function listenForInventory() {
     if(!purchaseDate){ showModal('Purchase Date is required.'); return; }
 
     const baseCostEntry = { costPerKit, purchaseDate, totalKitsBought, totalVialWeightInMg: totalVialWeight, totalVialsPerKit };
-    const initialLotId = buildLotId(id, [baseCostEntry]);
+    // Create batch ID from COA filename without extension
+    const coaWithoutExtension = coaInput.replace(/\.(png|jpg|jpeg|gif|webp|pdf)$/i, '');
+    const initialLotId = coaWithoutExtension || buildLotId(id, [baseCostEntry]);
     const newCostEntry = { ...baseCostEntry, lot: initialLotId };
     const newItemCoa = { url: coa || 'N/A', lot: initialLotId };
-    const newItem = { name, blend, productIsActive, productDescription: description || 'N/A', currentInventory, sellPricePerVial, totalVialWeight, image: image||'N/A', coa: newItemCoa, vialsSold, costHistory:[newCostEntry] };
+    const newItem = { name, blend, productIsActive, productDescription: description || 'N/A', currentInventory, sellPricePerVial, sellPricePerKit, totalVialWeight, image: image||'N/A', coa: newItemCoa, vialsSold, costHistory:[newCostEntry] };
 
     try{
       const itemRef = doc(db, INVENTORY_COLLECTION_PATH, id); // write at ID; no code field
@@ -5427,7 +5474,8 @@ function listenForInventory() {
       image: image || 'N/A',
       description: description || 'N/A'
     };
-    const normalizedCoaUrl = coaInputValue || 'N/A';
+    // Reconstruct full COA URL from filename input
+    const normalizedCoaUrl = coaInputValue && coaInputValue !== 'N/A' ? `https://midwaygrays.com/COA/${coaInputValue}` : (coaInputValue || 'N/A');
     const sanitizeNa = (val) => {
       const str = (val ?? '').trim();
       if(!str) return 'N/A';
