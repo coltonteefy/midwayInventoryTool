@@ -3233,7 +3233,7 @@ function listenForInventory() {
   function getShippingMeta(order){
     const method = deriveShippingMethod(order, resolveOrderSubtotal(order));
     const normalizedMethod = (method || '').toString().toLowerCase();
-    const isSecondDay = normalizedMethod.includes('2nd day');
+    const isSecondDay = normalizedMethod.includes('2nd day') || normalizedMethod.includes('2day');
     const isGround = !isSecondDay;
     const insuranceValue = toFiniteNumber(order.insuranceCost);
     const insured = insuranceValue !== null && insuranceValue > 0;
@@ -4668,7 +4668,8 @@ function listenForInventory() {
     const hasFreeShip = shippingCostSafe===0 && (order.promo?.type==='free_shipping');
     const salesTaxValue = extractOrderSalesTax(order);
     const shippingMethod = deriveShippingMethod(order, discountedSubtotal);
-    const shippingTypeDisplay = shippingMethod ? escapeHtml(String(shippingMethod)) : 'Not specified';
+    const normalizedShippingMethod = shippingMethod && (String(shippingMethod).toLowerCase().includes('2day') || String(shippingMethod).toLowerCase().includes('2nd day')) ? '2nd Day Air' : shippingMethod;
+    const shippingTypeDisplay = normalizedShippingMethod ? escapeHtml(String(normalizedShippingMethod)) : 'Not specified';
     const shippingInsuranceCostRaw = toFiniteNumber(order.insuranceCost);
     const shippingInsuranceState = (() => {
       if(shippingInsuranceCostRaw === null) return { label: 'Not specified', className: 'text-gray-300' };
