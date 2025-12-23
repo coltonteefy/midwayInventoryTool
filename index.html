@@ -624,6 +624,22 @@
         </div>
       </section>
 
+      <!-- Packing List Summary -->
+      <section id="packing-list-section" class="space-y-4 mt-8">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <h2 class="text-xl font-semibold text-white text-glow-fuchsia">Packing List - Unshipped Orders</h2>
+          <button id="packing-list-toggle" class="btn-neon-lime px-3 py-1 text-xs font-semibold rounded-lg" aria-expanded="true" aria-controls="packing-list-content">Collapse</button>
+        </div>
+        <div id="packing-list-content" class="bg-gray-900 border border-gray-700 rounded-lg p-4">
+          <div id="packing-list-loading" class="text-gray-500 text-sm">Calculating packing requirements...</div>
+          <div id="packing-list-empty" class="hidden text-gray-500 text-sm">No unshipped orders to pack.</div>
+          <div id="packing-list-data" class="hidden">
+            <p class="text-sm text-gray-400 mb-3">Total items needed for all unshipped orders:</p>
+            <ul id="packing-list-items" class="space-y-2"></ul>
+          </div>
+        </div>
+      </section>
+
       <!-- Orders -->
       <div class="space-y-4 mt-8">
         <h2 class="text-xl font-semibold text-white text-glow-fuchsia">Order Data Stream</h2>
@@ -1126,6 +1142,26 @@
   const snapshotProductsEmpty = qs('snapshot-products-empty');
   const snapshotProductsStartList = qs('snapshot-products-start-list');
   const snapshotProductsStartEmpty = qs('snapshot-products-start-empty');
+
+  // Packing list DOM
+  const packingListToggleBtn = qs('packing-list-toggle');
+  const packingListContent = qs('packing-list-content');
+  const packingListLoading = qs('packing-list-loading');
+  const packingListEmpty = qs('packing-list-empty');
+  const packingListData = qs('packing-list-data');
+  const packingListItems = qs('packing-list-items');
+  let packingListCollapsed = false;
+
+  if(packingListToggleBtn){
+    packingListToggleBtn.addEventListener('click', () => {
+      packingListCollapsed = !packingListCollapsed;
+      if(packingListContent){
+        packingListContent.style.display = packingListCollapsed ? 'none' : 'block';
+      }
+      packingListToggleBtn.textContent = packingListCollapsed ? 'Expand' : 'Collapse';
+      packingListToggleBtn.setAttribute('aria-expanded', packingListCollapsed ? 'false' : 'true');
+    });
+  }
 
   // Trend tool DOM
   const trendProductSelect = qs('trend-product-select');
@@ -4665,7 +4701,7 @@ function listenForInventory() {
     const totalSafe = (order.total!=null)?currency(order.total):currency(computed);
     const discountedSubtotal = resolveOrderSubtotal(order, computed);
     const shippingCostSafe = Number(order.shippingCost ?? 0);
-    const hasFreeShip = shippingCostSafe===0 && (order.promo?.type==='free_shipping');
+    const hasFreeShip = (discountedSubtotal >= 300) || (shippingCostSafe===0 && (order.promo?.type==='free_shipping'));
     const salesTaxValue = extractOrderSalesTax(order);
     const shippingMethod = deriveShippingMethod(order, discountedSubtotal);
     const normalizedShippingMethod = shippingMethod && (String(shippingMethod).toLowerCase().includes('2day') || String(shippingMethod).toLowerCase().includes('2nd day')) ? '2nd Day Air' : shippingMethod;
@@ -4892,6 +4928,80 @@ function listenForInventory() {
     return groups;
   }
 
+  function updatePackingList(orders){
+    if(!packingListLoading || !packingListEmpty || !packingListData || !packingListItems) return;
+    if(!Array.isArray(orders) || orders.length === 0){
+      packingListLoading.style.display = 'none';
+      packingListEmpty.style.display = 'block';
+      packingListData.style.display = 'none';
+      return;
+    }
+    
+    // Get all unshipped orders
+    const unshippedOrders = orders.filter(order => !isOrderMarkedShipped(order));
+    
+    if(unshippedOrders.length === 0){
+      packingListLoading.style.display = 'none';
+      packingListEmpty.style.display = 'block';
+      packingListData.style.display = 'none';
+      return;
+    }
+    
+    // Aggregate all products
+    const productCounts = new Map();
+    
+    unshippedOrders.forEach(order => {
+      const items = Array.isArray(order.items) ? order.items : [];
+      items.forEach(item => {
+        const label = item.id || item.name || 'Unknown Item';
+        const quantityRaw = item?.quantity ?? 1;
+        const quantity = Number.isFinite(Number(quantityRaw)) ? Number(quantityRaw) : 1;
+        
+        if(productCounts.has(label)){
+          productCounts.set(label, productCounts.get(label) + quantity);
+        } else {
+          productCounts.set(label, quantity);
+        }
+      });
+    });
+    
+    // Sort by product name
+    const sortedProducts = Array.from(productCounts.entries()).sort((a, b) => {
+      return a[0].localeCompare(b[0]);
+    });
+    
+    // Render the list
+    packingListItems.innerHTML = '';
+    sortedProducts.forEach(([productName, quantity]) => {
+      const kits = Math.floor(quantity / 10);
+      const singles = quantity % 10;
+      
+      const kitBadge = kits > 0 
+        ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-900/50 text-emerald-200 text-xs font-semibold border border-emerald-500/60 whitespace-nowrap">Kits: ${kits}</span>` 
+        : '';
+      const singlesBadge = singles > 0 
+        ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-cyan-900/40 text-cyan-100 text-xs font-semibold border border-cyan-500/60 whitespace-nowrap">Singles: ${singles}</span>` 
+        : '';
+      
+      const badges = [kitBadge, singlesBadge].filter(Boolean).join(' ');
+      
+      const listItem = document.createElement('li');
+      listItem.className = 'flex flex-wrap justify-between items-center gap-3 py-2 px-3 bg-gray-800/50 rounded-lg border border-gray-700';
+      listItem.innerHTML = `
+        <span class="text-gray-200 font-medium">${escapeHtml(productName)}</span>
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-cyan-300 font-semibold text-sm">Total: ${quantity}</span>
+          ${badges}
+        </div>
+      `;
+      packingListItems.appendChild(listItem);
+    });
+    
+    packingListLoading.style.display = 'none';
+    packingListEmpty.style.display = 'none';
+    packingListData.style.display = 'block';
+  }
+
   function renderOrdersList(sortedOrders){
     const ordersContainer=qs('orders-container');
     if(!ordersContainer) return;
@@ -4900,6 +5010,10 @@ function listenForInventory() {
     if(loading) loading.style.display='none';
 
     const filteredOrders = filterOrders(sortedOrders);
+    
+    // Update packing list with all orders (not just filtered)
+    updatePackingList(sortedOrders);
+    
     if(filteredOrders.length === 0){
       const trimmedTerm = orderSearchTerm.trim();
       const paymentFilterLabel = orderPaymentFilterSelect?.selectedOptions?.[0]?.textContent || '';
