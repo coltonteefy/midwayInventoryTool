@@ -659,6 +659,18 @@
           <button type="button" class="order-filter-btn px-3 py-1 rounded-full border border-gray-700 bg-gray-800 text-gray-300 font-semibold" data-order-filter="unshipped">Grouped Unshipped</button>
           <button type="button" class="order-filter-btn px-3 py-1 rounded-full border border-gray-700 bg-gray-800 text-gray-300 font-semibold" data-order-filter="shipped">Shipped</button>
         </div>
+        <div id="unshipped-summary" class="bg-gradient-to-r from-cyan-900/30 to-fuchsia-900/30 border border-cyan-700/50 rounded-lg p-3 text-sm">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-2">
+              <span class="text-gray-300 font-semibold">Total Unshipped Orders:</span>
+              <span id="unshipped-count" class="text-cyan-300 font-bold text-lg">0</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-gray-300 font-semibold">Total Value:</span>
+              <span id="unshipped-total-value" class="text-fuchsia-300 font-bold text-lg">$0.00</span>
+            </div>
+          </div>
+        </div>
         <div id="orders-container" class="space-y-6">
           <div id="loading-orders" class="text-center py-12">
             <div class="animate-spin inline-block w-8 h-8 border-4 border-cyan-500 border-solid rounded-full border-t-transparent"></div>
@@ -5002,6 +5014,34 @@ function listenForInventory() {
     packingListData.style.display = 'block';
   }
 
+  function updateUnshippedSummary(allOrders){
+    const unshippedCountEl = qs('unshipped-count');
+    const unshippedTotalValueEl = qs('unshipped-total-value');
+    
+    if(!unshippedCountEl || !unshippedTotalValueEl) return;
+    
+    // Filter for unshipped orders only
+    const unshippedOrders = allOrders.filter(order => !isOrderMarkedShipped(order));
+    
+    // Calculate count and total value
+    const count = unshippedOrders.length;
+    let totalValue = 0;
+    
+    unshippedOrders.forEach(order => {
+      if(order.total != null && typeof order.total === 'number'){
+        totalValue += order.total;
+      }else{
+        // Fallback to calculated total if order.total is not available
+        const computed = resolveOrderItemsTotal(order);
+        totalValue += computed;
+      }
+    });
+    
+    // Update the display
+    unshippedCountEl.textContent = count.toString();
+    unshippedTotalValueEl.textContent = `$${currency(totalValue)}`;
+  }
+
   function renderOrdersList(sortedOrders){
     const ordersContainer=qs('orders-container');
     if(!ordersContainer) return;
@@ -5013,6 +5053,9 @@ function listenForInventory() {
     
     // Update packing list with all orders (not just filtered)
     updatePackingList(sortedOrders);
+    
+    // Update unshipped summary with all orders
+    updateUnshippedSummary(sortedOrders);
     
     if(filteredOrders.length === 0){
       const trimmedTerm = orderSearchTerm.trim();
