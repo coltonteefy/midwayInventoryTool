@@ -894,6 +894,13 @@
         </select>
       </div>
 
+      <!-- Notes Section -->
+      <div>
+        <label for="edit-order-notes" class="block text-sm font-medium text-gray-400">Order Notes</label>
+        <textarea id="edit-order-notes" rows="4" class="mt-1 block w-full bg-gray-900 border border-gray-700 text-gray-300 rounded-md shadow-sm p-2 focus:ring-cyan-500 focus:border-cyan-500" placeholder="Add notes about this order..."></textarea>
+        <p class="mt-1 text-xs text-gray-500">Track important details, special requests, or order-specific information</p>
+      </div>
+
       <!-- Read-only Items -->
       <div class="space-y-4">
         <h3 class="text-md font-semibold text-gray-400 mt-4">Order Items:</h3>
@@ -3286,7 +3293,19 @@ function listenForInventory() {
     const insuranceValue = toFiniteNumber(order.insuranceCost);
     const insured = insuranceValue !== null && insuranceValue > 0;
     const insuranceDeclined = insuranceValue === 0;
-    return { method, normalizedMethod, isSecondDay, isGround, insured, insuranceDeclined };
+    
+    // Check if order is from local Utah cities (St. George, Ivins, Washington)
+    const city = ((order?.contactInfo?.city || order?.shippingAddress?.city || '').toString().toLowerCase().trim());
+    const state = ((order?.contactInfo?.state || order?.shippingAddress?.state || '').toString().toLowerCase().trim());
+    const isUtah = state === 'ut' || state === 'utah';
+    const localCities = [
+      'st. george', 'st george', 'saint george', 'stgeorge',
+      'ivins',
+      'washington'
+    ];
+    const isLocalUtah = isUtah && localCities.some(localCity => city.includes(localCity) || localCity.includes(city));
+    
+    return { method, normalizedMethod, isSecondDay, isGround, insured, insuranceDeclined, isLocalUtah };
   }
 
   function resolvePromoCode(order){
@@ -4856,6 +4875,21 @@ function listenForInventory() {
         </div>
       </div>
 
+      <div class="mb-4 border ${order.notes ? 'border-amber-500/60 bg-amber-950/30' : 'border-gray-700 bg-gray-900/40'} rounded-lg p-3">
+        <div class="flex justify-between items-center mb-2">
+          <p class="font-semibold text-gray-400">Order Notes:</p>
+          <button class="edit-notes-btn btn-neon-lime text-xs px-3 py-1 rounded-lg" data-order-id="${order.id}">Edit</button>
+        </div>
+        <div class="order-notes-display text-sm text-gray-300 whitespace-pre-wrap min-h-[60px]" data-order-id="${order.id}">${order.notes ? escapeHtml(order.notes) : '<span class="text-gray-500 italic">No notes added yet</span>'}</div>
+        <div class="order-notes-edit hidden" data-order-id="${order.id}">
+          <textarea class="order-notes-field w-full bg-gray-800 border border-gray-600 rounded-md p-2 text-gray-300 text-sm focus:ring-cyan-500 focus:border-cyan-500" rows="3" data-order-id="${order.id}" placeholder="Add notes about this order...">${escapeHtml(order.notes || '')}</textarea>
+          <div class="flex gap-2 mt-2">
+            <button class="save-notes-btn btn-neon-cyan text-xs px-3 py-1 rounded-lg" data-order-id="${order.id}">Save Notes</button>
+            <button class="cancel-notes-btn btn-neon-red text-xs px-3 py-1 rounded-lg" data-order-id="${order.id}">Cancel</button>
+          </div>
+        </div>
+      </div>
+
       <div class="mt-4 border border-gray-700 rounded-lg p-3 bg-gray-900/40 space-y-3">
         <p class="font-semibold text-gray-400 mb-2">Tracking:</p>
         <div class="space-y-1">${trackingHtml}</div>
@@ -4912,6 +4946,7 @@ function listenForInventory() {
 
   function buildUnshippedGroups(unshippedOrders){
     const defs = [
+      { id: 'local-utah', title: 'Local Pickup - St. George/Ivins/Washington', match: (meta)=>meta.isLocalUtah },
       { id: 'second-day-all', title: '2nd Day Air (All)', match: (meta)=>meta.isSecondDay },
       { id: 'second-day-insured', title: '2nd Day Air with Insurance Added', match: (meta)=>meta.isSecondDay && meta.insured },
       { id: 'ground-declined', title: 'Ground Shipping (Insurance Declined)', match: (meta)=>meta.isGround && meta.insuranceDeclined },
@@ -5144,6 +5179,8 @@ function listenForInventory() {
     const exports = [];
 
     groups.forEach(group=>{
+      // Skip local Utah orders from export
+      if(group.id === 'local-utah') return;
       if(!group.orders.length) return;
       const rows = [baseHeader];
       group.orders.forEach(order=>{
@@ -5464,6 +5501,7 @@ function listenForInventory() {
     qs('edit-contact-name').value = orderData.contactInfo?.fullName || '';
     qs('edit-order-total').value = orderData.total ?? 0;
     qs('edit-order-status').value = orderData.paymentStatus ?? 'Unpaid';
+    qs('edit-order-notes').value = orderData.notes || '';
     const shippingCost = Number(orderData?.shippingCost ?? 0);
     const freeShip = (orderData?.promo?.type === 'free_shipping') || shippingCost === 0;
     const shipEl = document.getElementById('edit-shipping-display'); shipEl.textContent = freeShip ? 'FREE' : `$${currency(shippingCost)}`;
@@ -5494,13 +5532,14 @@ function listenForInventory() {
     const cur=readTrackingFromModal(); cur.push(t); setTrackingHidden(cur); renderTrackingList(cur); numberInp.value='';
   }
 
-  // Save: only status, customer name, total (if changed), tracking; NO item changes, NO extra snapshot fields
+  // Save: only status, customer name, total (if changed), tracking, notes; NO item changes, NO extra snapshot fields
   async function handleEditOrder(e){
     e.preventDefault();
     const orderId=qs('edit-order-id').value;
     const paymentStatus=qs('edit-order-status').value;
     const newCustomerName=qs('edit-contact-name').value.trim();
     const newTotal = Number(qs('edit-order-total').value || 0);
+    const newNotes = qs('edit-order-notes').value.trim();
 
     if(!newCustomerName){ showModal('Customer name cannot be empty.'); return; }
 
@@ -5521,7 +5560,8 @@ function listenForInventory() {
         'contactInfo.fullName': newCustomerName,
         total: Number.isFinite(newTotal)? newTotal : existing.total,
         shippingCost: existingShipping,   // preserve
-        tracking: newTracking             // keep shipping feature (tracking)
+        tracking: newTracking,            // keep shipping feature (tracking)
+        notes: newNotes                   // save notes
         // NOTE: intentionally not touching items, subtotal, promo, or any extra fields
       });
       showModal('Order updated successfully!');
@@ -5529,6 +5569,77 @@ function listenForInventory() {
     }catch(err){
       console.error('Error updating order:',err);
       showModal(`Failed to update order: ${err.message}`);
+    }
+  }
+
+  /* Toggle notes edit mode */
+  function toggleNotesEditMode(orderId, isEditing){
+    const displayEl = document.querySelector(`.order-notes-display[data-order-id="${orderId}"]`);
+    const editEl = document.querySelector(`.order-notes-edit[data-order-id="${orderId}"]`);
+    const editBtn = document.querySelector(`.edit-notes-btn[data-order-id="${orderId}"]`);
+    
+    if(!displayEl || !editEl) return;
+    
+    if(isEditing){
+      displayEl.classList.add('hidden');
+      editEl.classList.remove('hidden');
+      if(editBtn) editBtn.classList.add('hidden');
+      // Focus the textarea
+      const textarea = editEl.querySelector('.order-notes-field');
+      if(textarea) setTimeout(() => textarea.focus(), 50);
+    } else {
+      displayEl.classList.remove('hidden');
+      editEl.classList.add('hidden');
+      if(editBtn) editBtn.classList.remove('hidden');
+      // Reset textarea to original value
+      const order = allOrdersCache.find(o => o.id === orderId);
+      if(order){
+        const textarea = editEl.querySelector('.order-notes-field');
+        if(textarea) textarea.value = order.notes || '';
+      }
+    }
+  }
+
+  /* Save Order Notes inline from order card */
+  async function saveOrderNotes(orderId, notes, buttonEl){
+    if(!orderId){ showModal('Order ID is missing.'); return; }
+    const trimmedNotes = (notes || '').trim();
+    
+    try{
+      const originalText = buttonEl.textContent;
+      buttonEl.textContent = 'Saving...';
+      buttonEl.disabled = true;
+      
+      const orderRef = doc(db, ORDERS_COLLECTION_PATH, orderId);
+      await updateDoc(orderRef, { notes: trimmedNotes });
+      
+      // Update the display
+      const displayEl = document.querySelector(`.order-notes-display[data-order-id="${orderId}"]`);
+      if(displayEl){
+        displayEl.innerHTML = trimmedNotes ? escapeHtml(trimmedNotes) : '<span class="text-gray-500 italic">No notes added yet</span>';
+      }
+      
+      // Update container styling based on whether notes exist
+      const container = displayEl?.closest('.mb-4');
+      if(container){
+        if(trimmedNotes){
+          container.className = 'mb-4 border border-amber-500/60 bg-amber-950/30 rounded-lg p-3';
+        } else {
+          container.className = 'mb-4 border border-gray-700 bg-gray-900/40 rounded-lg p-3';
+        }
+      }
+      
+      buttonEl.textContent = 'Saved!';
+      setTimeout(() => {
+        buttonEl.textContent = originalText;
+        buttonEl.disabled = false;
+        toggleNotesEditMode(orderId, false);
+      }, 800);
+    }catch(err){
+      console.error('Error saving notes:',err);
+      showModal(`Failed to save notes: ${err.message}`);
+      buttonEl.textContent = 'Save Notes';
+      buttonEl.disabled = false;
     }
   }
 
@@ -6095,6 +6206,25 @@ async function handleNewCostHistory(e){
       if(editButton){ const orderId=editButton.dataset.orderId; const order=allOrdersCache.find(o=>o.id===orderId); if(order) openEditModal(order); return; }
       const resendButton=e.target.closest('.resend-order-btn');
       if(resendButton){ const orderId=resendButton.dataset.orderId; resendOrderEmailById(orderId,resendButton); return; }
+      const editNotesBtn = e.target.closest('.edit-notes-btn');
+      if(editNotesBtn){
+        const orderId = editNotesBtn.dataset.orderId;
+        toggleNotesEditMode(orderId, true);
+        return;
+      }
+      const cancelNotesBtn = e.target.closest('.cancel-notes-btn');
+      if(cancelNotesBtn){
+        const orderId = cancelNotesBtn.dataset.orderId;
+        toggleNotesEditMode(orderId, false);
+        return;
+      }
+      const saveNotesBtn = e.target.closest('.save-notes-btn');
+      if(saveNotesBtn){
+        const orderId = saveNotesBtn.dataset.orderId;
+        const notesField = document.querySelector(`.order-notes-field[data-order-id="${orderId}"]`);
+        if(orderId && notesField) saveOrderNotes(orderId, notesField.value, saveNotesBtn);
+        return;
+      }
       const sendTrackButton = e.target.closest('.send-tracking-email-btn');
       if(sendTrackButton){
         const orderId=sendTrackButton.dataset.orderId;
