@@ -2790,7 +2790,18 @@ function listenForInventory() {
 
     /* NEW: Populate the Cost History and Item Editor dropdowns with items by ID */
     const ids = Object.keys(inventoryById)
-      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+      .sort((a, b) => {
+        const invA = inventoryById[a];
+        const invB = inventoryById[b];
+        // First sort by active status (active items first)
+        const isActiveA = Boolean(invA?.productIsActive);
+        const isActiveB = Boolean(invB?.productIsActive);
+        if (isActiveA !== isActiveB) {
+          return isActiveB ? 1 : -1; // active items (true) come first
+        }
+        // Then sort alphabetically by ID
+        return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+      });
 
     ids.forEach((id) => {
       const inv = inventoryById[id];
@@ -2825,13 +2836,14 @@ function listenForInventory() {
       }
     }
 
-    // ===== Table render (unchanged) =====
-    snap.forEach((d) => {
-      const item = inventoryCache[d.id] || d.data();
+    // ===== Table render (sorted by active status, then ID) =====
+    ids.forEach((id) => {
+      const item = inventoryCache[id];
+      if(!item) return;
       const isDeprecated = item?.deprecated === true || item?.deprecated === 'true';
       if(isDeprecated) return;
       const tr = document.createElement('tr');
-      tr.dataset.id = d.id;
+      tr.dataset.id = id;
       tr.className = 'hover:bg-gray-700 transition-colors duration-150';
 
       const nameTd = document.createElement('td');
@@ -2842,7 +2854,7 @@ function listenForInventory() {
 
       const idTd = document.createElement('td');
       idTd.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-400';
-      idTd.textContent = d.id; // show the Firestore doc id
+      idTd.textContent = id; // show the Firestore doc id
 
       const activeTd = document.createElement('td');
       activeTd.className = 'px-6 py-4 whitespace-nowrap text-sm';
@@ -2876,8 +2888,15 @@ function listenForInventory() {
       activeTd.appendChild(activeBtn);
 
       const inventoryTd = document.createElement('td');
-      inventoryTd.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-400';
-      inventoryTd.textContent = item.currentInventory ?? 0;
+      const inventoryValue = item.currentInventory ?? 0;
+      let inventoryColorClass = 'text-emerald-400'; // green for high stock
+      if (inventoryValue < 50) {
+        inventoryColorClass = 'text-red-400'; // red for low stock
+      } else if (inventoryValue >= 50 && inventoryValue <= 120) {
+        inventoryColorClass = 'text-yellow-400'; // yellow for medium stock
+      }
+      inventoryTd.className = `px-6 py-4 whitespace-nowrap text-sm font-semibold ${inventoryColorClass}`;
+      inventoryTd.textContent = inventoryValue;
       inventoryTd.setAttribute('contenteditable', 'false');
       inventoryTd.dataset.field = 'currentInventory';
 
