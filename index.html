@@ -1267,6 +1267,13 @@
             </div>
           </div>
 
+          <!-- New Lot ID Preview -->
+          <div class="p-4 bg-gray-900 rounded-lg border-2 border-cyan-600">
+            <div class="text-sm font-medium text-gray-400 mb-2">New Lot ID:</div>
+            <div id="add-inventory-lot-id-preview" class="text-lg font-mono font-bold text-cyan-400">-</div>
+            <div class="text-xs text-gray-500 mt-1">This lot ID will be assigned to the new inventory batch</div>
+          </div>
+
           <div class="flex justify-center gap-3">
             <button type="button" id="add-inventory-cancel-btn" class="btn-neon-red px-6 py-2 rounded-lg font-semibold">Cancel</button>
             <button type="submit" id="add-inventory-submit-btn" class="btn-neon-cyan px-6 py-2 rounded-lg font-semibold">Add Inventory</button>
@@ -1985,6 +1992,7 @@
     const costPerKit = parseFloat(document.getElementById('add-inventory-cost-per-kit')?.value) || 0;
     const kitsBought = parseInt(document.getElementById('add-inventory-kits-bought')?.value) || 0;
     const vialsPerKit = parseInt(document.getElementById('add-inventory-vials-per-kit')?.value) || 0;
+    const purchaseDate = document.getElementById('add-inventory-purchase-date')?.value || '';
     
     const totalVials = kitsBought * vialsPerKit;
     const totalCost = costPerKit * kitsBought;
@@ -1996,6 +2004,22 @@
     document.getElementById('add-inventory-total-vials').textContent = totalVials;
     document.getElementById('add-inventory-total-cost').textContent = '$' + totalCost.toFixed(2);
     document.getElementById('add-inventory-new-count').textContent = newCount;
+    
+    // Generate and display lot ID preview
+    const lotIdPreview = document.getElementById('add-inventory-lot-id-preview');
+    if (lotIdPreview && currentEditItemId && item && purchaseDate) {
+      const existingCostHistory = item.costHistory || [];
+      const pendingCostHistory = [...existingCostHistory, {
+        costPerKit,
+        totalKitsBought: kitsBought,
+        totalVialsPerKit: vialsPerKit,
+        purchaseDate
+      }];
+      const newLotId = buildLotId(currentEditItemId, pendingCostHistory);
+      lotIdPreview.textContent = newLotId;
+    } else if (lotIdPreview) {
+      lotIdPreview.textContent = '-';
+    }
   }
 
   function resetAddInventoryForm() {
@@ -2006,6 +2030,7 @@
     document.getElementById('add-inventory-total-cost').textContent = '$0.00';
     document.getElementById('add-inventory-new-count').textContent = '0';
     document.getElementById('add-inventory-product-name').textContent = 'Select a product';
+    document.getElementById('add-inventory-lot-id-preview').textContent = '-';
   }
 
   let currentEditItemId = null;
@@ -5935,7 +5960,7 @@ function listenForInventory() {
     addInventoryFormModal.addEventListener('submit', handleAddInventorySubmit);
     
     // Update summary on input changes
-    const inputs = ['add-inventory-cost-per-kit', 'add-inventory-kits-bought', 'add-inventory-vials-per-kit'];
+    const inputs = ['add-inventory-cost-per-kit', 'add-inventory-kits-bought', 'add-inventory-vials-per-kit', 'add-inventory-purchase-date'];
     inputs.forEach(id => {
       const input = document.getElementById(id);
       if(input){
@@ -6705,11 +6730,22 @@ function listenForInventory() {
     const currentInventory = item.currentInventory || 0;
     const newInventory = currentInventory + totalVials;
 
-    const newCostEntry = {
+    // Generate lot ID for this new inventory batch
+    const existingCostHistory = item.costHistory || [];
+    const pendingCostHistory = [...existingCostHistory, {
       costPerKit,
       totalKitsBought: kitsBought,
       totalVialsPerKit: vialsPerKit,
       purchaseDate
+    }];
+    const newLotId = buildLotId(itemId, pendingCostHistory);
+
+    const newCostEntry = {
+      costPerKit,
+      totalKitsBought: kitsBought,
+      totalVialsPerKit: vialsPerKit,
+      purchaseDate,
+      lot: newLotId
     };
 
     const submitBtn = document.getElementById('add-inventory-submit-btn');
@@ -6737,7 +6773,7 @@ function listenForInventory() {
         inventoryCache[itemId].costHistory.push(newCostEntry);
       }
 
-      showModal(`Successfully added ${totalVials} vials to ${item.name}. New inventory: ${newInventory}`);
+      showModal(`Successfully added ${totalVials} vials to ${item.name}.\nNew inventory: ${newInventory}\nLot ID: ${newLotId}`);
       closeEditInventoryModal();
     }catch(err){
       console.error('Error adding inventory:', err);
