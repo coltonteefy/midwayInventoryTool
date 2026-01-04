@@ -6601,7 +6601,66 @@ function listenForInventory() {
       showModal('No item selected for deprecation.');
       return;
     }
-    await deprecateItemCoa(itemId, true);
+
+    const original = inventoryCache[itemId];
+    if(!original){
+      showModal('Selected item is no longer available.');
+      resetEditItemFormModal();
+      return;
+    }
+
+    const currentUrl = extractCoaUrl(original.coa);
+    if(!currentUrl || currentUrl === 'N/A'){
+      showModal('No COA URL to deprecate for this item.');
+      updateDeprecateButtonModal(original);
+      return;
+    }
+    const currentLot = (typeof original.coa === 'object' && typeof original.coa.lot === 'string') ? original.coa.lot : '';
+    const costHistoryForLot = Array.isArray(original.costHistory) ? original.costHistory : [];
+    const archivedLot = currentLot || buildLotId(itemId, costHistoryForLot);
+    const entry = { lot: archivedLot, url: currentUrl };
+    const docRef = doc(db, INVENTORY_COLLECTION_PATH, itemId);
+
+    const restoreLabel = editItemDeprecateBtnModal?.textContent;
+    if(editItemDeprecateBtnModal){
+      editItemDeprecateBtnModal.disabled = true;
+      editItemDeprecateBtnModal.textContent = 'Deprecating...';
+      editItemDeprecateBtnModal.classList.add('opacity-60','cursor-not-allowed');
+    }
+
+    try{
+      const nextLot = computeNextCoaLot(itemId);
+      const clearedCoa = { url: '', lot: nextLot };
+
+      await updateDoc(docRef, {
+        pastCoas: arrayUnion(entry),
+        coa: clearedCoa
+      });
+
+      if(inventoryCache[itemId]){
+        inventoryCache[itemId].coa = clearedCoa;
+        const past = Array.isArray(inventoryCache[itemId].pastCoas) ? inventoryCache[itemId].pastCoas.slice() : [];
+        past.push(entry);
+        inventoryCache[itemId].pastCoas = past;
+      }
+
+      if(editItemCoaInputModal) editItemCoaInputModal.value = '';
+      if(editItemCoaLotInputModal) editItemCoaLotInputModal.value = clearedCoa.lot;
+      loadSelectedInventoryForEditModal(itemId);
+      showModal('Current COA archived and awaiting new documentation.');
+    }catch(err){
+      console.error('Failed to archive COA:', err);
+      showModal(`Failed to archive COA: ${err.message || 'Check console for details.'}`);
+      if(editItemDeprecateBtnModal){
+        editItemDeprecateBtnModal.disabled = false;
+      }
+    }finally{
+      if(editItemDeprecateBtnModal){
+        editItemDeprecateBtnModal.textContent = restoreLabel || 'Deprecate';
+        const itemForButton = inventoryCache[itemId];
+        updateDeprecateButtonModal(itemForButton);
+      }
+    }
   }
 
   async function handleAddInventorySubmit(e){
