@@ -41,6 +41,7 @@
     .modal-backdrop.is-open{ opacity:1; pointer-events:auto }
     .modal-main{ position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); width:90%; max-width:600px; background:#111827; z-index:50; border-radius:12px; box-shadow:0 10px 25px rgba(0,0,0,.5); padding:2rem; transition:transform .3s,opacity .3s; opacity:0; pointer-events:none; max-height:90%; overflow-y:auto }
     .modal-main.is-open{ opacity:1; pointer-events:auto; transform:translate(-50%,-50%) scale(1) }
+    .modal-main.modal-large{ max-width:900px; }
     @keyframes copyPulse{ 0%{transform:scale(1);} 40%{transform:scale(1.12);} 80%{transform:scale(0.98);} 100%{transform:scale(1);} }
     .copy-track.copied,.copy-contact.copied,.copy-order-id.copied{ background:#22c55e!important; color:#06131a!important; animation:copyPulse .6s ease forwards; box-shadow:0 0 12px rgba(34,197,94,.45); padding:2px 6px; border-radius:4px; }
     .txid-value{ word-break:break-all; overflow-wrap:anywhere; }
@@ -111,6 +112,14 @@
     .tab-button.active {
       color: #06b6d4;
       border-bottom-color: #06b6d4;
+    }
+
+    /* Clickable row styles */
+    .inventory-row {
+      cursor: pointer;
+    }
+    .inventory-row:hover {
+      background-color: #374151 !important;
     }
 
     /* Promo tool styles */
@@ -1089,6 +1098,108 @@
     </div>
   </div>
 
+  <!-- Edit Inventory Modal -->
+  <div id="edit-inventory-backdrop" class="modal-backdrop hidden"></div>
+  <div id="edit-inventory-modal" class="modal-main modal-large hidden">
+    <div class="flex justify-between items-center text-cyan-300 border-b pb-4 mb-4 border-gray-700">
+      <h2 class="text-2xl font-bold text-glow-fuchsia">Edit Inventory Item</h2>
+      <button id="edit-inventory-close-btn" class="p-2 rounded-full text-gray-400 hover:text-white transition-colors" aria-label="Close edit inventory modal">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+    <div class="space-y-4">
+      <form id="edit-item-form-modal" class="space-y-4">
+        <!-- Item Name -->
+        <div class="mb-4">
+          <label for="edit-item-name-modal" class="block text-sm font-medium text-gray-400 mb-2">Item Name</label>
+          <input type="text" id="edit-item-name-modal" class="block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="e.g., MIDWAY GRAY 5mg" disabled>
+        </div>
+
+        <!-- Current Inventory Section -->
+        <div class="space-y-3 p-4 rounded-lg border border-gray-700 mb-4">
+          <h3 class="text-md font-semibold text-cyan-400 mb-3">Current Inventory</h3>
+          <div>
+            <label for="edit-item-current-inventory-modal" class="block text-sm font-medium text-gray-400 mb-2">Inventory Count</label>
+            <input type="number" id="edit-item-current-inventory-modal" class="block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" min="0" disabled>
+          </div>
+        </div>
+
+        <!-- Sell Prices Section -->
+        <div class="space-y-3 p-4 rounded-lg border border-gray-700 mb-4">
+          <h3 class="text-md font-semibold text-cyan-400 mb-3">Sell Prices</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label for="edit-item-price-modal" class="block text-sm font-medium text-gray-400 mb-2">Price per Vial ($)</label>
+              <input type="number" step="0.01" id="edit-item-price-modal" class="block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" min="0" disabled>
+            </div>
+            <div>
+              <label for="edit-item-price-per-kit-modal" class="block text-sm font-medium text-gray-400 mb-2">Price per Kit ($)</label>
+              <input type="number" step="0.01" id="edit-item-price-per-kit-modal" class="block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" min="0" disabled>
+            </div>
+          </div>
+        </div>
+
+        <!-- Vials Sold / Weight Section -->
+        <div class="space-y-3 p-4 rounded-lg border border-gray-700 mb-4">
+          <h3 class="text-md font-semibold text-cyan-400 mb-3">Vials Sold / Weight</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label for="edit-item-vials-sold-modal" class="block text-sm font-medium text-gray-400 mb-2">Vials Sold</label>
+              <input type="number" id="edit-item-vials-sold-modal" class="block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" min="0" disabled>
+            </div>
+            <div>
+              <label for="edit-item-total-vial-weight-modal" class="block text-sm font-medium text-gray-400 mb-2">Total Vial Weight (mg)</label>
+              <input type="number" step="0.01" id="edit-item-total-vial-weight-modal" class="block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" min="0" disabled>
+            </div>
+          </div>
+        </div>
+
+        <!-- Image URL -->
+        <div class="mb-4">
+          <label for="edit-item-image-modal" class="block text-sm font-medium text-gray-400 mb-2">Image URL</label>
+          <input type="text" id="edit-item-image-modal" class="block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="https://..." disabled>
+        </div>
+        <div class="space-y-3 p-4 rounded-lg border border-gray-700">
+          <h3 class="text-lg font-semibold text-white text-glow-cyan">Certificate of Analysis</h3>
+          <div>
+            <label for="edit-item-coa-modal" class="block text-sm font-medium text-gray-400 mb-2">COA URL</label>
+            <div class="flex flex-col sm:flex-row gap-2">
+              <div class="flex-1 flex items-center bg-gray-800 border border-gray-600 rounded-md overflow-hidden">
+                <span class="px-3 py-2 bg-gray-700 text-gray-400 text-sm whitespace-nowrap">https://midwaygrays.com/COA/</span>
+                <input type="text" id="edit-item-coa-modal" class="flex-1 bg-gray-800 border-0 p-2 text-gray-300 focus:ring-0 focus:outline-none" placeholder="image.png" disabled>
+              </div>
+              <button type="button" id="edit-item-deprecate-btn-modal" class="btn-neon-red px-4 py-2 rounded-lg font-semibold text-xs sm:text-sm opacity-60 cursor-not-allowed" disabled>Deprecate</button>
+            </div>
+          </div>
+          <div>
+            <label for="edit-item-coa-lot-modal" class="block text-sm font-medium text-gray-400">COA Lot</label>
+            <input type="text" id="edit-item-coa-lot-modal" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="MG-..." disabled>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="flex items-center space-x-2">
+            <input type="checkbox" id="edit-item-is-active-modal" class="h-4 w-4 text-cyan-600 border-gray-600 rounded focus:ring-cyan-500" disabled>
+            <label for="edit-item-is-active-modal" class="text-sm font-medium text-gray-400">Active</label>
+          </div>
+          <div class="flex items-center space-x-2">
+            <input type="checkbox" id="edit-item-blend-modal" class="h-4 w-4 text-cyan-600 border-gray-600 rounded focus:ring-cyan-500" disabled>
+            <label for="edit-item-blend-modal" class="text-sm font-medium text-gray-400">Blend</label>
+          </div>
+        </div>
+        <div>
+          <label for="edit-item-description-modal" class="block text-sm font-medium text-gray-400">Product Description</label>
+          <textarea id="edit-item-description-modal" rows="3" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" placeholder="Short description of the product" disabled></textarea>
+        </div>
+        <div class="flex justify-center gap-3">
+          <button type="button" id="edit-inventory-cancel-btn" class="btn-neon-red px-6 py-2 rounded-lg font-semibold">Cancel</button>
+          <button type="submit" id="edit-item-save-btn-modal" class="btn-neon-cyan px-6 py-2 rounded-lg font-semibold opacity-60 cursor-not-allowed" disabled>Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Firebase -->
   <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
@@ -1342,6 +1453,27 @@
   const editItemDescriptionInput = qs('edit-item-description');
   const editItemDeprecateBtn = qs('edit-item-deprecate-btn');
   const editItemSaveBtn = qs('edit-item-save-btn');
+
+  // Modal edit form elements
+  const editInventoryModal = qs('edit-inventory-modal');
+  const editInventoryBackdrop = qs('edit-inventory-backdrop');
+  const editInventoryCloseBtn = qs('edit-inventory-close-btn');
+  const editInventoryCancelBtn = qs('edit-inventory-cancel-btn');
+  const editItemFormModal = qs('edit-item-form-modal');
+  const editItemNameInputModal = qs('edit-item-name-modal');
+  const editItemCurrentInventoryInputModal = qs('edit-item-current-inventory-modal');
+  const editItemVialsSoldInputModal = qs('edit-item-vials-sold-modal');
+  const editItemPriceInputModal = qs('edit-item-price-modal');
+  const editItemPricePerKitInputModal = qs('edit-item-price-per-kit-modal');
+  const editItemTotalVialWeightInputModal = qs('edit-item-total-vial-weight-modal');
+  const editItemImageInputModal = qs('edit-item-image-modal');
+  const editItemCoaInputModal = qs('edit-item-coa-modal');
+  const editItemCoaLotInputModal = qs('edit-item-coa-lot-modal');
+  const editItemIsActiveInputModal = qs('edit-item-is-active-modal');
+  const editItemBlendInputModal = qs('edit-item-blend-modal');
+  const editItemDescriptionInputModal = qs('edit-item-description-modal');
+  const editItemDeprecateBtnModal = qs('edit-item-deprecate-btn-modal');
+  const editItemSaveBtnModal = qs('edit-item-save-btn-modal');
 
   // Add Cost
   const addCostForm = qs('add-cost-form');
@@ -1685,6 +1817,131 @@
       editItemDeprecateBtn.textContent = 'Deprecate';
     }
     setEditFormDisabled(true);
+  }
+
+  function openEditFormForProduct(itemId) {
+    if (!itemId) return;
+    
+    // Open modal
+    if (editInventoryModal && editInventoryBackdrop) {
+      editInventoryModal.classList.remove('hidden');
+      editInventoryBackdrop.classList.remove('hidden');
+      setTimeout(() => {
+        editInventoryModal.classList.add('is-open');
+        editInventoryBackdrop.classList.add('is-open');
+      }, 10);
+    }
+    
+    // Load the item data
+    loadSelectedInventoryForEditModal(itemId);
+  }
+
+  function closeEditInventoryModal() {
+    if (editInventoryModal && editInventoryBackdrop) {
+      editInventoryModal.classList.remove('is-open');
+      editInventoryBackdrop.classList.remove('is-open');
+      setTimeout(() => {
+        editInventoryModal.classList.add('hidden');
+        editInventoryBackdrop.classList.add('hidden');
+      }, 300);
+    }
+    resetEditItemFormModal();
+  }
+
+  let currentEditItemId = null;
+
+  function loadSelectedInventoryForEditModal(itemId){
+    if(!itemId || !inventoryCache[itemId]){
+      resetEditItemFormModal();
+      return;
+    }
+
+    currentEditItemId = itemId;
+    const inv = inventoryCache[itemId];
+    setEditFormDisabledModal(false);
+
+    const asNumber = (val, fallback = '') => {
+      const num = Number(val);
+      if(Number.isFinite(num)) return num;
+      return fallback;
+    };
+    const cleanField = (val) => {
+      if(typeof val === 'string' && val.trim().toUpperCase() === 'N/A') return '';
+      return val ?? '';
+    };
+
+    if(editItemNameInputModal) editItemNameInputModal.value = inv.name ?? '';
+    if(editItemCurrentInventoryInputModal) editItemCurrentInventoryInputModal.value = asNumber(inv.currentInventory, '');
+    if(editItemVialsSoldInputModal) editItemVialsSoldInputModal.value = asNumber(inv.vialsSold, '');
+    if(editItemPriceInputModal) editItemPriceInputModal.value = asNumber(inv.sellPricePerVial, '');
+    if(editItemPricePerKitInputModal) editItemPricePerKitInputModal.value = asNumber(inv.sellPricePerKit, '');
+    if(editItemTotalVialWeightInputModal) editItemTotalVialWeightInputModal.value = asNumber(inv.totalVialWeight, '');
+    if(editItemImageInputModal) editItemImageInputModal.value = cleanField(inv.image);
+    if(editItemCoaInputModal) {
+      const fullUrl = cleanField(extractCoaUrl(inv.coa));
+      const filename = fullUrl.replace('https://midwaygrays.com/COA/', '');
+      editItemCoaInputModal.value = filename !== 'N/A' && filename !== fullUrl ? filename : fullUrl;
+    }
+    if(editItemCoaLotInputModal) editItemCoaLotInputModal.value = cleanField(extractCoaLot(inv.coa));
+    if(editItemDescriptionInputModal) editItemDescriptionInputModal.value = cleanField(inv.productDescription);
+    if(editItemIsActiveInputModal) editItemIsActiveInputModal.checked = Boolean(inv.productIsActive);
+    if(editItemBlendInputModal) editItemBlendInputModal.checked = Boolean(inv.blend);
+    updateDeprecateButtonModal(inv);
+  }
+
+  function resetEditItemFormModal() {
+    currentEditItemId = null;
+    setEditFormDisabledModal(true);
+    if(editItemNameInputModal) editItemNameInputModal.value = '';
+    if(editItemCurrentInventoryInputModal) editItemCurrentInventoryInputModal.value = '';
+    if(editItemVialsSoldInputModal) editItemVialsSoldInputModal.value = '';
+    if(editItemPriceInputModal) editItemPriceInputModal.value = '';
+    if(editItemPricePerKitInputModal) editItemPricePerKitInputModal.value = '';
+    if(editItemTotalVialWeightInputModal) editItemTotalVialWeightInputModal.value = '';
+    if(editItemImageInputModal) editItemImageInputModal.value = '';
+    if(editItemCoaInputModal) editItemCoaInputModal.value = '';
+    if(editItemCoaLotInputModal) editItemCoaLotInputModal.value = '';
+    if(editItemDescriptionInputModal) editItemDescriptionInputModal.value = '';
+    if(editItemIsActiveInputModal) editItemIsActiveInputModal.checked = false;
+    if(editItemBlendInputModal) editItemBlendInputModal.checked = false;
+    updateDeprecateButtonModal(null, true);
+  }
+
+  function setEditFormDisabledModal(disabled){
+    const inputs = [
+      editItemNameInputModal,
+      editItemCurrentInventoryInputModal,
+      editItemVialsSoldInputModal,
+      editItemPriceInputModal,
+      editItemPricePerKitInputModal,
+      editItemTotalVialWeightInputModal,
+      editItemImageInputModal,
+      editItemCoaInputModal,
+      editItemCoaLotInputModal,
+      editItemIsActiveInputModal,
+      editItemBlendInputModal,
+      editItemDescriptionInputModal
+    ];
+    inputs.forEach(input => {
+      if(input) input.disabled = disabled;
+    });
+    if(editItemSaveBtnModal){
+      editItemSaveBtnModal.disabled = disabled;
+      editItemSaveBtnModal.classList.toggle('opacity-60', disabled);
+      editItemSaveBtnModal.classList.toggle('cursor-not-allowed', disabled);
+    }
+    const item = currentEditItemId ? inventoryCache[currentEditItemId] : null;
+    updateDeprecateButtonModal(item, disabled);
+  }
+
+  function updateDeprecateButtonModal(item, forceDisabled = false){
+    if(!editItemDeprecateBtnModal) return;
+    const coaUrl = extractCoaUrl(item?.coa);
+    const hasActiveCoa = Boolean(coaUrl && coaUrl !== 'N/A');
+    const shouldDisable = forceDisabled || !hasActiveCoa;
+    editItemDeprecateBtnModal.disabled = shouldDisable;
+    editItemDeprecateBtnModal.classList.toggle('opacity-60', shouldDisable);
+    editItemDeprecateBtnModal.classList.toggle('cursor-not-allowed', shouldDisable);
   }
 
   function loadSelectedInventoryForEdit(itemId){
@@ -2924,7 +3181,16 @@ function listenForInventory() {
       if(isDeprecated) return;
       const tr = document.createElement('tr');
       tr.dataset.id = id;
-      tr.className = 'hover:bg-gray-700 transition-colors duration-150';
+      tr.className = 'hover:bg-gray-700 transition-colors duration-150 inventory-row';
+      
+      // Add click handler to open edit form
+      tr.addEventListener('click', (e) => {
+        // Don't trigger if clicking on the active/inactive button
+        if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
+          return;
+        }
+        openEditFormForProduct(id);
+      });
 
       const nameTd = document.createElement('td');
       nameTd.className = 'px-6 py-4 whitespace-nowrap text-sm font-medium text-cyan-300';
@@ -5476,9 +5742,24 @@ function listenForInventory() {
   if(snapshotDateInput){
     snapshotDateInput.addEventListener('change', ()=>renderDailySnapshotUI());
   }
+
+  // Edit Inventory Modal listeners
+  if(editInventoryCloseBtn){
+    editInventoryCloseBtn.addEventListener('click', closeEditInventoryModal);
+  }
+  if(editInventoryCancelBtn){
+    editInventoryCancelBtn.addEventListener('click', closeEditInventoryModal);
+  }
+  if(editInventoryBackdrop){
+    editInventoryBackdrop.addEventListener('click', closeEditInventoryModal);
+  }
+
   window.addEventListener('keydown',(e)=>{
     if(e.key==='Escape' && itemsSoldModal && itemsSoldModal.classList.contains('is-open')){
       closeItemsSoldModal();
+    }
+    if(e.key==='Escape' && editInventoryModal && editInventoryModal.classList.contains('is-open')){
+      closeEditInventoryModal();
     }
   });
 
@@ -5994,6 +6275,138 @@ function listenForInventory() {
     }
   }
 
+  async function handleEditInventoryItemModal(e){
+    e.preventDefault();
+    
+    const itemId = currentEditItemId;
+    if(!itemId){ showModal('No item selected.'); return; }
+
+    const original = inventoryCache[itemId];
+    if(!original){
+      showModal('Selected item is no longer available.');
+      resetEditItemFormModal();
+      closeEditInventoryModal();
+      return;
+    }
+
+    const name = (editItemNameInputModal?.value || '').trim();
+    const currentInventoryVal = editItemCurrentInventoryInputModal?.value ?? '';
+    const vialsSoldVal = editItemVialsSoldInputModal?.value ?? '';
+    const priceVal = editItemPriceInputModal?.value ?? '';
+    const pricePerKitVal = editItemPricePerKitInputModal?.value ?? '';
+    const totalWeightVal = editItemTotalVialWeightInputModal?.value ?? '';
+    const image = (editItemImageInputModal?.value || '').trim();
+    const coaInputValue = (editItemCoaInputModal?.value || '').trim();
+    const coaLotInputValue = (editItemCoaLotInputModal?.value || '').trim();
+    const description = (editItemDescriptionInputModal?.value || '').trim();
+    const productIsActive = Boolean(editItemIsActiveInputModal?.checked);
+    const blend = Boolean(editItemBlendInputModal?.checked);
+
+    if(!name){ showModal('Item name cannot be empty.'); return; }
+
+    const toNumber = (val) => {
+      const num = Number(val);
+      return Number.isFinite(num) ? num : NaN;
+    };
+
+    const currentInventory = toNumber(currentInventoryVal);
+    const vialsSold = toNumber(vialsSoldVal);
+    const sellPricePerVial = toNumber(priceVal);
+    const totalVialWeight = toNumber(totalWeightVal);
+
+    if(Number.isNaN(currentInventory) || currentInventory < 0){ showModal('Current inventory must be a non-negative number.'); return; }
+    if(Number.isNaN(vialsSold) || vialsSold < 0){ showModal('Vials sold must be a non-negative number.'); return; }
+    if(Number.isNaN(sellPricePerVial) || sellPricePerVial < 0){ showModal('Sell price must be a non-negative number.'); return; }
+    if(Number.isNaN(totalVialWeight) || totalVialWeight < 0){ showModal('Total vial weight must be a non-negative number.'); return; }
+
+    const normalized = {
+      image: image || 'N/A',
+      description: description || 'N/A'
+    };
+    const normalizedCoaUrl = coaInputValue && coaInputValue !== 'N/A' ? `https://midwaygrays.com/COA/${coaInputValue}` : (coaInputValue || 'N/A');
+    const sanitizeNa = (val) => {
+      const str = (val ?? '').trim();
+      if(!str) return 'N/A';
+      return str.toUpperCase() === 'N/A' ? 'N/A' : str;
+    };
+
+    const existingCoaUrl = extractCoaUrl(original.coa) || 'N/A';
+    const existingCoaLot = sanitizeNa(extractCoaLot(original.coa));
+
+    let normalizedCoaLot = coaLotInputValue;
+    if(!normalizedCoaLot){
+      normalizedCoaLot = existingCoaLot !== 'N/A' ? existingCoaLot : '';
+    }
+    if(!normalizedCoaLot && normalizedCoaUrl !== existingCoaUrl && normalizedCoaUrl !== 'N/A'){
+      normalizedCoaLot = buildLotId(itemId, inventoryCache[itemId]?.costHistory || []);
+    }
+    normalizedCoaLot = sanitizeNa(normalizedCoaLot);
+
+    const numOrZero = (val) => {
+      const num = Number(val);
+      return Number.isFinite(num) ? num : 0;
+    };
+
+    const updateData = {};
+    if(name !== (original.name ?? '')) updateData.name = name;
+    if(currentInventory !== numOrZero(original.currentInventory)) updateData.currentInventory = currentInventory;
+    if(vialsSold !== numOrZero(original.vialsSold)) updateData.vialsSold = vialsSold;
+    if(sellPricePerVial !== numOrZero(original.sellPricePerVial)) updateData.sellPricePerVial = sellPricePerVial;
+    if(totalVialWeight !== numOrZero(original.totalVialWeight)) updateData.totalVialWeight = totalVialWeight;
+    if(productIsActive !== Boolean(original.productIsActive)) updateData.productIsActive = productIsActive;
+    if(blend !== Boolean(original.blend)) updateData.blend = blend;
+
+    const existingImage = (original.image && original.image !== 'N/A') ? original.image : 'N/A';
+    if(normalized.image !== existingImage) updateData.image = normalized.image;
+
+    const lotChanged = normalizedCoaLot !== existingCoaLot;
+    if(normalizedCoaUrl !== existingCoaUrl || lotChanged){
+      updateData.coa = { url: normalizedCoaUrl, lot: normalizedCoaLot };
+    }
+
+    const existingDescription = (original.productDescription && original.productDescription !== 'N/A') ? original.productDescription : 'N/A';
+    if(normalized.description !== existingDescription) updateData.productDescription = normalized.description;
+
+    if(Object.keys(updateData).length === 0){
+      showModal('No changes to save.');
+      return;
+    }
+
+    const docRef = doc(db, INVENTORY_COLLECTION_PATH, itemId);
+    const originalLabel = editItemSaveBtnModal?.textContent;
+    if(editItemSaveBtnModal){
+      editItemSaveBtnModal.disabled = true;
+      editItemSaveBtnModal.textContent = 'Saving...';
+      editItemSaveBtnModal.classList.add('opacity-60','cursor-not-allowed');
+    }
+
+    try{
+      await updateDoc(docRef, updateData);
+      if(inventoryCache[itemId]) Object.assign(inventoryCache[itemId], updateData);
+      showModal('Item updated successfully.');
+      closeEditInventoryModal();
+    }catch(err){
+      console.error('Error updating inventory item:', err);
+      showModal(`Failed to update item: ${err.message || 'Check console for details.'}`);
+    }finally{
+      if(editItemSaveBtnModal){
+        editItemSaveBtnModal.disabled = false;
+        editItemSaveBtnModal.textContent = originalLabel || 'Save Changes';
+        editItemSaveBtnModal.classList.remove('cursor-not-allowed');
+        editItemSaveBtnModal.classList.toggle('opacity-60', !currentEditItemId);
+      }
+    }
+  }
+
+  async function handleDeprecateCurrentCoaModal(){
+    const itemId = currentEditItemId;
+    if(!itemId){
+      showModal('No item selected for deprecation.');
+      return;
+    }
+    await deprecateItemCoa(itemId, true);
+  }
+
   async function handleSaveSaleDiscount(){
     const discount = readSaleDiscountInput();
     if(discount === null) return;
@@ -6472,6 +6885,8 @@ async function handleNewCostHistory(e){
     });
     if(editItemDeprecateBtn) editItemDeprecateBtn.addEventListener('click', handleDeprecateCurrentCoa);
     if(editItemForm) editItemForm.addEventListener('submit', handleEditInventoryItem);
+    if(editItemFormModal) editItemFormModal.addEventListener('submit', handleEditInventoryItemModal);
+    if(editItemDeprecateBtnModal) editItemDeprecateBtnModal.addEventListener('click', handleDeprecateCurrentCoaModal);
     if(saleSaveDiscountBtn) saleSaveDiscountBtn.addEventListener('click', handleSaveSaleDiscount);
     if(saleToggleBtn) saleToggleBtn.addEventListener('click', handleToggleSaleState);
 
