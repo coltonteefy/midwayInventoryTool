@@ -437,6 +437,10 @@
                       <label for="new-purchase-date" class="block text-sm font-medium text-gray-400">Purchase Date</label>
                       <input type="date" id="new-purchase-date" class="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500" required>
                     </div>
+                    <div class="w-full col-span-1 sm:col-span-2 lg:col-span-3">
+                      <label class="block text-sm font-medium text-gray-400">Total Amount</label>
+                      <div id="new-total-amount" class="mt-1 block w-full bg-gray-900 border-2 border-cyan-500 rounded-md shadow-sm p-3 text-cyan-400 font-bold text-xl text-center">$0.00</div>
+                    </div>
                   </div>
                 </div>
 
@@ -1490,6 +1494,7 @@
   const newTotalVialsPerKitInput = qs('new-total-vials-per-kit');
   const newPurchaseDateInput = qs('new-purchase-date');
   const newBatchIdPreview = qs('new-batch-id-preview');
+  const newTotalAmountDisplay = qs('new-total-amount');
 
   // Update batch ID preview when COA changes
   if(newItemCoaInput && newBatchIdPreview){
@@ -1505,6 +1510,23 @@
     };
     newItemCoaInput.addEventListener('input', updateBatchPreview);
     newItemCoaInput.addEventListener('change', updateBatchPreview);
+  }
+
+  // Calculate and display total amount for new inventory
+  const updateTotalAmount = ()=>{
+    const costPerKit = parseFloat(newCostPerKitInput.value) || 0;
+    const totalKits = parseFloat(newTotalKitsBoughtInput.value) || 0;
+    const totalAmount = costPerKit * totalKits;
+    if(newTotalAmountDisplay){
+      newTotalAmountDisplay.textContent = '$' + totalAmount.toFixed(2);
+    }
+  };
+  
+  if(newCostPerKitInput && newTotalKitsBoughtInput && newTotalAmountDisplay){
+    newCostPerKitInput.addEventListener('input', updateTotalAmount);
+    newCostPerKitInput.addEventListener('change', updateTotalAmount);
+    newTotalKitsBoughtInput.addEventListener('input', updateTotalAmount);
+    newTotalKitsBoughtInput.addEventListener('change', updateTotalAmount);
   }
 
   const inventoryEditorWrapper = qs('inventory-editor-wrapper');
