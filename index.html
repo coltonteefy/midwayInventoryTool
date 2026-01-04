@@ -45,6 +45,45 @@
     .copy-track.copied,.copy-contact.copied{ background:#22c55e!important; color:#06131a!important; animation:copyPulse .6s ease forwards; box-shadow:0 0 12px rgba(34,197,94,.45); }
     .txid-value{ word-break:break-all; overflow-wrap:anywhere; }
 
+    /* Collapsible group styles */
+    .group-header {
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .group-header:hover {
+      opacity: 0.8;
+    }
+    .group-header .collapse-icon {
+      transition: transform 0.3s ease;
+    }
+    .group-header.collapsed .collapse-icon {
+      transform: rotate(-90deg);
+    }
+    .group-content {
+      max-height: 10000px;
+      overflow: hidden;
+      transition: max-height 0.4s ease, opacity 0.3s ease, margin-top 0.3s ease;
+      opacity: 1;
+      margin-top: 1rem;
+    }
+    .group-content.collapsed {
+      max-height: 0;
+      opacity: 0;
+      margin-top: 0;
+    }
+    .group-section {
+      border-radius: 12px;
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .group-bg-1 { background: linear-gradient(135deg, rgba(6, 182, 212, 0.12), rgba(14, 165, 233, 0.08)); }
+    .group-bg-2 { background: linear-gradient(135deg, rgba(139, 92, 246, 0.12), rgba(124, 58, 237, 0.08)); }
+    .group-bg-3 { background: linear-gradient(135deg, rgba(236, 72, 153, 0.12), rgba(219, 39, 119, 0.08)); }
+    .group-bg-4 { background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(217, 119, 6, 0.08)); }
+    .group-bg-5 { background: linear-gradient(135deg, rgba(34, 197, 94, 0.12), rgba(22, 163, 74, 0.08)); }
+    .group-bg-6 { background: linear-gradient(135deg, rgba(239, 68, 68, 0.12), rgba(220, 38, 38, 0.08)); }
+
     /* Promo tool styles */
     #promo-tool {
       --bg:#0f172a;
@@ -4861,6 +4900,12 @@ function listenForInventory() {
         <div class="mt-4 sm:mt-0 text-left sm:text-right">
           <p class="font-semibold text-lg text-cyan-500">Total: $${totalSafe}</p>
           <span class="inline-block mt-1 px-3 py-1 text-xs font-semibold rounded-full ${statusClass}">${status}</span>
+          <div class="flex flex-wrap items-center gap-2 justify-start sm:justify-end mt-2 text-xs">
+            <span class="font-semibold ${order.paymentConfirmed ? 'text-emerald-300' : 'text-gray-500'}">${order.paymentConfirmed ? 'Payment confirmed' : 'Payment not confirmed'}</span>
+            <label class="inline-flex items-center gap-2">
+              <input type="checkbox" class="payment-confirmed-toggle h-4 w-4 text-lime-500 focus:ring-cyan-500 border-gray-600 rounded" data-order-id="${order.id}" aria-label="${order.paymentConfirmed ? 'Unmark payment confirmed' : 'Mark payment confirmed'}" ${order.paymentConfirmed ? 'checked' : ''}>
+            </label>
+          </div>
           <div class="mt-2 text-xs text-gray-400 space-y-1">
             <div><span class="text-gray-500">Subtotal:</span> $${currency(discountedSubtotal)}</div>
             <div><span class="text-gray-500">Items:</span> <span class="text-gray-300">${totalQuantity} total units</span></div>
@@ -4960,6 +5005,9 @@ function listenForInventory() {
     });
     last.querySelectorAll('.order-delivered-toggle').forEach(input=>{
       input.addEventListener('change', handleOrderDeliveredToggle);
+    });
+    last.querySelectorAll('.payment-confirmed-toggle').forEach(input=>{
+      input.addEventListener('change', handlePaymentConfirmedToggle);
     });
   }
 
@@ -5160,19 +5208,35 @@ function listenForInventory() {
     if(shouldGroupUnshipped){
       const groups = buildUnshippedGroups(filteredOrders);
       visibleOrdersCount = filteredOrders.length;
-      groups.forEach(group=>{
+      const bgColors = ['group-bg-1', 'group-bg-2', 'group-bg-3', 'group-bg-4', 'group-bg-5', 'group-bg-6'];
+      groups.forEach((group, index)=>{
         const section=document.createElement('div');
-        section.className='space-y-3 col-span-full';
+        section.className=`group-section ${bgColors[index % bgColors.length]} col-span-full`;
         const header=document.createElement('div');
-        header.className='flex items-center justify-between gap-2';
-        header.innerHTML=`<h3 class="text-lg font-semibold text-cyan-200">${group.title}</h3><span class="text-xs text-gray-400">${group.orders.length} orders</span>`;
+        header.className='group-header flex items-center justify-between gap-2 select-none';
+        header.innerHTML=`
+          <div class="flex items-center gap-2">
+            <svg class="collapse-icon w-5 h-5 text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+            </svg>
+            <h3 class="text-lg font-semibold text-cyan-200">${group.title}</h3>
+          </div>
+          <span class="text-xs text-gray-400">${group.orders.length} orders</span>
+        `;
         const cardsWrap=document.createElement('div');
-        cardsWrap.className='grid grid-cols-1 lg:grid-cols-2 gap-4';
+        cardsWrap.className='group-content grid grid-cols-1 lg:grid-cols-2 gap-4';
         if(group.orders.length===0){
           cardsWrap.innerHTML='<div class="text-sm text-gray-500 italic">No orders in this group.</div>';
         }else{
           group.orders.forEach(order=>appendOrderCard(cardsWrap, order));
         }
+        
+        // Add click handler for collapse/expand
+        header.addEventListener('click', () => {
+          header.classList.toggle('collapsed');
+          cardsWrap.classList.toggle('collapsed');
+        });
+        
         section.appendChild(header);
         section.appendChild(cardsWrap);
         ordersContainer.appendChild(section);
@@ -6048,6 +6112,32 @@ async function handleNewCostHistory(e){
     try{ await resendFn({ order: payloadOrder }); showModal(`Resent confirmation to ${payloadOrder.contactInfo.email}`); }
     catch(err){ console.error("Resend failed:",err); showModal(`Resend failed: ${err.message||"See console"}`); }
     finally{ if(btn){ btn.disabled=false; btn.textContent=original||"Resend Email"; btn.classList.remove("opacity-70","cursor-not-allowed"); } }
+  }
+
+  async function handlePaymentConfirmedToggle(ev){
+    const checkbox = ev.currentTarget;
+    const orderId = checkbox?.dataset?.orderId || '';
+    const desiredState = checkbox?.checked === true;
+    if(!orderId) return;
+
+    const order = allOrdersCache.find(o=>o.id===orderId);
+    if(!order){
+      checkbox.checked = !desiredState;
+      showModal(`Order not found: ${orderId}`);
+      return;
+    }
+
+    const orderRef = doc(db, ORDERS_COLLECTION_PATH, orderId);
+    checkbox.disabled = true;
+    try{
+      await updateDoc(orderRef, { paymentConfirmed: desiredState });
+    }catch(err){
+      console.error('Failed to update payment confirmed status:', err);
+      checkbox.checked = !desiredState;
+      showModal(`Failed to update payment confirmed status: ${err.message}`);
+    }finally{
+      checkbox.disabled = false;
+    }
   }
 
   async function handleOrderDeliveredToggle(ev){
