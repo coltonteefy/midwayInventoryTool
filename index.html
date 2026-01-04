@@ -648,7 +648,7 @@
                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Current Inventory</th>
                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Vials Sold</th>
                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Sell Price</th>
-                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Total Vial Weight (mg)</th>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Kit Price</th>
                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Active</th>
               </tr>
             </thead>
@@ -3398,18 +3398,18 @@ function listenForInventory() {
       priceTd.setAttribute('contenteditable', 'false');
       priceTd.dataset.field = 'sellPricePerVial';
 
-      const totalVialWeightTd = document.createElement('td');
-      totalVialWeightTd.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-400';
-      totalVialWeightTd.textContent = item.totalVialWeight ?? 0;
-      totalVialWeightTd.setAttribute('contenteditable', 'false');
-      totalVialWeightTd.dataset.field = 'totalVialWeight';
+      const kitPriceTd = document.createElement('td');
+      kitPriceTd.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-400';
+      kitPriceTd.textContent = item.sellPricePerKit ? `$${item.sellPricePerKit}` : '$0';
+      kitPriceTd.setAttribute('contenteditable', 'false');
+      kitPriceTd.dataset.field = 'sellPricePerKit';
 
       tr.appendChild(nameTd);
       tr.appendChild(idTd);
       tr.appendChild(inventoryTd);
       tr.appendChild(vialsSoldTd);
       tr.appendChild(priceTd);
-      tr.appendChild(totalVialWeightTd);
+      tr.appendChild(kitPriceTd);
       tr.appendChild(activeTd);
       
       // Add data attribute for filtering
@@ -6338,6 +6338,7 @@ function listenForInventory() {
     const currentInventoryVal = editItemCurrentInventoryInput?.value ?? '';
     const vialsSoldVal = editItemVialsSoldInput?.value ?? '';
     const priceVal = editItemPriceInput?.value ?? '';
+    const pricePerKitVal = editItemPricePerKitInput?.value ?? '';
     const totalWeightVal = editItemTotalVialWeightInput?.value ?? '';
     const image = (editItemImageInput?.value || '').trim();
     const coaInputValue = (editItemCoaInput?.value || '').trim();
@@ -6356,11 +6357,13 @@ function listenForInventory() {
     const currentInventory = toNumber(currentInventoryVal);
     const vialsSold = toNumber(vialsSoldVal);
     const sellPricePerVial = toNumber(priceVal);
+    const sellPricePerKit = toNumber(pricePerKitVal);
     const totalVialWeight = toNumber(totalWeightVal);
 
     if(Number.isNaN(currentInventory) || currentInventory < 0){ showModal('Current inventory must be a non-negative number.'); return; }
     if(Number.isNaN(vialsSold) || vialsSold < 0){ showModal('Vials sold must be a non-negative number.'); return; }
     if(Number.isNaN(sellPricePerVial) || sellPricePerVial < 0){ showModal('Sell price must be a non-negative number.'); return; }
+    if(Number.isNaN(sellPricePerKit) || sellPricePerKit < 0){ showModal('Sell price per kit must be a non-negative number.'); return; }
     if(Number.isNaN(totalVialWeight) || totalVialWeight < 0){ showModal('Total vial weight must be a non-negative number.'); return; }
 
     const normalized = {
@@ -6397,6 +6400,7 @@ function listenForInventory() {
     if(currentInventory !== numOrZero(original.currentInventory)) updateData.currentInventory = currentInventory;
     if(vialsSold !== numOrZero(original.vialsSold)) updateData.vialsSold = vialsSold;
     if(sellPricePerVial !== numOrZero(original.sellPricePerVial)) updateData.sellPricePerVial = sellPricePerVial;
+    if(sellPricePerKit !== numOrZero(original.sellPricePerKit)) updateData.sellPricePerKit = sellPricePerKit;
     if(totalVialWeight !== numOrZero(original.totalVialWeight)) updateData.totalVialWeight = totalVialWeight;
     if(productIsActive !== Boolean(original.productIsActive)) updateData.productIsActive = productIsActive;
     if(blend !== Boolean(original.blend)) updateData.blend = blend;
@@ -6480,11 +6484,13 @@ function listenForInventory() {
     const currentInventory = toNumber(currentInventoryVal);
     const vialsSold = toNumber(vialsSoldVal);
     const sellPricePerVial = toNumber(priceVal);
+    const sellPricePerKit = toNumber(pricePerKitVal);
     const totalVialWeight = toNumber(totalWeightVal);
 
     if(Number.isNaN(currentInventory) || currentInventory < 0){ showModal('Current inventory must be a non-negative number.'); return; }
     if(Number.isNaN(vialsSold) || vialsSold < 0){ showModal('Vials sold must be a non-negative number.'); return; }
     if(Number.isNaN(sellPricePerVial) || sellPricePerVial < 0){ showModal('Sell price must be a non-negative number.'); return; }
+    if(Number.isNaN(sellPricePerKit) || sellPricePerKit < 0){ showModal('Sell price per kit must be a non-negative number.'); return; }
     if(Number.isNaN(totalVialWeight) || totalVialWeight < 0){ showModal('Total vial weight must be a non-negative number.'); return; }
 
     const normalized = {
@@ -6520,6 +6526,7 @@ function listenForInventory() {
     if(currentInventory !== numOrZero(original.currentInventory)) updateData.currentInventory = currentInventory;
     if(vialsSold !== numOrZero(original.vialsSold)) updateData.vialsSold = vialsSold;
     if(sellPricePerVial !== numOrZero(original.sellPricePerVial)) updateData.sellPricePerVial = sellPricePerVial;
+    if(sellPricePerKit !== numOrZero(original.sellPricePerKit)) updateData.sellPricePerKit = sellPricePerKit;
     if(totalVialWeight !== numOrZero(original.totalVialWeight)) updateData.totalVialWeight = totalVialWeight;
     if(productIsActive !== Boolean(original.productIsActive)) updateData.productIsActive = productIsActive;
     if(blend !== Boolean(original.blend)) updateData.blend = blend;
