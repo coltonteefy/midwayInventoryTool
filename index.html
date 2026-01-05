@@ -7727,7 +7727,6 @@ async function handleNewCostHistory(e){
         const orderRef = doc(db, ORDERS_COLLECTION_PATH, orderId);
         await updateDoc(orderRef, { tracking: entries });
       }
-      showModal(`Shipping confirmation sent to ${payloadOrder.contactInfo.email || 'customer'}.`);
     }catch(err){
       console.error('Shipping confirmation failed:', err);
       showModal(`Failed to send shipping confirmation: ${err.message || 'See console'}`);
