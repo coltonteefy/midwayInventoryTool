@@ -3430,7 +3430,32 @@ function listenForInventory() {
 
       const nameTd = document.createElement('td');
       nameTd.className = 'px-6 py-4 whitespace-nowrap text-sm font-medium text-cyan-300';
-      nameTd.textContent = item.name ?? '(no name)';
+      
+      // Check if item is in order
+      const isInNextOrder = nextOrderItems.some(orderItem => orderItem.itemId === id);
+      const isInSubmittedOrder = submittedOrders.some(order => 
+        Array.isArray(order.items) && order.items.some(orderItem => orderItem.itemId === id)
+      );
+      const isOrdered = isInNextOrder || isInSubmittedOrder;
+      
+      if (isOrdered) {
+        const nameContainer = document.createElement('div');
+        nameContainer.className = 'flex flex-col';
+        
+        const nameText = document.createElement('div');
+        nameText.textContent = item.name ?? '(no name)';
+        
+        const orderedText = document.createElement('div');
+        orderedText.textContent = 'Ordered';
+        orderedText.className = 'text-xs text-yellow-400 font-normal mt-0.5';
+        
+        nameContainer.appendChild(nameText);
+        nameContainer.appendChild(orderedText);
+        nameTd.appendChild(nameContainer);
+      } else {
+        nameTd.textContent = item.name ?? '(no name)';
+      }
+      
       nameTd.setAttribute('contenteditable', 'false');
       nameTd.dataset.field = 'name';
 
@@ -3604,12 +3629,14 @@ function listenForInventory() {
     });
 
     renderNextOrderList();
+    updateInventoryOrderedStatus();
   }
 
   // Remove item from order list
   function removeItemFromOrder(itemId) {
     nextOrderItems = nextOrderItems.filter(item => item.itemId !== itemId);
     renderNextOrderList();
+    updateInventoryOrderedStatus();
   }
 
   // Update order item
@@ -3624,6 +3651,51 @@ function listenForInventory() {
     }
 
     renderNextOrderList();
+  }
+
+  // Update inventory table to show "Ordered" status
+  function updateInventoryOrderedStatus() {
+    const tbody = qs('inventory-list');
+    if (!tbody) return;
+
+    const rows = tbody.querySelectorAll('tr[data-id]');
+    rows.forEach(row => {
+      const itemId = row.dataset.id;
+      const nameTd = row.querySelector('td[data-field="name"]');
+      if (!nameTd) return;
+
+      // Check if item is in order
+      const isInNextOrder = nextOrderItems.some(orderItem => orderItem.itemId === itemId);
+      const isInSubmittedOrder = submittedOrders.some(order => 
+        Array.isArray(order.items) && order.items.some(orderItem => orderItem.itemId === itemId)
+      );
+      const isOrdered = isInNextOrder || isInSubmittedOrder;
+
+      // Get the item name from cache
+      const item = inventoryCache[itemId];
+      const itemName = item?.name ?? '(no name)';
+
+      // Update the cell content
+      if (isOrdered) {
+        const nameContainer = document.createElement('div');
+        nameContainer.className = 'flex flex-col';
+        
+        const nameText = document.createElement('div');
+        nameText.textContent = itemName;
+        
+        const orderedText = document.createElement('div');
+        orderedText.textContent = 'Ordered';
+        orderedText.className = 'text-xs text-yellow-400 font-normal mt-0.5';
+        
+        nameContainer.appendChild(nameText);
+        nameContainer.appendChild(orderedText);
+        
+        nameTd.innerHTML = '';
+        nameTd.appendChild(nameContainer);
+      } else {
+        nameTd.textContent = itemName;
+      }
+    });
   }
 
   // Calculate order total
@@ -3789,9 +3861,28 @@ function listenForInventory() {
   // Mark order as delivered
   async function markOrderDelivered(orderId) {
     try {
+      // Get the order data
+      const order = submittedOrders.find(o => o.id === orderId);
+      if (!order) {
+        console.error('Order not found:', orderId);
+        return;
+      }
+
+      // Copy to pastInventoryOrders collection with delivery timestamp
+      const pastOrderData = {
+        ...order,
+        deliveredAt: new Date().toISOString(),
+        originalOrderId: orderId
+      };
+      delete pastOrderData.id; // Remove the id field before saving
+      
+      await addDoc(collection(db, 'pastInventoryOrders'), pastOrderData);
+      
+      // Delete from nextOrders collection
       await deleteDoc(doc(db, NEXT_ORDERS_COLLECTION_PATH, orderId));
     } catch (error) {
       console.error('Error marking order as delivered:', error);
+      showModal('Failed to mark order as delivered. Please try again.');
     }
   }
 
@@ -4053,6 +4144,7 @@ function listenForInventory() {
       submittedOrders.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
       
       renderSubmittedOrders();
+      updateInventoryOrderedStatus();
     }, (error) => {
       console.error('Error listening to next orders:', error);
     });
@@ -4406,6 +4498,7 @@ function listenForInventory() {
     const insuranceValue = toFiniteNumber(order.insuranceCost);
     const insured = insuranceValue !== null && insuranceValue > 0;
     const insuranceDeclined = insuranceValue === 0;
+    const shippingCost = Number(order.shippingCost ?? 0);
     
     // Check if order is from local Utah cities (St. George, Ivins, Washington)
     const city = ((order?.contactInfo?.city || order?.shippingAddress?.city || '').toString().toLowerCase().trim());
@@ -4418,7 +4511,7 @@ function listenForInventory() {
     ];
     const isLocalUtah = isUtah && localCities.some(localCity => city.includes(localCity) || localCity.includes(city));
     
-    return { method, normalizedMethod, isSecondDay, isGround, insured, insuranceDeclined, isLocalUtah };
+    return { method, normalizedMethod, isSecondDay, isGround, insured, insuranceDeclined, isLocalUtah, shippingCost };
   }
 
   function resolvePromoCode(order){
@@ -6105,8 +6198,8 @@ function listenForInventory() {
     
     const defs = [
       { id: 'local-utah', title: 'Local Pickup - St. George/Ivins/Washington', match: (meta)=>meta.isLocalUtah },
-      { id: 'second-day-all', title: '2nd Day Air (All)', match: (meta)=>meta.isSecondDay },
-      { id: 'second-day-insured', title: '2nd Day Air with Insurance Added', match: (meta)=>meta.isSecondDay && meta.insured },
+      { id: 'second-day-paid', title: '2nd Day Air ($20)', match: (meta)=>meta.isSecondDay && meta.shippingCost >= 15 },
+      { id: 'second-day-free', title: '2nd Day Air (FREE)', match: (meta)=>meta.isSecondDay && meta.shippingCost < 15 },
       { id: 'ground-declined', title: 'Ground Shipping (Insurance Declined)', match: (meta)=>meta.isGround && meta.insuranceDeclined },
       { id: 'ground-insured', title: 'Ground Shipping (Insurance Accepted)', match: (meta)=>meta.isGround && meta.insured },
     ];
@@ -6292,7 +6385,7 @@ function listenForInventory() {
         const section=document.createElement('div');
         section.className=`group-section ${bgColors[index % bgColors.length]} col-span-full`;
         const header=document.createElement('div');
-        header.className='group-header flex items-center justify-between gap-2 select-none';
+        header.className='group-header collapsed flex items-center justify-between gap-2 select-none';
         header.innerHTML=`
           <div class="flex items-center gap-2">
             <svg class="collapse-icon w-5 h-5 text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -6303,7 +6396,7 @@ function listenForInventory() {
           <span class="text-xs text-gray-400">${group.orders.length} orders</span>
         `;
         const cardsWrap=document.createElement('div');
-        cardsWrap.className='group-content grid grid-cols-1 lg:grid-cols-2 gap-4';
+        cardsWrap.className='group-content collapsed grid grid-cols-1 lg:grid-cols-2 gap-4';
         if(group.orders.length===0){
           cardsWrap.innerHTML='<div class="text-sm text-gray-500 italic">No orders in this group.</div>';
         }else{
