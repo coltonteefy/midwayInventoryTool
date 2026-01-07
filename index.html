@@ -6338,6 +6338,17 @@ function listenForInventory() {
   function renderOrdersList(sortedOrders){
     const ordersContainer=qs('orders-container');
     if(!ordersContainer) return;
+    
+    // Save the current collapsed state of groups before re-rendering
+    const groupStates = new Map();
+    ordersContainer.querySelectorAll('.group-section').forEach(section => {
+      const header = section.querySelector('.group-header');
+      const title = header?.querySelector('h3')?.textContent;
+      if(title) {
+        groupStates.set(title, !header.classList.contains('collapsed'));
+      }
+    });
+    
     ordersContainer.innerHTML='';
     const loading=qs('loading-orders');
     if(loading) loading.style.display='none';
@@ -6385,7 +6396,11 @@ function listenForInventory() {
         const section=document.createElement('div');
         section.className=`group-section ${bgColors[index % bgColors.length]} col-span-full`;
         const header=document.createElement('div');
-        header.className='group-header collapsed flex items-center justify-between gap-2 select-none';
+        
+        // Check if this group was expanded before, default to collapsed for new groups
+        const wasExpanded = groupStates.has(group.title) ? groupStates.get(group.title) : false;
+        header.className=`group-header ${wasExpanded ? '' : 'collapsed'} flex items-center justify-between gap-2 select-none`;
+        
         header.innerHTML=`
           <div class="flex items-center gap-2">
             <svg class="collapse-icon w-5 h-5 text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -6396,7 +6411,8 @@ function listenForInventory() {
           <span class="text-xs text-gray-400">${group.orders.length} orders</span>
         `;
         const cardsWrap=document.createElement('div');
-        cardsWrap.className='group-content collapsed grid grid-cols-1 lg:grid-cols-2 gap-4';
+        cardsWrap.className=`group-content ${wasExpanded ? '' : 'collapsed'} grid grid-cols-1 lg:grid-cols-2 gap-4`;
+        
         if(group.orders.length===0){
           cardsWrap.innerHTML='<div class="text-sm text-gray-500 italic">No orders in this group.</div>';
         }else{
