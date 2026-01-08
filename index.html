@@ -4111,17 +4111,64 @@ function listenForInventory() {
       
       card.appendChild(itemsList);
 
+      // Discount section (only in edit mode)
+      if (isEditing) {
+        const discountDiv = document.createElement('div');
+        discountDiv.className = 'flex justify-between items-center pt-2';
+        
+        const discountLabel = document.createElement('span');
+        discountLabel.className = 'text-sm text-gray-400';
+        discountLabel.textContent = 'Discount %';
+        
+        const discountInput = document.createElement('input');
+        discountInput.type = 'number';
+        discountInput.min = '0';
+        discountInput.max = '100';
+        discountInput.step = '0.01';
+        discountInput.value = order.discountPercent || 0;
+        discountInput.className = 'w-20 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-gray-300 text-xs focus:ring-cyan-500 focus:border-cyan-500';
+        discountInput.addEventListener('change', async (e) => {
+          const newDiscount = Math.max(0, Math.min(100, parseFloat(e.target.value) || 0));
+          await updateDoc(doc(db, NEXT_ORDERS_COLLECTION_PATH, order.id), {
+            discountPercent: newDiscount
+          });
+        });
+        
+        discountDiv.appendChild(discountLabel);
+        discountDiv.appendChild(discountInput);
+        card.appendChild(discountDiv);
+      }
+
       // Total
       const totalDiv = document.createElement('div');
       totalDiv.className = 'flex justify-between items-center border-t border-gray-700 pt-3 mt-3';
       const totalLabel = document.createElement('span');
       totalLabel.className = 'text-md font-semibold text-gray-300';
       totalLabel.textContent = 'Order Total';
+      
+      // Calculate final total with discount
+      const rawTotal = order.total;
+      const discount = order.discountPercent || 0;
+      const finalTotal = rawTotal - (rawTotal * (discount / 100));
+      
       const totalAmount = document.createElement('span');
       totalAmount.className = 'text-xl font-bold text-cyan-200';
-      totalAmount.textContent = `$${order.total.toFixed(2)}`;
-      totalDiv.appendChild(totalLabel);
-      totalDiv.appendChild(totalAmount);
+      totalAmount.textContent = `$${finalTotal.toFixed(2)}`;
+      
+      // Show discount indicator if applicable
+      if (discount > 0) {
+        const discountIndicator = document.createElement('div');
+        discountIndicator.className = 'text-xs text-amber-300 text-right mt-1';
+        discountIndicator.textContent = `${discount}% discount applied`;
+        totalDiv.appendChild(totalLabel);
+        totalDiv.appendChild(document.createElement('div'));
+        totalDiv.lastChild.appendChild(totalAmount);
+        totalDiv.lastChild.appendChild(discountIndicator);
+      } else {
+        totalDiv.appendChild(totalLabel);
+        totalDiv.appendChild(totalAmount);
+      }
+      
       card.appendChild(totalDiv);
 
       container.appendChild(card);
