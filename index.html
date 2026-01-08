@@ -347,6 +347,7 @@
             <button id="toggle-edit-item-tool-btn" class="btn-neon-lime px-4 py-2 rounded-lg font-semibold text-xs hidden">Edit Inventory</button>
             <button id="toggle-sale-tool-btn" class="btn-neon-cyan px-4 py-2 rounded-lg font-semibold text-xs hidden">Sale Tool</button>
             <button id="toggle-promo-tool-btn" class="btn-neon-cyan px-4 py-2 rounded-lg font-semibold text-xs hidden">Promo Tool</button>
+            <button id="toggle-mock-order-tool-btn" class="btn-neon-lime px-4 py-2 rounded-lg font-semibold text-xs hidden">Mock Order Tool</button>
           </div>
           <div id="inventory-tool-wrapper" class="mt-4 hidden">
             <section id="inventory-tool" class="space-y-4">
@@ -624,6 +625,97 @@
                 </div>
               </div>
             </section>
+          </div>
+        </div>
+      </section>
+      
+      <!-- Mock Order Tool -->
+      <section id="mock-order-tool-wrapper" class="mt-4 hidden">
+        <div class="bg-gray-900 p-6 rounded-lg border border-gray-700 space-y-6">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h3 class="text-xl font-semibold text-white text-glow-fuchsia">Mock Order Generator</h3>
+              <p class="text-sm text-gray-400 mt-1">Build a test order to calculate totals without affecting inventory</p>
+            </div>
+            <button type="button" id="clear-mock-order-btn" class="btn-neon-red px-4 py-2 rounded-lg font-semibold text-xs">Clear Order</button>
+          </div>
+          
+          <!-- Add Item Section -->
+          <div class="bg-gray-800 p-4 rounded-lg border border-gray-600">
+            <h4 class="text-md font-semibold text-cyan-300 mb-3">Add Item to Order</h4>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+              <div>
+                <label for="mock-item-select" class="block text-sm font-medium text-gray-400 mb-1">Product</label>
+                <select id="mock-item-select" class="w-full bg-gray-900 border border-gray-600 rounded-md p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500">
+                  <option value="">-- Select Product --</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-400 mb-1">Type</label>
+                <div class="flex gap-2 h-10 items-center">
+                  <label class="inline-flex items-center cursor-pointer">
+                    <input type="radio" name="mock-item-type" value="singles" class="h-4 w-4 text-cyan-500 focus:ring-cyan-500 border-gray-600" checked>
+                    <span class="ml-1 text-sm text-gray-300">Singles</span>
+                  </label>
+                  <label class="inline-flex items-center cursor-pointer">
+                    <input type="radio" name="mock-item-type" value="kit" class="h-4 w-4 text-cyan-500 focus:ring-cyan-500 border-gray-600">
+                    <span class="ml-1 text-sm text-gray-300">Kit (10)</span>
+                  </label>
+                </div>
+              </div>
+              <div>
+                <label for="mock-item-quantity" class="block text-sm font-medium text-gray-400 mb-1">Quantity</label>
+                <input type="number" id="mock-item-quantity" min="1" value="1" class="w-full bg-gray-900 border border-gray-600 rounded-md p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500">
+              </div>
+              <div>
+                <label for="mock-item-price" class="block text-sm font-medium text-gray-400 mb-1">Unit Price ($)</label>
+                <input type="number" id="mock-item-price" step="0.01" min="0" value="0" class="w-full bg-gray-900 border border-gray-600 rounded-md p-2 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500">
+              </div>
+              <div class="flex items-end">
+                <button type="button" id="add-mock-item-btn" class="btn-neon-cyan px-4 py-2 rounded-lg font-semibold text-xs w-full">Add Item</button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Order Items List -->
+          <div class="bg-gray-800 p-4 rounded-lg border border-gray-600">
+            <h4 class="text-md font-semibold text-cyan-300 mb-3">Order Items</h4>
+            <div id="mock-order-items-list" class="space-y-2 min-h-[100px]">
+              <p class="text-gray-500 italic text-center py-8">No items added yet</p>
+            </div>
+          </div>
+          
+          <!-- Order Summary -->
+          <div class="bg-gradient-to-br from-cyan-900/20 to-blue-900/20 p-4 rounded-lg border border-cyan-500/50">
+            <h4 class="text-md font-semibold text-cyan-300 mb-3">Order Summary</h4>
+            <div class="space-y-2">
+              <div class="flex justify-between items-center text-sm">
+                <span class="text-gray-400">Subtotal:</span>
+                <span id="mock-subtotal" class="text-gray-200 font-semibold">$0.00</span>
+              </div>
+              <div class="flex justify-between items-center text-sm">
+                <span class="text-gray-400">Discount:</span>
+                <div class="flex gap-2 items-center">
+                  <input type="number" id="mock-discount" step="0.01" min="0" max="100" value="0" class="w-16 bg-gray-900 border border-gray-600 rounded px-2 py-1 text-gray-300 text-right focus:ring-cyan-500 focus:border-cyan-500">
+                  <span class="text-xs text-gray-400">%</span>
+                  <span id="mock-discount-amount" class="text-emerald-300 font-semibold ml-2">-$0.00</span>
+                </div>
+              </div>
+              <div class="flex justify-between items-center text-sm">
+                <span class="text-gray-400">Shipping:</span>
+                <input type="number" id="mock-shipping" step="0.01" min="0" value="0" class="w-24 bg-gray-900 border border-gray-600 rounded px-2 py-1 text-gray-300 text-right focus:ring-cyan-500 focus:border-cyan-500">
+              </div>
+              <div class="flex justify-between items-center text-sm">
+                <span class="text-gray-400">Tax:</span>
+                <input type="number" id="mock-tax" step="0.01" min="0" value="0" class="w-24 bg-gray-900 border border-gray-600 rounded px-2 py-1 text-gray-300 text-right focus:ring-cyan-500 focus:border-cyan-500">
+              </div>
+              <div class="border-t border-gray-600 pt-2 mt-2">
+                <div class="flex justify-between items-center">
+                  <span class="text-lg font-bold text-cyan-200">Total:</span>
+                  <span id="mock-total" class="text-2xl font-bold text-cyan-200">$0.00</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -1647,10 +1739,15 @@
   const saleToggleBtn = qs('sale-toggle-btn');
   const promoToolWrapper = qs('promo-tool-wrapper');
   const togglePromoToolBtn = qs('toggle-promo-tool-btn');
+  const mockOrderToolWrapper = qs('mock-order-tool-wrapper');
+  const toggleMockOrderToolBtn = qs('toggle-mock-order-tool-btn');
   const productionToolsSection = qs('production-tools-section');
   const productSalesSelect = qs('product-sales-select');
   const productSalesTotal = qs('product-sales-total');
   let productSalesLookup = new Map();
+  
+  // Mock order state
+  let mockOrderItems = [];
 
   if(productSalesSelect){
     productSalesSelect.addEventListener('change', ()=>{
@@ -1692,7 +1789,8 @@
     { wrapper: inventoryToolWrapper, button: toggleInventoryToolBtn, openLabel: 'Add Inventory', closeLabel: 'Add Inventory' },
     { wrapper: inventoryEditorWrapper, button: toggleEditItemToolBtn, openLabel: 'Edit Inventory', closeLabel: 'Edit Inventory' },
     { wrapper: saleToolWrapper, button: toggleSaleToolBtn, openLabel: 'Sale Tool', closeLabel: 'Sale Tool' },
-    { wrapper: promoToolWrapper, button: togglePromoToolBtn, openLabel: 'Promo Tool', closeLabel: 'Promo Tool' }
+    { wrapper: promoToolWrapper, button: togglePromoToolBtn, openLabel: 'Promo Tool', closeLabel: 'Promo Tool' },
+    { wrapper: mockOrderToolWrapper, button: toggleMockOrderToolBtn, openLabel: 'Mock Order Tool', closeLabel: 'Mock Order Tool' }
   ];
 
   function setToolOpen(tool, open){
@@ -1711,6 +1809,169 @@
       if(tool === except) return;
       setToolOpen(tool,false);
     });
+  }
+
+  /* ==========================
+   * Mock Order Tool Functions
+   * ========================== */
+  
+  function populateMockOrderProductSelect() {
+    const select = qs('mock-item-select');
+    if (!select) return;
+    
+    const items = Object.values(inventoryCache || {});
+    select.innerHTML = '<option value="">-- Select Product --</option>';
+    
+    items.forEach(item => {
+      const option = document.createElement('option');
+      option.value = item.id;
+      option.textContent = `${item.name} (${item.id})`;
+      option.dataset.pricePerVial = item.sellPricePerVial || 0;
+      option.dataset.pricePerKit = item.sellPricePerKit || 0;
+      select.appendChild(option);
+    });
+  }
+  
+  function updateMockOrderTotals() {
+    const subtotal = mockOrderItems.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+    const discountPercent = Number(qs('mock-discount')?.value || 0);
+    const discountAmount = subtotal * (discountPercent / 100);
+    const discountedSubtotal = subtotal - discountAmount;
+    const shipping = Number(qs('mock-shipping')?.value || 0);
+    const tax = Number(qs('mock-tax')?.value || 0);
+    const total = discountedSubtotal + shipping + tax;
+    
+    const subtotalEl = qs('mock-subtotal');
+    const discountAmountEl = qs('mock-discount-amount');
+    const totalEl = qs('mock-total');
+    
+    if (subtotalEl) subtotalEl.textContent = `$${currency(subtotal)}`;
+    if (discountAmountEl) discountAmountEl.textContent = `-$${currency(discountAmount)}`;
+    if (totalEl) totalEl.textContent = `$${currency(total)}`;
+  }
+  
+  function renderMockOrderItems() {
+    const listEl = qs('mock-order-items-list');
+    if (!listEl) return;
+    
+    if (mockOrderItems.length === 0) {
+      listEl.innerHTML = '<p class="text-gray-500 italic text-center py-8">No items added yet</p>';
+      updateMockOrderTotals();
+      return;
+    }
+    
+    listEl.innerHTML = '';
+    mockOrderItems.forEach((item, index) => {
+      const itemDiv = document.createElement('div');
+      itemDiv.className = 'flex justify-between items-center gap-3 bg-gray-900 p-3 rounded border border-gray-700';
+      
+      const infoDiv = document.createElement('div');
+      infoDiv.className = 'flex-1';
+      
+      const nameSpan = document.createElement('div');
+      nameSpan.className = 'font-semibold text-cyan-300';
+      nameSpan.textContent = item.name;
+      
+      const detailsSpan = document.createElement('div');
+      detailsSpan.className = 'text-xs text-gray-400';
+      const typeLabel = item.type === 'kit' ? 'Kit' : 'Singles';
+      detailsSpan.textContent = `${typeLabel} • ${item.quantity} × $${currency(item.price)} = $${currency(item.quantity * item.price)}`;
+      
+      infoDiv.appendChild(nameSpan);
+      infoDiv.appendChild(detailsSpan);
+      
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'text-red-400 hover:text-red-300 font-bold text-lg px-2';
+      removeBtn.innerHTML = '×';
+      removeBtn.title = 'Remove item';
+      removeBtn.addEventListener('click', () => {
+        mockOrderItems.splice(index, 1);
+        renderMockOrderItems();
+      });
+      
+      itemDiv.appendChild(infoDiv);
+      itemDiv.appendChild(removeBtn);
+      listEl.appendChild(itemDiv);
+    });
+    
+    updateMockOrderTotals();
+  }
+  
+  function initMockOrderTool() {
+    const addBtn = qs('add-mock-item-btn');
+    const clearBtn = qs('clear-mock-order-btn');
+    const selectEl = qs('mock-item-select');
+    const qtyEl = qs('mock-item-quantity');
+    const priceEl = qs('mock-item-price');
+    const shippingEl = qs('mock-shipping');
+    const taxEl = qs('mock-tax');
+    const discountEl = qs('mock-discount');
+    
+    if (!addBtn || !clearBtn || !selectEl) return;
+    
+    // Update price when product is selected or type changes
+    const updatePrice = () => {
+      const selectedOption = selectEl.options[selectEl.selectedIndex];
+      const typeRadio = document.querySelector('input[name="mock-item-type"]:checked');
+      if (selectedOption && selectedOption.value && priceEl && typeRadio) {
+        const isKit = typeRadio.value === 'kit';
+        const price = isKit ? selectedOption.dataset.pricePerKit : selectedOption.dataset.pricePerVial;
+        priceEl.value = price || 0;
+      }
+    };
+    
+    selectEl.addEventListener('change', updatePrice);
+    
+    // Add event listeners for radio buttons
+    const typeRadios = document.querySelectorAll('input[name="mock-item-type"]');
+    typeRadios.forEach(radio => {
+      radio.addEventListener('change', updatePrice);
+    });
+    
+    // Add item to mock order
+    addBtn.addEventListener('click', () => {
+      const selectedOption = selectEl.options[selectEl.selectedIndex];
+      if (!selectedOption || !selectedOption.value) {
+        showModal('Please select a product');
+        return;
+      }
+      
+      const typeRadio = document.querySelector('input[name="mock-item-type"]:checked');
+      const quantity = Math.max(1, parseInt(qtyEl?.value || 1));
+      const price = Math.max(0, parseFloat(priceEl?.value || 0));
+      
+      mockOrderItems.push({
+        id: selectedOption.value,
+        name: selectedOption.textContent,
+        type: typeRadio ? typeRadio.value : 'singles',
+        quantity: quantity,
+        price: price
+      });
+      
+      // Reset inputs
+      qtyEl.value = '1';
+      renderMockOrderItems();
+    });
+    
+    // Clear order
+    clearBtn.addEventListener('click', () => {
+      if (mockOrderItems.length > 0 && !confirm('Clear all items from the mock order?')) {
+        return;
+      }
+      mockOrderItems = [];
+      if (shippingEl) shippingEl.value = '0';
+      if (taxEl) taxEl.value = '0';
+      if (discountEl) discountEl.value = '0';
+      renderMockOrderItems();
+    });
+    
+    // Update totals when shipping, tax, or discount changes
+    if (shippingEl) shippingEl.addEventListener('input', updateMockOrderTotals);
+    if (taxEl) taxEl.addEventListener('input', updateMockOrderTotals);
+    if (discountEl) discountEl.addEventListener('input', updateMockOrderTotals);
+    
+    renderMockOrderItems();
   }
 
   function getSaleSnapshot(){
@@ -3213,6 +3474,7 @@
       listenForInventory(); listenForOrders(); listenForEmailList();
       listenForAffiliateCodes();
       initNextOrders();
+      initMockOrderTool();
     }else{
       userId=null;
       if(status) status.textContent='Status: Signed out';
@@ -3568,6 +3830,7 @@ function listenForInventory() {
     updateFinancialUI();
     renderInfographics();
     recomputeDailySnapshots();
+    populateMockOrderProductSelect();
   }, (error) => {
     console.error('Error listening to inventory:', error);
     const tbody = qs('inventory-list');
